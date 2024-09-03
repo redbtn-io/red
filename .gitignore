@@ -19,3 +19,6 @@ dist/
 
 # User Context
 context/
+
+# Channels
+channels.json

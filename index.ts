@@ -1,7 +1,12 @@
 import 'dotenv/config';
 import { AI } from '@redbtn/ai';
 import { Client, Collection, GatewayIntentBits, Message, Partials, REST, Routes } from 'discord.js';
+import { PassThrough, Readable } from 'stream';
+import ffmpeg from 'fluent-ffmpeg';
 import fs from 'fs';
+
+
+ffmpeg.setFfmpegPath("E:/Downloads/ffmpeg-2024-09-02-git-3f9ca51015-full_build/bin/ffmpeg.exe");
 
 const { CLIENT_ID, TOKEN } = process.env;
 
@@ -263,12 +268,19 @@ async function formatMessages(messages: Collection<string, Message<boolean>>) {
       attachments.forEach(async (attachment: string) => {
         const endsWith = ['jpeg', 'jpg', 'png', 'gif', 'webp'];
         console.log(attachment);
-        if (endsWith.some((ending) => (attachment.includes('.'+ending+'?') || attachment.endsWith('.'+ending))))
+        if (endsWith.some((ending) => (attachment.includes('.'+ending+'?') || attachment.endsWith('.'+ending)))) {
+          console.log(attachment);
           messageObject.content.push({type: 'image_url', image_url:{url: attachment}});
-        else {
-          const fileObject = await fetch(attachment);
-          const file = await fileObject.blob();
-          const upload = await AI.uploadFile(file as unknown as File);
+        } else {
+          //! fetch attachment & save to local filesystem
+          const file = await fetch(attachment);
+          let upload;
+          if (file.headers.get('content-type') === 'video/quicktime') {
+            const converted = await convertAndUpload(attachment);
+            upload = await AI.uploadFile(converted as unknown as File);
+          } else {
+            upload = await AI.uploadFile(file as unknown as File);
+          }
           console.log(upload);
           messageObject.content.push({type: 'text', text: messageObject.content + `\n ${attachment}`});
         }
@@ -279,6 +291,8 @@ async function formatMessages(messages: Collection<string, Message<boolean>>) {
   }
   return newMessages;
 }
+
+
 
 async function readStream(stream: any): Promise<string> {
   const reader = stream.getReader();
@@ -295,4 +309,50 @@ async function readStream(stream: any): Promise<string> {
   }
 
   return result;
+}
+
+async function convertAndUpload(url: string): Promise<Buffer> {
+  // Fetch the video from the URL
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Failed to fetch video');
+
+  // Manually convert the web stream to a Node.js Readable stream
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error('Failed to create reader');
+
+  const videoStream = new Readable({
+    read() {
+      reader.read().then(({ done, value }) => {
+        if (done) {
+          this.push(null);
+        } else {
+          this.push(Buffer.from(value));
+        }
+      }).catch(err => {
+        this.destroy(err);
+      });
+    }
+  });
+
+  // Create a pass-through stream for the output
+  const outputStream = new PassThrough();
+
+  ffmpeg(videoStream)
+    .format('webp')
+    .on('error', err => {
+      console.error('Error during conversion:', err.message);
+    })
+    .pipe(outputStream);
+
+  // Upload the output stream to OpenAI (or any other service)
+  return await streamToBuffer(outputStream);
+}
+
+async function streamToBuffer(stream: Readable): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  return new Promise((resolve, reject) => {
+    stream.on('data', chunk => chunks.push(chunk));
+    stream.on('end', () => resolve(Buffer.concat(chunks)));
+    stream.on('error', err => reject(err));
+  });
 }
