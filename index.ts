@@ -1,9 +1,9 @@
 import 'dotenv/config';
 import { AI } from '@redbtn/ai';
 import { Client, Collection, GatewayIntentBits, Message, Partials, REST, Routes } from 'discord.js';
-import { PassThrough, Readable } from 'stream';
 import ffmpeg from 'fluent-ffmpeg';
 import fs from 'fs';
+import { PassThrough, Readable } from 'stream';
 
 
 ffmpeg.setFfmpegPath("E:/Downloads/ffmpeg-2024-09-02-git-3f9ca51015-full_build/bin/ffmpeg.exe");
@@ -41,6 +41,9 @@ const main = async () => {
       if (message.author.bot) return;
       if (!(message.channel.type === 1) && !message.content.includes(clientID as string)) return;
       message.channel.sendTyping();
+      const typing = setInterval(() => {
+        message.channel.sendTyping();
+      }, 5000);
       const channel = message.channel.id;
       let threadId: string|false = false;
       const channels = JSON.parse(fs.readFileSync('channels.json', 'utf8'));
@@ -69,6 +72,7 @@ const main = async () => {
               } else {
                 console.log(data);
               }
+            clearInterval(typing);
           });
         } 
       }
@@ -93,6 +97,7 @@ const main = async () => {
               } else {
                 console.log(data);
               }
+            clearInterval(typing);
           });
         } catch (e) {
           console.log(e);
@@ -128,30 +133,56 @@ main();
 async function streamThread(thread: any, callback: any) {
   for await (const event of thread) {
     switch (event.event) {
-    case "thread.created": {
-      callback(event.data);
-      break;
-    }
-    case "thread.message.delta": {
-      const deltas = event.data.delta.content;
-      deltas?.forEach((delta: any) => {
-        if (delta.type == "text") callback(delta.text?.value as string);
-      });
-      break;
-    }
-    case "thread.message.completed": {
-      callback(event.data);
-      break;
-    }
-    case "thread.run.failed": {
-      callback(event.data);
-      break;
-    }
-    default:{
-      break;
+      case "thread.created": {
+        callback(event.data);
+        break;
+      }
+      case "thread.message.delta": {
+        const deltas = event.data.delta.content;
+        deltas?.forEach((delta: any) => {
+          if (delta.type == "text") callback(delta.text?.value as string);
+        });
+        break;
+      }
+      case "thread.message.completed": {
+        callback(event.data);
+        break;
+      }
+      case "thread.run.failed": {
+        callback(event.data);
+        break;
+      }
+      case "thread.run.requires_action": {
+        const toolcalls = event.data.required_action.submit_tool_outputs.tool_calls;
+        const runId = event.data.id;
+        const threadId = event.data.thread_id;
+
+        const results: any[] = [];
+        for await (const tool of toolcalls) {
+          console.log(tool);
+          const toolId = tool.id;
+          console.log(event)
+          const args = JSON.parse(tool.function.arguments);
+          //dynamically import & run function from "toolcalls" folder
+          const toolcall = await import(`./toolcalls/${tool.function.name}.ts`);
+          const result = await toolcall[tool.function.name](args);
+          results.push({
+            tool_call_id: toolId,
+            output: JSON.stringify(result),
+          });
+        }
+        console.log(results)
+        const newRun = await AI.submitTools(threadId, runId, results)
+        console.log(newRun);
+        streamThread(newRun, callback);
+        break;
+      }
+      default:{
+        console.log(event.event);
+        break;
+      }
     }
   }
-}
 }
 
 async function checkVector(threadId: string) {

@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@redbtn/ai": "file:../../packages/redbtn-ai-0.0.1.tgz",
+    "@redbtn/ai": "file:../ai/redbtn-ai-0.0.1.tgz",
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
     "fluent-ffmpeg": "^2.1.3",
