@@ -1,22 +1,29 @@
-export async function scrape(message: string, query?: string) {
-    const data = await scrapePage(message);
+import puppeteer from 'puppeteer';
+
+export async function scrape({url, keywords} : {url: string, keywords?: string[]}) {
+    const data = await scrapePage(url);
+    if (keywords) console.log(keywords);
     return data;
   
     async function scrapePage(url: string) {
       let retries = 3;
       while (retries > 0) {
         try {
-          const response = await fetch(url);
-          const text = await response.text();
+          const text = await puppetScrape(url);
           const bodyStartIndex = text.indexOf("<body");
           const bodyEndIndex = text.indexOf("</body>");
+          console.log(bodyStartIndex, bodyEndIndex);
           if (bodyStartIndex !== -1 && bodyEndIndex !== -1) {
             const bodyContent = text.substring(bodyStartIndex, bodyEndIndex + 7);
             const elements = getElements(bodyContent, ['div'],['disclaimer']);
-            const filteredElements = filterElementsStrict(elements, removeStopwords(query || '').split(" "));
-            return filteredElements;
+            const filteredElements = filterElementsShort(elements).join(' ') + 
+                filterElementsPartial(elements,
+                     removeStopwords(keywords?.join(' ') || ''
+                ).split(' ')) ;
+            if (keywords) return filteredElements
+            return elements;
           } else {
-            throw new Error("Body tag not found");
+            throw new Error("body tag not found, find other sources");
           }
         } catch (error) {
           console.error(error);
@@ -51,6 +58,22 @@ export function filterElementsStrict(elements: string[], keywords: string[]) {
     return elements.filter(element => keywords.every(keyword => element.includes(keyword)));
 }
 
+// A function which filters out elements unless the contain at least half of all keywords
+export function filterElementsPartial(elements: string[], keywords: string[]) {
+    return elements.filter(element => {
+        const matches = keywords.filter(keyword => element.includes(keyword));
+        return matches.length >= keywords.length / 2;
+    });
+}
+
+// A function which filters out elements unless they are less than 12 words, OR contain a $, OR contain a number
+export function filterElementsShort(elements: string[]) {
+    return elements.filter(element => {
+        const words = element.split(" ");
+        return words.length < 12 || words.some(word => word.includes("$") || !isNaN(Number(word)));
+    });
+}
+
   // A function which removes common stopwords from a string
 export function removeStopwords(text: string) {
     const stopwords = new Set([
@@ -66,4 +89,14 @@ export function removeStopwords(text: string) {
       "in", "out", "on", "off", "over", "under", "again", "further", "then", "once"
     ]);
     return text.split(" ").filter(word => !stopwords.has(word)).join(" ");
+  }
+
+  // A function which uses puppeteer to scrape a webpage
+export async function puppetScrape(url: string) {
+    const browser = await puppeteer.launch({headless: true, executablePath: "C:/Program Files/Google/Chrome/Application/chrome.exe"});
+    const page = await browser.newPage();
+    await page.goto(url);
+    const content = await page.content();
+    await browser.close();
+    return content;
   }

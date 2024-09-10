@@ -62,7 +62,12 @@ const main = async () => {
           const messages: Array<any> = await formatMessages(fetched);
           channels[key].lastMessage = message.id;
           fs.writeFileSync('channels.json', JSON.stringify(channels), 'utf8');
-          const run = await AI.runThread('asst_SpEof0Si2eHm8na4HmR2Fh8b', threadId, { additional_messages: messages.slice(-32) });
+          const run = await AI.runThread(
+            'asst_SpEof0Si2eHm8na4HmR2Fh8b', 
+            threadId, 
+            { additional_messages: messages.slice(-32),
+              additional_instructions: `Current Timestamp: ${new Date().toISOString()}`,
+             });
           streamThread(run, (data: any) => {
             if (typeof data !== 'string')
               if (data.object == 'thread.message') {
