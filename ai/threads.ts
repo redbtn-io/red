@@ -34,9 +34,7 @@ export async function streamThread(thread: any, callback: any) {
   
           const results: any[] = [];
           for await (const tool of toolcalls) {
-            console.log(tool);
             const toolId = tool.id;
-            console.log(event)
             const args = JSON.parse(tool.function.arguments);
             //dynamically import & run function from "toolcalls" folder
             const toolcall = await import(`./toolcalls/${tool.function.name}.ts`);
@@ -46,14 +44,11 @@ export async function streamThread(thread: any, callback: any) {
               output: JSON.stringify(result),
             });
           }
-          console.log(results)
           const newRun = await AI.submitTools(threadId, runId, results)
-          console.log(newRun);
           streamThread(newRun, callback);
           break;
         }
         default:{
-          console.log(event.event);
           break;
         }
       }
@@ -157,9 +152,7 @@ export async function formatMessages(messages: Collection<string, Message<boolea
         messageObject.content = [{type: 'text', text: messageObject.content}];
         attachments.forEach(async (attachment: string) => {
             const endsWith = ['jpeg', 'jpg', 'png', 'gif', 'webp'];
-            console.log(attachment);
             if (endsWith.some((ending) => (attachment.includes('.'+ending+'?') || attachment.endsWith('.'+ending)))) {
-            console.log(attachment);
             messageObject.content.push({type: 'image_url', image_url:{url: attachment}});
             } else {
             //! fetch attachment & save to local filesystem
@@ -171,12 +164,10 @@ export async function formatMessages(messages: Collection<string, Message<boolea
             } else {
                 upload = await AI.uploadFile(file as unknown as File);
             }
-            console.log(upload);
             messageObject.content.push({type: 'text', text: messageObject.content + `\n ${attachment}`});
             }
         })
         }
-        console.log(messageObject);
         newMessages.push(messageObject);
     }
     return newMessages;

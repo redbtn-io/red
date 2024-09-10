@@ -66,7 +66,6 @@ const main = async () => {
           streamThread(run, (data: any) => {
             if (typeof data !== 'string')
               if (data.object == 'thread.message') {
-                console.log(data.content[0].text.value);
                 sendMessage(message, data.content[0].text.value);
               } else if (data.status == 'failed') {
                 sendMessage(message, `I'm sorry, I am unable to assist you at this time. ERROR: ${data.last_error.message}`);
