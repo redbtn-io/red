@@ -1,4 +1,4 @@
-import { runScrape } from "./scrape";
+import { scrape } from "./scrape";
 
 export async function search(args: {query: string}) {
     const query = args.query;
@@ -10,7 +10,7 @@ export async function search(args: {query: string}) {
             const data: any = await res.json();
             const results: Result[] = [];
             for await (const item of data.items) {
-              const info = await runScrape(item.link, query);
+              const info = await scrape(item.link, query);
                 results.push({
                     title: item.title,
                     link: item.link,

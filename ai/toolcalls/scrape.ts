@@ -1,4 +1,4 @@
-export async function runScrape(message: string, query?: string) {
+export async function scrape(message: string, query?: string) {
     const data = await scrapePage(message);
     return data;
   
