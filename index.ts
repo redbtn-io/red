@@ -15,7 +15,10 @@ const commands = [
   {
     name: 'ping',
     description: 'Replies with Pong!',
-  },
+  }, {
+    name: 'reset',
+    description: 'Resets the conversation',
+  }
 ];
 
 const rest = new REST({ version: '10' }).setToken(TOKEN as string);
@@ -40,7 +43,16 @@ const main = async () => {
     client.on('messageCreate', async message => {
       const clientID = client.user?.id;
       if (message.author.bot) return;
-      if (!(message.channel.type === 1) && !message.content.includes(clientID as string)) return;
+      const isReply = await (async () => {
+        if (message.channel.type === 1) return false;
+        if (message.reference) {
+          const reply = await message.channel.messages.fetch(message.reference.messageId as string);
+          return reply.author.id === clientID;
+        }
+        return false;
+      })();
+      const isMentioned = message.channel.type === 1 || message.mentions.has(clientID as string);
+      if (!isReply && !isMentioned) return;
       message.channel.sendTyping();
       const typing = setInterval(() => {
         message.channel.sendTyping();
@@ -66,7 +78,8 @@ const main = async () => {
             'asst_SpEof0Si2eHm8na4HmR2Fh8b', 
             threadId, 
             { additional_messages: messages.slice(-32),
-              additional_instructions: `Current Timestamp: ${new Date().toISOString()}`,
+              additional_instructions: `Current Timestamp: ${new Date().toISOString()}. \n 
+              Don't start your response with a (Red @ XXXXXXXXXXXXX) prefix.`,
              });
           streamThread(run, (data: any) => {
             if (typeof data !== 'string')
@@ -113,8 +126,25 @@ const main = async () => {
     client.on('interactionCreate', async interaction => {
       if (!interaction.isChatInputCommand()) return;
 
-      if (interaction.commandName === 'ping') {
-        await interaction.reply('Pong!');
+      switch (interaction.commandName) {
+        case 'ping': {
+          await interaction.reply('Pong!');
+          break;
+        }
+        case 'reset': {
+          //get the channel id
+          const channel = interaction.channelId;
+          //get the thread id
+          const channels = JSON.parse(fs.readFileSync('channels.json', 'utf8'));
+          const threadId = channels[channel].thread;
+          //delete the thread
+          await AI.deleteThread(threadId);
+          //delete the channel from the channels.json file
+          delete channels[channel];
+          fs.writeFileSync('channels.json', JSON.stringify(channels), 'utf8');
+          await interaction.reply('Conversation reset.');
+          break;
+        }
       }
     });
 
