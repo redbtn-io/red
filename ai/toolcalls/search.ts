@@ -11,7 +11,7 @@ export async function search(args: {query: string}) {
             const data: any = await res.json();
             const results: Result[] = [];
             for await (const item of data.items) {
-              if (results.length >= 5) break;
+              if (results.length >= 3) break;
               const info = await scrape({url:item.link, keywords});
                 results.push({
                     title: item.title,
