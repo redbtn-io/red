@@ -149,6 +149,7 @@ async function receivedMessage(client: Client, message: any) {
       const thread = await AI.createThread({
         assistant_id: 'asst_SpEof0Si2eHm8na4HmR2Fh8b',
         messages: messages,
+        additional_instructions: `Current Timestamp: ${new Date().toISOString()}. \n`
       });
       streamThread(thread, async (data: any) => {
         if (typeof data !== 'string')

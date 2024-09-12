@@ -17,10 +17,10 @@ export async function scrape({url, keywords} : {url: string, keywords?: string[]
             const bodyContent = text.substring(bodyStartIndex, bodyEndIndex + 7);
             const elements = getElements(bodyContent, ['div'],['disclaimer']);
             const filteredElements = filterElementsShort(elements).join(' ') + 
-                filterElementsPartial(elements,
+                filterElementsPartial(truncateElements(elements),
                      removeStopwords(keywords?.join(' ') || ''
                 ).split(' ')) ;
-            if (keywords) return filteredElements
+            if (keywords) return filteredElements.substring(0, 20000);
             return elements;
           } else {
             throw new Error("body tag not found, find other sources");
@@ -66,11 +66,16 @@ export function filterElementsPartial(elements: string[], keywords: string[]) {
     });
 }
 
-// A function which filters out elements unless they are less than 12 words, OR contain a $, OR contain a number
+// A function which returns only the first 5,000 words of each element in an array
+export function truncateElements(elements: string[]) {
+    return elements.map(element => element.split(" ").slice(0, 5000).join(" "));
+}
+
+// A function which filters out elements unless they are less than 12 words, OR contain a $, OR contain a number, AND doesn't contain only blank spaces
 export function filterElementsShort(elements: string[]) {
     return elements.filter(element => {
         const words = element.split(" ");
-        return words.length < 12 || words.some(word => word.includes("$") || !isNaN(Number(word)));
+        return (words.length < 12 || words.some(word => word.includes("$")) || words.some(word => /\d/.test(word))) && !/^\s+$/.test(element);
     });
 }
 
