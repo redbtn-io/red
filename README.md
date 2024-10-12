@@ -1,5 +1,7 @@
 # Red (by redbtn)
 
+![a red button](https://redbtn.io/src/assets/redbutton-glossy.png)
+
 **Red** is a Discord bot powered by AI designed to manage conversations, handle user interactions, and assist in managing messages, users, and channels. Additionally, it provides AI-powered conversation threads, a vector store for context management, and several useful slash commands.
 
 ## Installation
