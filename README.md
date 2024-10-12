@@ -1,10 +1,10 @@
 # Red (by redbtn)
 
-![a red button](https://redbtn.io/src/assets/redbutton-glossy.png)
+<img src="https://redbtn.io/src/assets/redbutton-glossy.png" width="256" align="right"/>
 
 **Red** is a Discord bot powered by AI designed to manage conversations, handle user interactions, and assist in managing messages, users, and channels. Additionally, it provides AI-powered conversation threads, a vector store for context management, and several useful slash commands.
 
-## Installation
+<h3>Installation</h3>
 
 You can install Red via npm. The package is named `@redbtn/red`.
 
