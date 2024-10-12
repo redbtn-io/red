@@ -12,6 +12,14 @@ You can install Red via npm. The package is named `@redbtn/red`.
 npm install @redbtn/red
 ```
 
+Make sure you also install the required `@redbtn/ai` package, which Red depends on for its functionality:
+
+```bash
+npm install @redbtn/ai
+```
+
+This will ensure both packages are correctly set up for your project.
+
 ## Usage
 
 To use Red in your Discord bot:
@@ -21,50 +29,14 @@ To use Red in your Discord bot:
     ```
     CLIENT_ID=<Your_Discord_Client_ID>
     TOKEN=<Your_Discord_Bot_Token>
+    OPENAI_API_KEY=<Your_OpenAI_API_Key>
     ```
 
-2. Import and initialize the bot:
+2. Run the bot:
 
-```typescript
-import 'dotenv/config';
-import { AI } from '@redbtn/ai';
-import { Client, GatewayIntentBits, Partials, REST, Routes } from 'discord.js';
-import ffmpeg from 'fluent-ffmpeg';
-import fs from 'fs';
-
-ffmpeg.setFfmpegPath("path/to/ffmpeg");
-
-const { CLIENT_ID, TOKEN } = process.env;
-
-const commands = [
-  {
-    name: 'ping',
-    description: 'Replies with Pong!',
-  }, {
-    name: 'reset',
-    description: 'Resets the conversation',
-  }
-];
-
-const rest = new REST({ version: '10' }).setToken(TOKEN);
-const main = async () => {
-  await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-  console.log('Successfully reloaded application (/) commands.');
-
-  const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages],
-    partials: [Partials.Channel],
-  });
-
-  client.on('ready', () => {
-    console.log(`Logged in as ${client.user?.tag}!`);
-  });
-
-  // Additional bot logic...
-};
-
-main();
-```
+    ```bash
+    npm run start
+    ```
 
 ## Features
 
