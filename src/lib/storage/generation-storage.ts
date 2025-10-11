@@ -8,6 +8,7 @@ export interface ActiveGeneration {
   conversationId: string;
   streamUrl: string;
   startedAt: number;
+  userMessage?: string; // Store user message for reconnection display
 }
 
 const STORAGE_KEY = 'active_generation';
@@ -30,13 +31,16 @@ export const generationStorage = {
   get(): ActiveGeneration | null {
     try {
       const data = sessionStorage.getItem(STORAGE_KEY);
+      console.log('[Storage] Raw data from sessionStorage:', data);
       if (!data) return null;
       
       const generation: ActiveGeneration = JSON.parse(data);
       
       // Check if generation is stale (older than 10 minutes)
       const age = Date.now() - generation.startedAt;
+      console.log('[Storage] Generation age:', age, 'ms (max 10 minutes)');
       if (age > 10 * 60 * 1000) {
+        console.log('[Storage] Generation is stale, clearing');
         this.clear();
         return null;
       }
@@ -53,6 +57,8 @@ export const generationStorage = {
    */
   clear(): void {
     try {
+      console.log('[Storage] CLEARING generation storage');
+      console.trace('[Storage] Clear called from:');
       sessionStorage.removeItem(STORAGE_KEY);
     } catch (error) {
       console.error('Failed to clear generation state:', error);

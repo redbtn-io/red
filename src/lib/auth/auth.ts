@@ -61,6 +61,14 @@ export function isAdmin(user: JWTPayload | null): boolean {
 }
 
 /**
+ * Verify authentication and return user or null
+ * Use this for API routes that require authentication
+ */
+export async function verifyAuth(request: NextRequest): Promise<JWTPayload | null> {
+  return getUserFromRequest(request);
+}
+
+/**
  * Require admin access or throw 403 error
  */
 export function requireAdmin(user: JWTPayload | null): void {

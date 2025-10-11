@@ -116,6 +116,9 @@ export async function POST(request: NextRequest) {
                 } : undefined
               };
               await red.messageQueue.completeGeneration(messageId, metadata);
+              
+              // Note: Assistant message is already saved by red.memory in respond.ts
+              // No need to save here - the AI package handles all message persistence
             }
           }
         } catch (error) {

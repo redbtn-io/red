@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
-import connectToDatabase from './mongodb';
-import OAuthAccessToken from './models/OAuthAccessToken';
+import connectToDatabase from '../database/mongodb';
+import OAuthAccessToken from '../database/models/oauth/OAuthAccessToken';
 
 /**
  * Extract and validate OAuth access token from request

@@ -3,9 +3,20 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { type Conversation } from '@/lib/storage/conversation';
 
+// ConversationSummary is compatible with Conversation (just subset of fields)
+type ConversationItem = Conversation | {
+  id: string;
+  title: string;
+  lastMessageAt?: Date | number;
+  messageCount?: number;
+  isArchived?: boolean;
+  createdAt?: Date | number;
+  updatedAt?: Date | number;
+};
+
 interface SidebarProps {
   isOpen: boolean;
-  conversations: Conversation[];
+  conversations: ConversationItem[];
   activeConversationId: string | null;
   editingTitleId: string | null;
   editingTitleValue: string;
@@ -13,7 +24,7 @@ interface SidebarProps {
   onNewChat: () => void;
   onSwitchConversation: (id: string) => void;
   onDeleteClick: (id: string, event: React.MouseEvent) => void;
-  onStartEditingTitle: (conv: Conversation, event: React.MouseEvent) => void;
+  onStartEditingTitle: (conv: ConversationItem, event: React.MouseEvent) => void;
   onSaveEditedTitle: (conversationId: string) => void;
   onCancelEditingTitle: () => void;
   onEditingTitleChange: (value: string) => void;
@@ -122,7 +133,7 @@ export function Sidebar({
                           <div className="text-sm font-medium truncate text-gray-200">{conv.title}</div>
                         )}
                         <div className="text-xs text-gray-500 mt-0.5">
-                          {conv.messages.length} {conv.messages.length === 1 ? 'message' : 'messages'}
+                          {('messageCount' in conv ? conv.messageCount : 'messages' in conv ? conv.messages?.length : 0) || 0} messages
                         </div>
                       </div>
                     </div>
@@ -130,7 +141,7 @@ export function Sidebar({
                   
                   {/* Action Buttons */}
                   {editingTitleId !== conv.id && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={(e) => onStartEditingTitle(conv, e)}
                         className="p-2 hover:bg-[#2a2a2a] rounded-lg text-gray-400 hover:text-blue-400"

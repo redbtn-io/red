@@ -9,6 +9,8 @@ import { LoadingStateContainer } from '../ui/LoadingStates';
 
 interface MessagesProps {
   messages: Message[] | undefined;
+  streamingMessage: { id: string; content: string } | null;
+  pendingUserMessage: { role: string; content: string; timestamp: Date } | null;
   thinking: Record<string, string>; // messageId -> thinking content
   currentStatus: { action: string; description?: string } | null;
   isLoading: boolean;
@@ -22,6 +24,8 @@ interface MessagesProps {
 
 export function Messages({
   messages,
+  streamingMessage,
+  pendingUserMessage,
   thinking,
   currentStatus,
   isLoading,
@@ -63,6 +67,36 @@ export function Messages({
           />
         );
       })}
+      
+      {/* Pending user message (optimistic update before saved to DB) */}
+      {pendingUserMessage && (
+        <MessageBubble
+          key="pending-user"
+          message={{
+            id: 'pending',
+            role: 'user',
+            content: pendingUserMessage.content,
+            timestamp: pendingUserMessage.timestamp,
+          }}
+          thinking={null}
+          isStreaming={false}
+        />
+      )}
+      
+      {/* Streaming message that's not yet saved to server */}
+      {streamingMessage && !isLoading && (
+        <MessageBubble
+          key={streamingMessage.id}
+          message={{
+            id: streamingMessage.id,
+            role: 'assistant',
+            content: streamingMessage.content,
+            timestamp: new Date(),
+          }}
+          thinking={thinking[streamingMessage.id] || null}
+          isStreaming={true}
+        />
+      )}
       
       {/* Loading State with Status, Skeleton, and Thinking */}
       {isLoading && streamingMessageId && (

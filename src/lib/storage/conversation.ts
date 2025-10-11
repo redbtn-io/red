@@ -1,13 +1,22 @@
 /**
  * Types for the chat application
+ * Note: These types are now compatible with server-stored conversations
  */
 
 export interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
   thinking?: string; // Extracted thinking/reasoning (if present)
-  timestamp: number;
+  timestamp: number | Date;
+  metadata?: {
+    model?: string;
+    tokens?: {
+      input?: number;
+      output?: number;
+      total?: number;
+    };
+  };
 }
 
 export interface Conversation {
@@ -15,8 +24,11 @@ export interface Conversation {
   title: string;
   titleSetByUser?: boolean; // True if user manually set the title
   messages: Message[];
-  createdAt: number;
-  updatedAt: number;
+  createdAt: number | Date;
+  updatedAt: number | Date;
+  isArchived?: boolean;
+  messageCount?: number;
+  lastMessageAt?: number | Date;
 }
 
 /**
