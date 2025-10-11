@@ -1,11 +1,11 @@
 import { MessageSquare, Brain } from 'lucide-react';
-import { type Message } from '@/lib/conversation';
+import { type Message } from '@/lib/storage/conversation';
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { LoadingStateContainer } from './LoadingStates';
+import { LoadingStateContainer } from '../ui/LoadingStates';
 
 interface MessagesProps {
   messages: Message[] | undefined;

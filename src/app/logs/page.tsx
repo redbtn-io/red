@@ -5,12 +5,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { conversationStorage, Conversation } from '@/lib/conversation';
-import { Header } from '@/components/Header';
-import { Sidebar } from '@/components/Sidebar';
-import { LogViewer } from '@/components/LogViewer';
-import { LogFilters } from '@/components/LogFilters';
-import { LogStats } from '@/components/LogStats';
+import { conversationStorage, Conversation } from '@/lib/storage/conversation';
+import { Header } from '@/components/layout/Header';
+import { Sidebar } from '@/components/chat/Sidebar';
+import { LogViewer } from '@/components/logging/LogViewer';
+import { LogFilters } from '@/components/logging/LogFilters';
+import { LogStats } from '@/components/logging/LogStats';
 
 export default function LogsPage() {
   const [conversationId, setConversationId] = useState('');

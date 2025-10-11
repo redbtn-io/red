@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
-import OAuthAccessToken from '@/lib/models/OAuthAccessToken';
-import User from '@/lib/models/User';
+import connectToDatabase from '@/lib/database/mongodb';
+import OAuthAccessToken from '@/lib/database/models/oauth/OAuthAccessToken';
+import User from '@/lib/database/models/auth/User';
 
 /**
  * GET /api/oauth/userinfo

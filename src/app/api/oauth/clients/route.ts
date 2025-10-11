@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
-import OAuthClient from '@/lib/models/OAuthClient';
-import { getUserFromRequest, requireAdmin } from '@/lib/auth';
+import connectToDatabase from '@/lib/database/mongodb';
+import OAuthClient from '@/lib/database/models/oauth/OAuthClient';
+import { getUserFromRequest, requireAdmin } from '@/lib/auth/auth';
 import {
   generateClientId,
   generateClientSecret,
   hashClientSecret,
   validateScopes,
   AVAILABLE_SCOPES,
-} from '@/lib/oauth';
+} from '@/lib/auth/oauth';
 
 /**
  * POST /api/oauth/clients

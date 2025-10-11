@@ -1,15 +1,15 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { conversationStorage, type Conversation, type Message } from '@/lib/conversation';
-import { generationStorage } from '@/lib/generation-storage';
-import { ConfirmModal } from '@/components/Modal';
-import { Header } from '@/components/Header';
-import { Sidebar } from '@/components/Sidebar';
-import { ChatInput } from '@/components/ChatInput';
-import { Messages } from '@/components/Messages';
-import { LoginModal } from '@/components/LoginModal';
-import { CompleteProfileModal } from '@/components/CompleteProfileModal';
+import { conversationStorage, type Conversation, type Message } from '@/lib/storage/conversation';
+import { generationStorage } from '@/lib/storage/generation-storage';
+import { ConfirmModal } from '@/components/ui/Modal';
+import { Header } from '@/components/layout/Header';
+import { Sidebar } from '@/components/chat/Sidebar';
+import { ChatInput } from '@/components/chat/ChatInput';
+import { Messages } from '@/components/chat/Messages';
+import { LoginModal } from '@/components/auth/LoginModal';
+import { CompleteProfileModal } from '@/components/auth/CompleteProfileModal';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function ChatPage() {

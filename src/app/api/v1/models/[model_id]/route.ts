@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getModelDetails } from '@/lib/api-helpers';
+import { getModelDetails } from '@/lib/api/api-helpers';
 
 export async function GET(
   request: NextRequest,

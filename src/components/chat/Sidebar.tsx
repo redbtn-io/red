@@ -1,7 +1,7 @@
 import { Plus, MessageSquare, Trash2, Edit2, Check, X, Terminal } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { type Conversation } from '@/lib/conversation';
+import { type Conversation } from '@/lib/storage/conversation';
 
 interface SidebarProps {
   isOpen: boolean;

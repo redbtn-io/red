@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
-import OAuthClient from '@/lib/models/OAuthClient';
-import OAuthAuthorizationCode from '@/lib/models/OAuthAuthorizationCode';
-import OAuthAccessToken from '@/lib/models/OAuthAccessToken';
-import { verifyClientSecret, generateAccessToken, generateRefreshToken } from '@/lib/oauth';
+import connectToDatabase from '@/lib/database/mongodb';
+import OAuthClient from '@/lib/database/models/oauth/OAuthClient';
+import OAuthAuthorizationCode from '@/lib/database/models/oauth/OAuthAuthorizationCode';
+import OAuthAccessToken from '@/lib/database/models/oauth/OAuthAccessToken';
+import { verifyClientSecret, generateAccessToken, generateRefreshToken } from '@/lib/auth/oauth';
 
 /**
  * POST /api/oauth/token

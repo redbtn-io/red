@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
-import AuthSession from '@/lib/models/AuthSession';
-import User from '@/lib/models/User';
-import { generateToken } from '@/lib/auth';
+import connectToDatabase from '@/lib/database/mongodb';
+import AuthSession from '@/lib/database/models/auth/AuthSession';
+import User from '@/lib/database/models/auth/User';
+import { generateToken } from '@/lib/auth/auth';
 
 /**
  * POST /api/auth/check-session

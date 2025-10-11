@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromRequest, requireAdmin } from '@/lib/auth';
+import { getUserFromRequest, requireAdmin } from '@/lib/auth/auth';
 
 /**
  * GET /api/admin/users

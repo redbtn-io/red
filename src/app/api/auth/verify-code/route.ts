@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
-import AuthCode from '@/lib/models/AuthCode';
-import User, { AccountLevel } from '@/lib/models/User';
-import { generateToken } from '@/lib/auth';
+import connectToDatabase from '@/lib/database/mongodb';
+import AuthCode from '@/lib/database/models/auth/AuthCode';
+import User, { AccountLevel } from '@/lib/database/models/auth/User';
+import { generateToken } from '@/lib/auth/auth';
 
 /**
  * POST /api/auth/verify-code

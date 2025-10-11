@@ -2,7 +2,7 @@
  * Client-side helper for consuming the logging API
  * 
  * Usage:
- * import { LoggingClient } from '@/lib/logging-client';
+ * import { LoggingClient } from '@/lib/api/logging-client';
  * 
  * const client = new LoggingClient();
  * const generation = await client.getGeneration(generationId);

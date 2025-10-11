@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
-import AuthCode from '@/lib/models/AuthCode';
-import AuthSession from '@/lib/models/AuthSession';
-import User, { AccountLevel } from '@/lib/models/User';
+import connectToDatabase from '@/lib/database/mongodb';
+import AuthCode from '@/lib/database/models/auth/AuthCode';
+import AuthSession from '@/lib/database/models/auth/AuthSession';
+import User, { AccountLevel } from '@/lib/database/models/auth/User';
 
 /**
  * GET /api/auth/verify-link?token=xxx

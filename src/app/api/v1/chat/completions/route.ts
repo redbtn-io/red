@@ -6,7 +6,7 @@ import {
   extractUserMessage,
   getConversationIdFromBody,
   generateStableConversationId
-} from '@/lib/api-helpers';
+} from '@/lib/api/api-helpers';
 
 export async function POST(request: NextRequest) {
   try {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireScope } from '@/lib/oauthMiddleware';
+import { requireScope } from '@/lib/auth/oauthMiddleware';
 
 /**
  * GET /api/protected/example

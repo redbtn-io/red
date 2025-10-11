@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkRateLimit, getRateLimitIdentifier, RateLimits } from '@/lib/rate-limit';
+import { checkRateLimit, getRateLimitIdentifier, RateLimits } from '@/lib/rate-limit/rate-limit';
 
 /**
  * Next.js Middleware - runs on all requests
