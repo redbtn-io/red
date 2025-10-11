@@ -166,14 +166,21 @@ async function checkRateLimitRedis(
 /**
  * Main rate limit check function
  * Automatically uses Redis in production, in-memory for development
+ * Note: Middleware uses in-memory only due to edge runtime limitations
  */
 export async function checkRateLimit(
   identifier: string,
-  config: RateLimitConfig
+  config: RateLimitConfig,
+  useRedis: boolean = true
 ): Promise<RateLimitResult> {
-  // Use Redis if URL is provided, otherwise use memory
-  if (process.env.REDIS_URL) {
-    return checkRateLimitRedis(identifier, config);
+  // Use Redis if URL is provided and allowed, otherwise use memory
+  if (useRedis && process.env.REDIS_URL && typeof window === 'undefined') {
+    try {
+      return await checkRateLimitRedis(identifier, config);
+    } catch (error) {
+      console.error('[RateLimit] Redis error, falling back to memory:', error);
+      return checkRateLimitMemory(identifier, config);
+    }
   }
   
   return checkRateLimitMemory(identifier, config);
@@ -212,7 +219,7 @@ export const RateLimits = {
   RELAXED: { limit: 300, windowSeconds: 60 } as RateLimitConfig,
   
   /** Auth - for authentication endpoints (magic links, login) */
-  AUTH: { limit: 10, windowSeconds: 300 } as RateLimitConfig, // 10 requests per 5 minutes
+  AUTH: { limit: 20, windowSeconds: 180 } as RateLimitConfig, // 20 requests per 3 minutes
   
   /** Chat - for chat completion endpoints */
   CHAT: { limit: 30, windowSeconds: 60 } as RateLimitConfig,

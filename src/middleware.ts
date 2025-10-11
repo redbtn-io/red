@@ -21,9 +21,9 @@ export async function middleware(request: NextRequest) {
   let rateLimitConfig = RateLimits.STANDARD;
   let identifier = getRateLimitIdentifier(request);
   
-  // Auth endpoints - strictest limits
+  // Auth endpoints - use standard limits (individual endpoints have their own stricter limits)
   if (pathname.startsWith('/api/auth/')) {
-    rateLimitConfig = RateLimits.AUTH;
+    rateLimitConfig = RateLimits.STANDARD;
   }
   // Chat/AI endpoints - moderate limits
   else if (pathname.startsWith('/api/v1/chat') || pathname.startsWith('/api/v1/messages')) {
@@ -38,8 +38,8 @@ export async function middleware(request: NextRequest) {
     rateLimitConfig = RateLimits.RELAXED;
   }
   
-  // Check rate limit
-  const result = await checkRateLimit(identifier, rateLimitConfig);
+  // Check rate limit (use in-memory for middleware due to edge runtime)
+  const result = await checkRateLimit(identifier, rateLimitConfig, false);
   
   // Create response
   const response = result.success 

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { X, Mail, Loader2, CheckCircle2 } from 'lucide-react';
-import crypto from 'crypto';
 
 interface LoginModalProps {
   isOpen: boolean;

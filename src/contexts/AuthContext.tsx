@@ -16,9 +16,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
-  login: (email: string, code: string) => Promise<{ isNewUser: boolean; profileComplete: boolean }>;
   logout: () => Promise<void>;
-  requestCode: (email: string) => Promise<void>;
   completeProfile: (data: { name: string; dateOfBirth: string; agreedToTerms: boolean }) => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -52,40 +50,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const requestCode = async (email: string) => {
-    const response = await fetch('/api/auth/request-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to send verification code');
-    }
-  };
-
-  const login = async (email: string, code: string) => {
-    const response = await fetch('/api/auth/verify-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, code }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to verify code');
-    }
-
-    const data = await response.json();
-    setUser(data.user);
-
-    return {
-      isNewUser: data.isNewUser,
-      profileComplete: data.profileComplete,
-    };
   };
 
   const completeProfile = async (profileData: {
@@ -128,9 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         loading,
         isAdmin,
-        login,
         logout,
-        requestCode,
         completeProfile,
         refreshUser,
       }}

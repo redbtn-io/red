@@ -7,8 +7,14 @@ import {
   getConversationIdFromBody,
   generateStableConversationId
 } from '@/lib/api/api-helpers';
+import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
+import { RateLimits } from '@/lib/rate-limit/rate-limit';
 
 export async function POST(request: NextRequest) {
+  // Apply rate limiting (30 requests/minute for chat)
+  const rateLimitResult = await rateLimitAPI(request, RateLimits.CHAT);
+  if (rateLimitResult) return rateLimitResult;
+
   try {
     const body: ChatCompletionRequest = await request.json();
 
