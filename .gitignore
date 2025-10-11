@@ -24,3 +24,7 @@ context/
 
 # Channels
 channels.json
+
+#next.js build output
+.next/
+out/
