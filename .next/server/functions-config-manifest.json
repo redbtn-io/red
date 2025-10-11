@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "functions": {
+    "/api/v1/conversations/[id]/stream": {},
+    "/api/v1/generations/[generationId]/stream": {}
+  }
+}

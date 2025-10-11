@@ -1,13 +1,13 @@
 {
-  "name": "webapp",
-  "version": "0.1.0",
-  "private": true,
+  "name": "redbtn-discord",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
-    "start": "next start",
-    "lint": "eslint"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "@redbtn/ai": "file:../ai/redbtn-ai-0.0.1.tgz",
     "jsonwebtoken": "^9.0.2",
