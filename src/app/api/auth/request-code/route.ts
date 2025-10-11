@@ -3,6 +3,8 @@ import connectToDatabase from '@/lib/mongodb';
 import AuthCode from '@/lib/models/AuthCode';
 import AuthSession from '@/lib/models/AuthSession';
 import { generateMagicToken, sendMagicLinkEmail } from '@/lib/email';
+import { rateLimitAPI } from '@/lib/rate-limit-helpers';
+import { RateLimits } from '@/lib/rate-limit';
 import crypto from 'crypto';
 
 /**
@@ -10,6 +12,10 @@ import crypto from 'crypto';
  * Request a magic link for login/signup
  */
 export async function POST(request: NextRequest) {
+  // Apply strict rate limiting for auth endpoints
+  const rateLimitResult = await rateLimitAPI(request, RateLimits.AUTH);
+  if (rateLimitResult) return rateLimitResult;
+  
   try {
     const body = await request.json();
     const { email, sessionId } = body;
