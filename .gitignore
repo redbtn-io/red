@@ -10,7 +10,7 @@ yarn-error.log
 
 # Ignore .env file (if you have sensitive information)
 .env
-
+.env.local
 # Ignore dist
 dist/
 
@@ -22,3 +22,6 @@ context/
 
 # Channels
 channels.json
+
+#next build output
+.next/
