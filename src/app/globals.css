@@ -1,0 +1,120 @@
+@import "tailwindcss";
+@import "katex/dist/katex.min.css";
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --sidebar-bg: #0f0f0f;
+  --card-bg: #1a1a1a;
+  --red-primary: #ef4444;
+  --red-hover: #dc2626;
+  --border-color: #2a2a2a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+/* Skeleton placeholder for assistant message */
+.skeleton {
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.15) 25%, rgba(239, 68, 68, 0.25) 50%, rgba(239, 68, 68, 0.15) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+/* Skeleton shrinking animation */
+.skeleton.shrinking {
+  animation: shimmer 1.2s linear infinite, shrinkWidth 300ms ease-in forwards;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes shrinkWidth {
+  from { 
+    width: 12rem; /* w-48 = 12rem */
+    min-width: 12rem;
+  }
+  to { 
+    width: 0;
+    min-width: 0;
+  }
+}
+
+/* Fade-out transition for thinking indicator */
+.thinking-fade {
+  transition: opacity 200ms ease-in-out, transform 200ms ease-in-out;
+}
+
+/* Morphing/fade for skeleton when content arrives */
+.skeleton-morph {
+  transition: opacity 220ms ease-in-out, transform 220ms ease-in-out;
+  opacity: 1;
+}
+.skeleton-morph.hidden {
+  opacity: 0;
+  transform: scaleY(0.98) translateY(-4px);
+}
+
+/* Small helper for dots animation */
+.dots > div {
+  width: 6px;
+  height: 6px;
+  background: var(--red-primary);
+  border-radius: 9999px;
+  margin-right: 6px;
+  animation: bounce 900ms infinite ease-in-out;
+}
+.dots > div:nth-child(2) { animation-delay: 150ms; }
+.dots > div:nth-child(3) { animation-delay: 300ms; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.9; }
+  40% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* Streaming pulse animation for assistant message bubble */
+.streaming-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    border-color: #2a2a2a;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+  50% {
+    border-color: rgba(239, 68, 68, 0.5);
+    box-shadow: 0 0 20px 2px rgba(239, 68, 68, 0.3);
+  }
+}
