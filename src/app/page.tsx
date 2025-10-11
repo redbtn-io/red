@@ -8,8 +8,14 @@ import { Header } from '@/components/Header';
 import { Sidebar } from '@/components/Sidebar';
 import { ChatInput } from '@/components/ChatInput';
 import { Messages } from '@/components/Messages';
+import { LoginModal } from '@/components/LoginModal';
+import { CompleteProfileModal } from '@/components/CompleteProfileModal';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function ChatPage() {
+  const { user, loading: authLoading, refreshUser } = useAuth();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [input, setInput] = useState('');
@@ -31,17 +37,43 @@ export default function ChatPage() {
 
   const activeConversation = conversations.find(c => c.id === activeConversationId);
 
-  // Track status changes with detailed logging
+  // Show login modal if not authenticated (after auth loading completes)
+  // Show profile modal if authenticated but profile incomplete
+  // User cannot dismiss these - they must complete the flow
   useEffect(() => {
-    if (currentStatus) {
-      console.log('🎯 [STATUS CHANGE] action:', currentStatus.action, 'description:', currentStatus.description);
-    } else {
-      console.log('🎯 [STATUS CHANGE] CLEARED (null)');
+    if (!authLoading && !user) {
+      setShowLoginModal(true);
+      setShowProfileModal(false);
+    } else if (user) {
+      setShowLoginModal(false);
+      // Check if profile is complete
+      if (!user.profileComplete) {
+        setShowProfileModal(true);
+      } else {
+        setShowProfileModal(false);
+      }
     }
-  }, [currentStatus]);
+  }, [authLoading, user]);
 
-  // Load conversations on mount and check for active generation
+  const handleLoginSuccess = async (isNewUser: boolean, profileComplete: boolean) => {
+    // Refresh user data from the server
+    await refreshUser();
+    
+    setShowLoginModal(false);
+    if (isNewUser && !profileComplete) {
+      setShowProfileModal(true);
+    }
+  };
+
+  const handleProfileComplete = () => {
+    setShowProfileModal(false);
+  };
+
+  // Only load conversations and chat state if user is authenticated AND profile is complete
+  // This prevents loading chat data before authentication and profile completion
   useEffect(() => {
+    if (!user || !user.profileComplete) return; // Don't load anything if not authenticated or profile incomplete
+    
     const stored = conversationStorage.getAll();
     setConversations(stored);
     
@@ -85,7 +117,7 @@ export default function ChatPage() {
         setIsReconnecting(false);
       });
     }
-  }, []);
+  }, [user]); // Only run when user changes
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
@@ -601,67 +633,98 @@ export default function ChatPage() {
 
   return (
     <div className="flex bg-[#0a0a0a]" style={{ height: 'calc(var(--vh, 1vh) * 100)' }}>
-      {/* Sidebar */}
-      <Sidebar
-        isOpen={isSidebarOpen}
-        conversations={conversations}
-        activeConversationId={activeConversationId}
-        editingTitleId={editingTitleId}
-        editingTitleValue={editingTitleValue}
-        onClose={() => setIsSidebarOpen(false)}
-        onNewChat={createNewConversation}
-        onSwitchConversation={switchConversation}
-        onDeleteClick={handleDeleteClick}
-        onStartEditingTitle={startEditingTitle}
-        onSaveEditedTitle={saveEditedTitle}
-        onCancelEditingTitle={cancelEditingTitle}
-        onEditingTitleChange={setEditingTitleValue}
-      />
+      {/* Show login modal if not authenticated - blocks everything else */}
+      {!authLoading && !user ? (
+        <>
+          {/* Login Modal - permanent until authenticated */}
+          <LoginModal
+            isOpen={true}
+            onClose={() => {}} // Cannot close without authenticating
+            onSuccess={handleLoginSuccess}
+            canDismiss={false} // Hide close button
+          />
+        </>
+      ) : authLoading ? (
+        // Show loading state while checking authentication
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-white/60">Loading...</div>
+        </div>
+      ) : user && !user.profileComplete ? (
+        // User is authenticated but profile is incomplete - show profile modal
+        <>
+          <CompleteProfileModal
+            isOpen={true}
+            onClose={() => {}} // Cannot close without completing profile
+            onSuccess={handleProfileComplete}
+            canDismiss={false} // Hide close button
+          />
+        </>
+      ) : (
+        // User is authenticated and profile is complete - show chat interface
+        <>
+          {/* Sidebar */}
+          <Sidebar
+            isOpen={isSidebarOpen}
+            conversations={conversations}
+            activeConversationId={activeConversationId}
+            editingTitleId={editingTitleId}
+            editingTitleValue={editingTitleValue}
+            onClose={() => setIsSidebarOpen(false)}
+            onNewChat={createNewConversation}
+            onSwitchConversation={switchConversation}
+            onDeleteClick={handleDeleteClick}
+            onStartEditingTitle={startEditingTitle}
+            onSaveEditedTitle={saveEditedTitle}
+            onCancelEditingTitle={cancelEditingTitle}
+            onEditingTitleChange={setEditingTitleValue}
+          />
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <Header
-          title={activeConversation?.title || 'Chat'}
-          onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          onNewChat={createNewConversation}
-        />
+          {/* Main content */}
+          <div className="flex-1 flex flex-col">
+            {/* Header */}
+            <Header
+              title={activeConversation?.title || 'Chat'}
+              onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              onNewChat={createNewConversation}
+            />
 
-        {/* Messages */}
-        <Messages
-          messages={activeConversation?.messages}
-          thinking={currentThinking}
-          currentStatus={currentStatus}
-          isLoading={isLoading}
-          isStreaming={isStreaming}
-          streamingMessageId={streamingMessageId}
-          skeletonShrinking={skeletonShrinking}
-          isReconnecting={isReconnecting}
-          messagesEndRef={messagesEndRef}
-          conversationId={activeConversation?.id}
-        />
+            {/* Messages */}
+            <Messages
+              messages={activeConversation?.messages}
+              thinking={currentThinking}
+              currentStatus={currentStatus}
+              isLoading={isLoading}
+              isStreaming={isStreaming}
+              streamingMessageId={streamingMessageId}
+              skeletonShrinking={skeletonShrinking}
+              isReconnecting={isReconnecting}
+              messagesEndRef={messagesEndRef}
+              conversationId={activeConversation?.id}
+            />
 
-        {/* Input */}
-        <ChatInput
-          value={input}
-          disabled={isLoading}
-          messagesEndRef={messagesEndRef}
-          onChange={setInput}
-          onSend={sendMessage}
-        />
-      </div>
+            {/* Input */}
+            <ChatInput
+              value={input}
+              disabled={isLoading}
+              messagesEndRef={messagesEndRef}
+              onChange={setInput}
+              onSend={sendMessage}
+            />
+          </div>
 
-      {/* Delete Confirmation Modal */}
-      <ConfirmModal
-        isOpen={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
-        onConfirm={handleDeleteConfirm}
-        title="Delete Conversation"
-        message="Are you sure you want to delete this conversation? This action cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
-        variant="danger"
-      />
+          {/* Delete Confirmation Modal */}
+          <ConfirmModal
+            isOpen={deleteModalOpen}
+            onClose={() => setDeleteModalOpen(false)}
+            onConfirm={handleDeleteConfirm}
+            title="Delete Conversation"
+            message="Are you sure you want to delete this conversation? This action cannot be undone."
+            confirmText="Delete"
+            cancelText="Cancel"
+            variant="danger"
+          />
+        </>
+      )}
     </div>
   );
 }
