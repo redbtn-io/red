@@ -1,3 +1,0 @@
-{
-  "/api/v1/generations/[generationId]/stream/route": "app/api/v1/generations/[generationId]/stream/route.js"
-}

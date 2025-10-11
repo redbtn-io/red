@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///home/alpha/code/%40redbtn/webapp/src/components/SetVh.tsx"],"sourcesContent":["'use client';\n\nimport { useEffect } from 'react';\n\nexport default function SetVh() {\n  useEffect(() => {\n    const setVh = () => {\n      // 1% of the viewport height. Using this avoids issues with mobile browser chrome.\n      document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);\n    };\n\n    setVh();\n    window.addEventListener('resize', setVh);\n    window.addEventListener('orientationchange', setVh);\n\n    return () => {\n      window.removeEventListener('resize', setVh);\n      window.removeEventListener('orientationchange', setVh);\n    };\n  }, []);\n\n  return null;\n}\n"],"names":[],"mappings":";;;;AAEA;;AAFA;;AAIe,SAAS;;IACtB,IAAA,0KAAS;2BAAC;YACR,MAAM;yCAAQ;oBACZ,kFAAkF;oBAClF,SAAS,eAAe,CAAC,KAAK,CAAC,WAAW,CAAC,QAAQ,AAAC,GAA4B,OAA1B,OAAO,WAAW,GAAG,MAAK;gBAClF;;YAEA;YACA,OAAO,gBAAgB,CAAC,UAAU;YAClC,OAAO,gBAAgB,CAAC,qBAAqB;YAE7C;mCAAO;oBACL,OAAO,mBAAmB,CAAC,UAAU;oBACrC,OAAO,mBAAmB,CAAC,qBAAqB;gBAClD;;QACF;0BAAG,EAAE;IAEL,OAAO;AACT;GAlBwB;KAAA","debugId":null}}]
-}
