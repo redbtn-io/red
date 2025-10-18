@@ -24,6 +24,7 @@ export interface Conversation {
   title: string;
   titleSetByUser?: boolean; // True if user manually set the title
   messages: Message[];
+  thoughts?: Record<string, string>; // Map of messageId -> thoughts content
   createdAt: number | Date;
   updatedAt: number | Date;
   isArchived?: boolean;

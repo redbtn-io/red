@@ -61,11 +61,11 @@ export async function rateLimitAPI(
  * ```
  */
 export function withRateLimit(
-  handler: (request: NextRequest, ...args: any[]) => Promise<NextResponse>,
+  handler: (request: NextRequest, ...args: unknown[]) => Promise<NextResponse>,
   config: RateLimitConfig,
   getUserId?: (request: NextRequest) => Promise<string | undefined>
 ) {
-  return async (request: NextRequest, ...args: any[]) => {
+  return async (request: NextRequest, ...args: unknown[]) => {
     const userId = getUserId ? await getUserId(request) : undefined;
     const rateLimitResult = await rateLimitAPI(request, config, userId);
     

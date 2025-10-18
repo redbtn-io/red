@@ -8,6 +8,16 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
+interface DbMessage {
+  messageId?: string;
+  _id?: { toString: () => string };
+  role: string;
+  content: string;
+  timestamp: Date;
+  metadata?: Record<string, unknown>;
+  toolExecutions?: unknown[];
+}
+
 /**
  * GET /api/v1/conversations/[id]
  * Get a specific conversation with all messages
@@ -40,18 +50,34 @@ export async function GET(
 
     // Fetch messages for this conversation
     const messages = await db.getMessages(conversationId);
+    
+    // Fetch thoughts for this conversation
+    const thoughts = await db.getThoughtsByConversation(conversationId).catch(err => {
+      console.warn('[V1 Conversation] Failed to fetch thoughts:', err.message);
+      return [];
+    });
+    
+    // Create a map of messageId -> thoughts content
+    const thoughtsMap: Record<string, string> = {};
+    thoughts.forEach(thought => {
+      if (thought.messageId && thought.content) {
+        thoughtsMap[thought.messageId] = thought.content;
+      }
+    });
 
     return NextResponse.json({
       conversation: {
         id: conversation.conversationId,
         title: conversation.title || 'Untitled Conversation',
-        messages: messages.map(msg => ({
-          id: msg._id?.toString() || '',
+        messages: messages.map((msg: DbMessage) => ({
+          id: msg.messageId || msg._id?.toString() || '', // Prefer messageId, fallback to ObjectId
           role: msg.role,
           content: msg.content,
           timestamp: msg.timestamp,
           metadata: msg.metadata,
+          toolExecutions: msg.toolExecutions || [], // Include tool executions
         })),
+        thoughts: thoughtsMap, // Include thoughts mapped by messageId
         lastMessageAt: conversation.updatedAt,
         messageCount: conversation.metadata?.messageCount || messages.length,
         isArchived: false,
@@ -59,10 +85,11 @@ export async function GET(
         updatedAt: conversation.updatedAt,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[V1 Conversation] GET error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to fetch conversation', message: error.message },
+      { error: 'Failed to fetch conversation', message: errorMessage },
       { status: 500 }
     );
   }
@@ -114,8 +141,8 @@ export async function PATCH(
       conversation: {
         id: updatedConversation!.conversationId,
         title: updatedConversation!.title || 'Untitled Conversation',
-        messages: messages.map(msg => ({
-          id: msg._id?.toString() || '',
+        messages: messages.map((msg: DbMessage) => ({
+          id: msg.messageId || msg._id?.toString() || '', // Prefer messageId, fallback to ObjectId
           role: msg.role,
           content: msg.content,
           timestamp: msg.timestamp,
@@ -128,10 +155,11 @@ export async function PATCH(
         updatedAt: updatedConversation!.updatedAt,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[V1 Conversation] PATCH error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to update conversation', message: error.message },
+      { error: 'Failed to update conversation', message: errorMessage },
       { status: 500 }
     );
   }
@@ -166,10 +194,11 @@ export async function DELETE(
       success: true,
       message: 'Conversation deleted',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[V1 Conversation] DELETE error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to delete conversation', message: error.message },
+      { error: 'Failed to delete conversation', message: errorMessage },
       { status: 500 }
     );
   }

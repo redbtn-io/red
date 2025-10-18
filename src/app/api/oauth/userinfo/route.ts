@@ -60,7 +60,19 @@ export async function GET(request: NextRequest) {
 
     // Build response based on scopes
     const scopes = tokenDoc.scopes;
-    const userInfo: Record<string, any> = {
+    
+    interface UserInfo {
+      sub: string;
+      name?: string;
+      birthdate?: string;
+      profile_complete?: boolean;
+      email?: string;
+      email_verified?: boolean;
+      account_level?: number;
+      is_admin?: boolean;
+    }
+    
+    const userInfo: UserInfo = {
       sub: user._id.toString(), // Subject (user ID) - always included
     };
 

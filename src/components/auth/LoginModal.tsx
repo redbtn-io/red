@@ -18,8 +18,6 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
   const [sessionId, setSessionId] = useState('');
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
-  if (!isOpen) return null;
-
   // Generate session ID on mount
   useEffect(() => {
     if (!sessionId) {
@@ -27,7 +25,7 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
       const id = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       setSessionId(id);
     }
-  }, []);
+  }, [sessionId]);
 
   // Poll for authentication when waiting
   useEffect(() => {
@@ -75,6 +73,8 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
       };
     }
   }, [step, sessionId, onSuccess]);
+
+  if (!isOpen) return null;
 
   const handleRequestMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,7 +225,7 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
             <div className="text-center space-y-4">
               <p className="text-white font-medium">Magic link sent!</p>
               <p className="text-gray-400 text-sm">
-                We've sent a magic link to <strong className="text-white">{email}</strong>
+                We&apos;ve sent a magic link to <strong className="text-white">{email}</strong>
               </p>
               <p className="text-gray-400 text-sm">
                 Click the link in your email to sign in. You can open it on any device.

@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { token, token_type_hint } = body;
+    const { token } = body;
 
     // Get client from form data if not in Basic Auth
     if (!clientId) {

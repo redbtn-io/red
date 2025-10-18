@@ -212,7 +212,7 @@ export default function ChatPage() {
     }
   };
 
-  const startEditingTitle = (conv: Conversation, event: React.MouseEvent) => {
+  const startEditingTitle = (conv: { id: string; title: string }, event: React.MouseEvent) => {
     event.stopPropagation();
     setEditingTitleId(conv.id);
     setEditingTitleValue(conv.title);
@@ -524,7 +524,7 @@ export default function ChatPage() {
           retryCount++;
         }
       } // Close while retry loop
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw error;
     } finally {
       // Clear generation storage on completion or error
@@ -690,7 +690,10 @@ export default function ChatPage() {
 
             {/* Messages */}
             <Messages
-              messages={activeConversation?.messages}
+              messages={(activeConversation?.messages || []).map(msg => ({
+                ...msg,
+                timestamp: typeof msg.timestamp === 'number' ? new Date(msg.timestamp) : msg.timestamp
+              }))}
               thinking={currentThinking}
               currentStatus={currentStatus}
               isLoading={isLoading}

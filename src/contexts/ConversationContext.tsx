@@ -23,6 +23,7 @@ export interface Conversation {
   id: string;
   title: string;
   messages: Message[];
+  thoughts?: Record<string, string>; // Map of messageId -> thoughts content from MongoDB
   lastMessageAt: Date;
   messageCount: number;
   isArchived: boolean;
@@ -49,11 +50,10 @@ interface ConversationContextType {
 
   // Actions
   fetchConversations: () => Promise<void>;
-  fetchConversation: (id: string) => Promise<void>;
+  fetchConversation: (id: string, silent?: boolean) => Promise<Conversation | undefined>;
   createConversation: (title?: string, initialMessage?: Partial<Message>) => Promise<Conversation>;
   updateConversation: (id: string, updates: Partial<Pick<Conversation, 'title' | 'isArchived'>>) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
-  addMessage: (conversationId: string, message: Omit<Message, 'id' | 'timestamp'>) => Promise<Message>;
   setCurrentConversation: (conversation: Conversation | null) => void;
   clearError: () => void;
 }
@@ -88,17 +88,26 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json();
       setConversations(data.conversations);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Conversations] Fetch error:', err);
-      setError(err.message || 'Failed to fetch conversations');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch conversations';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   }, [user]);
 
   // Fetch a specific conversation with all messages
-  const fetchConversation = useCallback(async (id: string) => {
-    setLoading(true);
+  const fetchConversation = useCallback(async (id: string, silent: boolean = false) => {
+    if (!id || id === 'undefined') {
+      console.error('[Conversation] Invalid conversation ID:', id);
+      return;
+    }
+    
+    // Only show loading state if not silent (silent is used for background refreshes)
+    if (!silent) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -112,11 +121,18 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json();
       setCurrentConversation(data.conversation);
-    } catch (err: any) {
+      
+      // Return the conversation data so caller can use it immediately
+      return data.conversation;
+    } catch (err: unknown) {
       console.error('[Conversation] Fetch error:', err);
-      setError(err.message || 'Failed to fetch conversation');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch conversation';
+      setError(errorMessage);
+      throw err;
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -159,9 +175,10 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
 
       setCurrentConversation(newConversation);
       return newConversation;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Conversation] Create error:', err);
-      setError(err.message || 'Failed to create conversation');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create conversation';
+      setError(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -209,9 +226,10 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
       if (currentConversation?.id === id) {
         setCurrentConversation(updatedConversation);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Conversation] Update error:', err);
-      setError(err.message || 'Failed to update conversation');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update conversation';
+      setError(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -240,33 +258,13 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
       if (currentConversation?.id === id) {
         setCurrentConversation(null);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Conversation] Delete error:', err);
-      setError(err.message || 'Failed to delete conversation');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete conversation';
+      setError(errorMessage);
       throw err;
     } finally {
       setLoading(false);
-    }
-  }, [currentConversation]);
-
-  // Add message to conversation
-  // DEPRECATED: Messages are now saved automatically by red.memory in respond.ts
-  // This method is kept for backward compatibility but is no longer used
-  // @deprecated Use respond() function which saves messages via red.memory
-  const addMessage = useCallback(async (
-    conversationId: string,
-    message: Omit<Message, 'id' | 'timestamp'>
-  ): Promise<Message> => {
-    console.warn('[addMessage] DEPRECATED: This method is no longer used. Messages are saved by respond.ts via red.memory');
-    setError(null);
-
-    try {
-      // This endpoint no longer exists - messages saved by respond.ts
-      throw new Error('addMessage is deprecated - messages saved automatically by respond.ts');
-    } catch (err: any) {
-      console.error('[Message] Add error:', err);
-      setError(err.message || 'Failed to add message');
-      throw err;
     }
   }, [currentConversation]);
 
@@ -296,7 +294,6 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
         createConversation,
         updateConversation,
         deleteConversation,
-        addMessage,
         setCurrentConversation,
         clearError,
       }}

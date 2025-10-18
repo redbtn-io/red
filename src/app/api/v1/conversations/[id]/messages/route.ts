@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@redbtn/ai';
 
+interface DbMessage {
+  messageId?: string;
+  _id?: { toString: () => string };
+  role: string;
+  content: string;
+  timestamp: Date;
+  metadata?: Record<string, unknown>;
+  toolExecutions?: unknown[];
+}
+
 /**
  * GET /api/v1/conversations/:id/messages
  * Fetch all messages for a conversation from MongoDB
@@ -26,11 +36,13 @@ export async function GET(
       const messages = await db.getMessages(conversationId);
 
       // Transform to frontend format
-      const formattedMessages = messages.map(msg => ({
+      const formattedMessages = messages.map((msg: DbMessage) => ({
+        id: msg.messageId || msg._id?.toString() || '', // Include message ID
         role: msg.role,
         content: msg.content,
         timestamp: msg.timestamp.getTime(),
-        metadata: msg.metadata
+        metadata: msg.metadata,
+        toolExecutions: msg.toolExecutions || [] // Include tool executions
       }));
 
       return NextResponse.json({

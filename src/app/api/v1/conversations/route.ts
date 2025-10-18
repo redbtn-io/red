@@ -44,10 +44,11 @@ export async function GET(request: NextRequest) {
       limit,
       offset,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[V1 Conversations] GET error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to fetch conversations', message: error.message },
+      { error: 'Failed to fetch conversations', message: errorMessage },
       { status: 500 }
     );
   }
@@ -93,10 +94,11 @@ export async function POST(request: NextRequest) {
         updatedAt: now,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[V1 Conversations] POST error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to create conversation', message: error.message },
+      { error: 'Failed to create conversation', message: errorMessage },
       { status: 500 }
     );
   }

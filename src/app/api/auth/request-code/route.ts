@@ -5,7 +5,6 @@ import AuthSession from '@/lib/database/models/auth/AuthSession';
 import { generateMagicToken, sendMagicLinkEmail } from '@/lib/email/email';
 import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
 import { RateLimits } from '@/lib/rate-limit/rate-limit';
-import crypto from 'crypto';
 
 /**
  * POST /api/auth/request-code

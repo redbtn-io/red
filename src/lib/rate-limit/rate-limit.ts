@@ -118,7 +118,6 @@ async function checkRateLimitRedis(
     await redis.connect();
     
     const key = `ratelimit:${identifier}`;
-    const now = Date.now();
     const windowMs = config.windowSeconds * 1000;
     
     // Use Redis transaction for atomic operations

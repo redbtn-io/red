@@ -1,4 +1,4 @@
-import { MessageSquare, Brain } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import { type Message } from '@/lib/storage/conversation';
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -6,42 +6,59 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { LoadingStateContainer } from '../ui/LoadingStates';
+import { MessageDetailsModal } from './MessageDetailsModal'; // Updated import
+import { StreamingThinkingBubble } from './StreamingThinkingBubble';
+
+import { ConversationMessage, ConversationThought, conversationState } from '@/lib/conversation/conversation-state';
 
 interface MessagesProps {
-  messages: Message[] | undefined;
+  messages: ConversationMessage[];
   streamingMessage: { id: string; content: string } | null;
-  pendingUserMessage: { role: string; content: string; timestamp: Date } | null;
-  thinking: Record<string, string>; // messageId -> thinking content
+  thoughts: Record<string, ConversationThought>; // messageId -> thought data
   currentStatus: { action: string; description?: string } | null;
   isLoading: boolean;
   isStreaming: boolean;
+  isThinkingDisplayComplete: boolean;
   streamingMessageId: string | null;
   skeletonShrinking: boolean;
   isReconnecting: boolean;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   conversationId?: string;
+  modalState: { isOpen: boolean; messageId: string | null };
+  onOpenModal: (messageId: string) => void;
+  onCloseModal: () => void;
 }
 
 export function Messages({
   messages,
   streamingMessage,
-  pendingUserMessage,
-  thinking,
+  thoughts,
   currentStatus,
   isLoading,
   isStreaming,
+  isThinkingDisplayComplete,
   streamingMessageId,
   skeletonShrinking,
   isReconnecting,
   messagesEndRef,
-  conversationId
+  conversationId,
+  modalState,
+  onOpenModal,
+  onCloseModal
 }: MessagesProps) {
-  // State for showing thinking during skeleton/loading phase
-  const [showLoadingThinking, setShowLoadingThinking] = useState(false);
+  // Force re-render when conversation state changes (for tool executions)
+  const [, forceUpdate] = useState({});
+  
+  // Subscribe to conversation state changes to update modal when tool executions change
+  useEffect(() => {
+    const unsubscribe = conversationState.subscribe(() => {
+      forceUpdate({}); // Trigger re-render
+    });
+    return unsubscribe;
+  }, []);
   
   // Get thinking content for the streaming message (if any)
-  const streamingThinking = streamingMessageId ? thinking[streamingMessageId] : null;
-  const hasStreamingThinking = streamingThinking && streamingThinking.length > 0;
+  const streamingThinking = streamingMessageId ? thoughts[streamingMessageId]?.content : null;
   
   return (
     <div className="flex-1 overflow-y-auto pt-6 pb-6 px-6 space-y-6">
@@ -54,37 +71,33 @@ export function Messages({
           </div>
         </div>
       )}
-      {messages?.map((message) => {
-        // Get thinking from prop for this message
-        const thinkingContent = message.role === 'assistant' ? thinking[message.id] : null;
+      {messages?.filter(msg => {
+        // Filter out streaming message to prevent duplicate rendering
+        return !(streamingMessage && !isLoading && msg.id === streamingMessage.id);
+      }).map((message) => {
+        // Get thinking from prop for this message (not currently displayed in bubble)
         
         return (
           <MessageBubble
             key={message.id}
             message={message}
-            thinking={thinkingContent || null}
             isStreaming={isStreaming && streamingMessageId === message.id}
+            onOpenModal={() => onOpenModal(message.id)}
           />
         );
       })}
       
-      {/* Pending user message (optimistic update before saved to DB) */}
-      {pendingUserMessage && (
-        <MessageBubble
-          key="pending-user"
-          message={{
-            id: 'pending',
-            role: 'user',
-            content: pendingUserMessage.content,
-            timestamp: pendingUserMessage.timestamp,
-          }}
-          thinking={null}
-          isStreaming={false}
+      {/* Streaming Thinking Bubble - shown when thinking is streaming */}
+      {streamingThinking && streamingMessageId && (
+        <StreamingThinkingBubble
+          thinking={streamingThinking}
+          isStreaming={isStreaming}
+          isThinkingDisplayComplete={isThinkingDisplayComplete}
         />
       )}
       
-      {/* Streaming message that's not yet saved to server */}
-      {streamingMessage && !isLoading && (
+      {/* Streaming message that shows character-by-character */}
+      {streamingMessage && (
         <MessageBubble
           key={streamingMessage.id}
           message={{
@@ -93,8 +106,8 @@ export function Messages({
             content: streamingMessage.content,
             timestamp: new Date(),
           }}
-          thinking={thinking[streamingMessage.id] || null}
           isStreaming={true}
+          onOpenModal={() => onOpenModal(streamingMessage.id)}
         />
       )}
       
@@ -102,43 +115,135 @@ export function Messages({
       {isLoading && streamingMessageId && (
         <LoadingStateContainer
           currentStatus={currentStatus}
-          thinking={thinking[streamingMessageId] || null}
-          messageId={streamingMessageId}
+          thinking={thoughts[streamingMessageId]?.content || null}
           skeletonShrinking={skeletonShrinking}
           isReconnecting={isReconnecting}
         />
       )}
       
       <div ref={messagesEndRef} />
+      
+      {/* Thoughts Modal - Rendered at Messages level to persist across message re-renders */}
+      {modalState.isOpen && modalState.messageId && (() => {
+        // Find the message for the modal
+        let modalMessage = messages?.find(m => m.id === modalState.messageId);
+        
+        console.log('[Modal Render]', {
+          messageId: modalState.messageId,
+          foundInMessages: !!modalMessage,
+          streamingMessageId: streamingMessage?.id,
+          isLoading,
+          streamingMessageIdProp: streamingMessageId,
+          thoughtsForMessage: !!thoughts[modalState.messageId]
+        });
+        
+        // Check if it's the streaming message
+        if (!modalMessage && streamingMessage?.id === modalState.messageId) {
+          console.log('[Modal] Using streamingMessage');
+          modalMessage = {
+            id: streamingMessage.id,
+            role: 'assistant' as const,
+            content: streamingMessage.content,
+            timestamp: new Date(),
+          };
+        }
+        
+        // Check if it's the loading state (isLoading && streamingMessageId matches)
+        if (!modalMessage && isLoading && streamingMessageId === modalState.messageId) {
+          console.log('[Modal] Using loading state message');
+          // Create a temporary message for the loading state
+          const getContentByStatus = () => {
+            if (!currentStatus) return 'Initializing your request...';
+            
+            switch (currentStatus.action) {
+              case 'thinking':
+                return 'AI is analyzing your request and formulating a response...';
+              case 'processing':
+              case 'routing':
+                return 'Processing your request and determining the best approach...';
+              case 'searching':
+              case 'web_search':
+                return 'Searching for relevant information to answer your question...';
+              case 'system_command':
+              case 'running_command':
+              case 'commands':
+                return 'Executing system commands to fulfill your request...';
+              default:
+                return currentStatus.description || `${currentStatus.action}...`;
+            }
+          };
+          
+          modalMessage = {
+            id: modalState.messageId,
+            role: 'assistant' as const,
+            content: getContentByStatus(),
+            timestamp: new Date(),
+            metadata: {
+              status: currentStatus?.action as 'processing' | 'searching' | 'thinking' | 'streaming' | 'completed' | 'error',
+              conversationId,
+            }
+          };
+        }
+        
+        // Fallback: If still no message found but modal is open, create a placeholder
+        // This handles the transition period between states
+        if (!modalMessage) {
+          console.log('[Modal] No message found - creating placeholder');
+          modalMessage = {
+            id: modalState.messageId,
+            role: 'assistant' as const,
+            content: 'Loading message...',
+            timestamp: new Date(),
+          };
+        }
+        
+        // Get thinking for this message - ALWAYS pass if it exists
+        const modalThinking = thoughts[modalState.messageId]?.content || null;
+        
+        // Get tool executions for this message
+        const toolExecutions = conversationState.getToolExecutions(modalState.messageId);
+        
+        console.log('[Modal] Rendering with thinking:', modalThinking?.length || 0, 'chars, tool executions:', toolExecutions.length);
+        
+        return (
+          <MessageDetailsModal
+            isOpen={true}
+            onClose={onCloseModal}
+            message={modalMessage}
+            streamingThoughts={modalThinking || undefined}
+            conversationId={conversationId || ''}
+            toolExecutions={toolExecutions}
+          />
+        );
+      })()}
     </div>
   );
 }
 
 interface MessageBubbleProps {
   message: Message;
-  thinking: string | null;
   isStreaming: boolean;
+  onOpenModal: () => void;
 }
 
-function MessageBubble({ message, thinking, isStreaming }: MessageBubbleProps) {
-  // Thinking starts HIDDEN by default, user must click to show
-  const [showThinking, setShowThinking] = useState(false);
-  const hasThinking = thinking && thinking.length > 0;
-  
-  // Show the toggle button if: thinking exists OR currently streaming
-  const showToggle = hasThinking || isStreaming;
+function MessageBubble({ message, isStreaming, onOpenModal }: MessageBubbleProps) {
+  // All messages can show modal, but emphasis on assistant messages
+  const handleMessageClick = () => {
+    onOpenModal();
+  };
 
-  
   return (
     <div
       className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
     >
       <div
-        className={`max-w-[80%] rounded-xl px-5 py-3.5 shadow-lg ${
+        className={`max-w-[80%] rounded-xl px-5 py-3.5 shadow-lg cursor-pointer transition-colors ${
           message.role === 'user'
-            ? 'bg-[#1a1a1a] border border-[#2a2a2a] text-gray-100'
-            : `bg-red-500 text-white ${isStreaming ? 'streaming-pulse' : ''}`
+            ? 'bg-[#1a1a1a] border border-[#2a2a2a] text-gray-100 hover:bg-[#1f1f1f]'
+            : `bg-red-500 text-white hover:bg-red-600 ${isStreaming ? 'streaming-pulse' : ''}`
         }`}
+        onClick={handleMessageClick}
+        title={message.role === 'assistant' ? 'Click to view AI thoughts and message details' : 'Click to view message details'}
       >
         {/* Main message content with markdown */}
         <div className="prose prose-invert max-w-none 
@@ -156,7 +261,12 @@ function MessageBubble({ message, thinking, isStreaming }: MessageBubbleProps) {
             remarkPlugins={[remarkGfm, remarkMath]}
             rehypePlugins={[rehypeKatex]}
             components={{
-              code: ({node, inline, className, children, ...props}: any) => {
+              code: ({inline, className, children, ...props}: {
+                node?: unknown;
+                inline?: boolean;
+                className?: string;
+                children?: React.ReactNode;
+              }) => {
                 return inline ? (
                   <code className={className} {...props}>
                     {children}
@@ -175,58 +285,6 @@ function MessageBubble({ message, thinking, isStreaming }: MessageBubbleProps) {
             {message.content}
           </ReactMarkdown>
         </div>
-        
-        {/* Thinking toggle - shows when streaming starts or thinking exists */}
-        {showToggle && message.role === 'assistant' && (
-          <div className="mt-3 pt-3 border-t border-white/20">
-            <button
-              onClick={() => setShowThinking(!showThinking)}
-              className="flex items-center gap-2 text-sm opacity-80 hover:opacity-100 transition-opacity w-full text-left"
-            >
-              <Brain size={16} />
-              <span>{showThinking ? 'Hide' : 'Show'} thinking</span>
-              {isStreaming && (
-                <span className="ml-auto text-xs opacity-60 animate-pulse">
-                  {hasThinking ? 'streaming...' : 'waiting...'}
-                </span>
-              )}
-              {!isStreaming && hasThinking && (
-                <span className="ml-auto text-xs opacity-40">
-                  {thinking?.length || 0} chars
-                </span>
-              )}
-            </button>
-            
-            {showThinking && hasThinking && (
-              <div className="mt-3 p-3 bg-black/20 rounded-lg text-sm">
-                <div className="font-semibold mb-2 opacity-70 flex items-center justify-between">
-                  <span>Reasoning:</span>
-                  {isStreaming && (
-                    <span className="text-xs opacity-60 animate-pulse">updating live...</span>
-                  )}
-                </div>
-                <div className="prose prose-invert prose-sm max-w-none opacity-90 
-                  prose-p:my-1 prose-p:leading-relaxed
-                  prose-pre:bg-black/30 prose-pre:my-2
-                  prose-code:text-white prose-code:bg-black/20 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
-                  [&_.katex]:text-white [&_.katex]:text-sm">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm, remarkMath]}
-                    rehypePlugins={[rehypeKatex]}
-                  >
-                    {thinking}
-                  </ReactMarkdown>
-                </div>
-              </div>
-            )}
-            
-            {showThinking && !hasThinking && isStreaming && (
-              <div className="mt-3 p-3 bg-black/20 rounded-lg text-sm">
-                <div className="text-xs opacity-60 italic">Waiting for thinking to start...</div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

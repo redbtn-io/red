@@ -52,15 +52,66 @@ export async function GET(
         };
         
         try {
-          // Send init event with existing content
-          console.log('[Reconnect] Sending init with existing content');
+          // Send init event (no existing content - we'll send everything as chunks)
+          console.log('[Reconnect] Sending init event');
           if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'init',
             messageId,
-            conversationId: existingState.conversationId,
-            existingContent: existingState.content || ''
+            conversationId: existingState.conversationId
           })}\n\n`))) {
             return;
+          }
+          
+          // If there are tool events, replay them
+          if (existingState.toolEvents && existingState.toolEvents.length > 0) {
+            console.log('[Reconnect] Replaying tool events, count:', existingState.toolEvents.length);
+            for (const toolEvent of existingState.toolEvents) {
+              if (streamClosed) break;
+              if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'tool_event',
+                event: toolEvent
+              })}\n\n`))) {
+                return;
+              }
+              // Small delay to allow frontend to process events in order
+              await new Promise(resolve => setTimeout(resolve, 5));
+            }
+          }
+          
+          // If there's thinking content, send it character-by-character as chunks
+          if (existingState.thinking) {
+            console.log('[Reconnect] Sending thinking chunks, length:', existingState.thinking.length);
+            const thinkingChars = existingState.thinking.split('');
+            for (const char of thinkingChars) {
+              if (streamClosed) break;
+              if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'chunk',
+                content: char,
+                thinking: true
+              })}\n\n`))) {
+                return;
+              }
+              // Small delay between characters for smooth animation (10ms like frontend)
+              await new Promise(resolve => setTimeout(resolve, 10));
+            }
+          }
+          
+          // If there's content, send it character-by-character as chunks
+          if (existingState.content) {
+            console.log('[Reconnect] Sending content chunks, length:', existingState.content.length);
+            const contentChars = existingState.content.split('');
+            for (const char of contentChars) {
+              if (streamClosed) break;
+              if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'chunk',
+                content: char,
+                thinking: false
+              })}\n\n`))) {
+                return;
+              }
+              // Small delay between characters for smooth animation
+              await new Promise(resolve => setTimeout(resolve, 10));
+            }
           }
           
           // If already completed, send complete event and close
@@ -100,20 +151,17 @@ export async function GET(
             console.log('[Reconnect] Received event:', event.type);
             
             if (event.type === 'chunk') {
+              // Forward chunk event as-is (includes thinking flag if present)
               if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                type: 'content',
-                content: event.content
+                type: 'chunk',
+                content: event.content,
+                thinking: event.thinking || false
               })}\n\n`))) break;
             } else if (event.type === 'status') {
               if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'status',
                 action: event.action,
                 description: event.description
-              })}\n\n`))) break;
-            } else if (event.type === 'thinking_chunk') {
-              if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                type: 'thinking_chunk',
-                content: event.content
               })}\n\n`))) break;
             } else if (event.type === 'thinking') {
               if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
@@ -125,6 +173,11 @@ export async function GET(
                 type: 'tool_status',
                 status: event.status,
                 action: event.action
+              })}\n\n`))) break;
+            } else if (event.type === 'tool_event') {
+              if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'tool_event',
+                event: event.event
               })}\n\n`))) break;
             } else if (event.type === 'complete') {
               safeEnqueue(encoder.encode(`data: ${JSON.stringify({

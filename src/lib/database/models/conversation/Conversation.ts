@@ -1,6 +1,43 @@
 import mongoose, { Document, Schema, Model } from 'mongoose';
 
 /**
+ * Tool execution step interface
+ */
+export interface IToolStep {
+  step: string;
+  timestamp: Date;
+  progress?: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data?: any;
+}
+
+/**
+ * Tool execution interface for tracking AI tool usage
+ */
+export interface IToolExecution {
+  toolId: string;
+  toolType: string; // 'thinking', 'web_search', 'database_query', etc.
+  toolName: string;
+  status: 'running' | 'completed' | 'error';
+  startTime: Date;
+  endTime?: Date;
+  duration?: number;
+  
+  // Progress tracking
+  steps: IToolStep[];
+  currentStep?: string;
+  progress?: number;
+  
+  // Streaming content (for thinking, code output, etc.)
+  streamingContent?: string;
+  
+  // Results and metadata
+  result?: unknown;
+  error?: string;
+  metadata?: Record<string, unknown>;
+}
+
+/**
  * Message interface for individual chat messages
  */
 export interface IMessage {
@@ -9,6 +46,7 @@ export interface IMessage {
   content: string;
   timestamp: Date;
   thinking?: string; // Optional thinking process
+  toolExecutions?: IToolExecution[]; // Tool executions for this message
   metadata?: {
     model?: string;
     tokens?: {
@@ -40,6 +78,46 @@ export interface IConversation extends Document {
 }
 
 /**
+ * Tool step schema (embedded in ToolExecution)
+ */
+const ToolStepSchema = new Schema<IToolStep>(
+  {
+    step: { type: String, required: true },
+    timestamp: { type: Date, required: true },
+    progress: { type: Number },
+    data: { type: Schema.Types.Mixed },
+  },
+  { _id: false }
+);
+
+/**
+ * Tool execution schema (embedded in Message)
+ */
+const ToolExecutionSchema = new Schema<IToolExecution>(
+  {
+    toolId: { type: String, required: true },
+    toolType: { type: String, required: true },
+    toolName: { type: String, required: true },
+    status: { 
+      type: String, 
+      required: true, 
+      enum: ['running', 'completed', 'error'] 
+    },
+    startTime: { type: Date, required: true },
+    endTime: { type: Date },
+    duration: { type: Number },
+    steps: [ToolStepSchema],
+    currentStep: { type: String },
+    progress: { type: Number },
+    streamingContent: { type: String },
+    result: { type: Schema.Types.Mixed },
+    error: { type: String },
+    metadata: { type: Schema.Types.Mixed },
+  },
+  { _id: false }
+);
+
+/**
  * Message schema (embedded in Conversation)
  */
 const MessageSchema = new Schema<IMessage>(
@@ -49,6 +127,7 @@ const MessageSchema = new Schema<IMessage>(
     content: { type: String, required: true },
     timestamp: { type: Date, required: true, default: Date.now },
     thinking: { type: String },
+    toolExecutions: [ToolExecutionSchema],
     metadata: {
       model: String,
       tokens: {

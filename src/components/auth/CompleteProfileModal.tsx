@@ -8,10 +8,9 @@ interface CompleteProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  canDismiss?: boolean; // Optional: allow dismissing the modal (default: false for profile completion)
 }
 
-export function CompleteProfileModal({ isOpen, onClose, onSuccess, canDismiss = false }: CompleteProfileModalProps) {
+export function CompleteProfileModal({ isOpen, onClose, onSuccess }: CompleteProfileModalProps) {
   const { completeProfile } = useAuth();
   const [name, setName] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');

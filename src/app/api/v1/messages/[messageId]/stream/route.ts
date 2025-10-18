@@ -5,24 +5,6 @@ import { getRed } from '@/lib/red';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-interface StreamEvent {
-  type: 'init' | 'chunk' | 'status' | 'thinking_chunk' | 'thinking' | 'complete' | 'error' | 'tool_status';
-  content?: string;
-  existingContent?: string;
-  metadata?: {
-    model?: string;
-    tokens?: {
-      input?: number;
-      output?: number;
-      total?: number;
-    };
-  };
-  error?: string;
-  status?: string;  // For tool_status
-  action?: string;  // For status and tool_status
-  description?: string; // For status
-}
-
 /**
  * Stream endpoint for reconnectable message generation
  * Subscribes to Redis pub/sub and streams message content via SSE
@@ -42,7 +24,7 @@ export async function GET(
 
     // Create SSE stream with proper cleanup
     const encoder = new TextEncoder();
-    let messageStream: AsyncGenerator<StreamEvent, void, unknown> | null = null;
+    let messageStream: Awaited<ReturnType<typeof messageQueue.subscribeToMessage>> | null = null;
     let isCancelled = false;
     let controllerClosed = false;
 
@@ -122,8 +104,12 @@ export async function GET(
                 }
               }
             } else if (event.type === 'chunk') {
-              // Stream new chunk
-              const data = {
+              // Forward chunk - check if it's thinking or regular content
+              const data = event.thinking ? {
+                type: 'chunk',
+                content: event.content,
+                thinking: true
+              } : {
                 type: 'content',
                 content: event.content
               };
@@ -141,15 +127,6 @@ export async function GET(
               safeEnqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
               // Force flush with comment
               safeEnqueue(encoder.encode(`: flush\n\n`));
-            } else if (event.type === 'thinking_chunk') {
-              // Stream thinking character-by-character
-              const data = {
-                type: 'thinking_chunk',
-                content: event.content
-              };
-              if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))) {
-                break;
-              }
             } else if (event.type === 'thinking') {
               // Stream thinking/reasoning content (legacy full block)
               const data = {
@@ -161,11 +138,19 @@ export async function GET(
               }
             } else if (event.type === 'tool_status') {
               // Send tool status indicator
-              const toolEvent = event as StreamEvent & { status: string; action: string };
               const data = {
                 type: 'tool_status',
-                status: toolEvent.status,
-                action: toolEvent.action
+                status: event.status,
+                action: event.action
+              };
+              safeEnqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+              // Force flush with comment
+              safeEnqueue(encoder.encode(`: flush\n\n`));
+            } else if (event.type === 'tool_event') {
+              // Forward unified tool event to client
+              const data = {
+                type: 'tool_event',
+                event: event.event
               };
               safeEnqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
               // Force flush with comment
@@ -208,7 +193,7 @@ export async function GET(
         // Clean up the async generator/Redis subscription
         if (messageStream && typeof messageStream.return === 'function') {
           try {
-            await messageStream.return();
+            await messageStream.return(undefined);
           } catch {
             // Ignore cleanup errors
           }

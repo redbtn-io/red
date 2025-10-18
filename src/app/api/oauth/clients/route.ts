@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     try {
       requireAdmin(user);
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }

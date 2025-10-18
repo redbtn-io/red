@@ -1,4 +1,4 @@
-import { Brain, MessageSquare, Search, Terminal, GitBranch, Loader2 } from 'lucide-react';
+import { Brain, Search, Terminal, GitBranch, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -11,7 +11,6 @@ interface LoadingStateContainerProps {
     description?: string;
   } | null;
   thinking: string | null;
-  messageId: string;
   skeletonShrinking: boolean;
   isReconnecting: boolean;
 }
@@ -19,7 +18,6 @@ interface LoadingStateContainerProps {
 export function LoadingStateContainer({
   currentStatus,
   thinking,
-  messageId,
   skeletonShrinking,
   isReconnecting
 }: LoadingStateContainerProps) {
@@ -70,16 +68,18 @@ export function LoadingStateContainer({
   const hasThinking = thinking && thinking.length > 0;
 
   return (
-    <div className="flex justify-start mb-6">
-      <div className="max-w-[85%]">
-        {/* Single loading box with dynamic status */}
-        <div
-          className={`bg-[#1a1a1a] border border-red-500/50 rounded-xl px-4 py-3 shadow-lg space-y-2 animate-pulse overflow-hidden origin-left ${
-            skeletonShrinking 
-              ? 'transition-all duration-[800ms] ease-out opacity-0 scale-x-0 -translate-x-4' 
-              : 'transition-all duration-[800ms] ease-out opacity-100 scale-x-100 translate-x-0'
-          }`}
-        >
+    <>
+      <div className="flex justify-start mb-6">
+        <div className="max-w-[85%]">
+          {/* Single loading box with dynamic status */}
+          <div
+            className={`bg-[#1a1a1a] border border-red-500/50 rounded-xl px-4 py-3 shadow-lg space-y-2 animate-pulse overflow-hidden origin-left cursor-pointer hover:bg-[#1f1f1f] transition-colors ${
+              skeletonShrinking 
+                ? 'transition-all duration-[800ms] ease-out opacity-0 scale-x-0 -translate-x-4' 
+                : 'transition-all duration-[800ms] ease-out opacity-100 scale-x-100 translate-x-0'
+            }`}
+            title="Processing"
+          >
           {/* Line 1: Current status with icon */}
           <div className="flex items-center gap-2 text-sm text-red-400">
             {getIcon()}
@@ -89,7 +89,10 @@ export function LoadingStateContainer({
           {/* Line 2: Show thinking button (only if thinking exists) */}
           {hasThinking && (
             <button
-              onClick={() => setShowThinking(!showThinking)}
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent modal from opening when clicking thinking button
+                setShowThinking(!showThinking);
+              }}
               className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors w-full text-left"
             >
               <span>{showThinking ? 'Hide' : 'Show'} thinking</span>
@@ -123,5 +126,6 @@ export function LoadingStateContainer({
         )}
       </div>
     </div>
+  </>
   );
 }

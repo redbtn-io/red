@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
   
   // Determine rate limit config based on path
   let rateLimitConfig = RateLimits.STANDARD;
-  let identifier = getRateLimitIdentifier(request);
+  const identifier = getRateLimitIdentifier(request);
   
   // Auth endpoints - use standard limits (individual endpoints have their own stricter limits)
   if (pathname.startsWith('/api/auth/')) {

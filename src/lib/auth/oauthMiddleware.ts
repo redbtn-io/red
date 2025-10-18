@@ -2,15 +2,23 @@ import { NextRequest } from 'next/server';
 import connectToDatabase from '../database/mongodb';
 import OAuthAccessToken from '../database/models/oauth/OAuthAccessToken';
 
-/**
- * Extract and validate OAuth access token from request
- */
-export async function getAccessTokenFromRequest(request: NextRequest): Promise<{
-  token: any;
+interface AccessToken {
+  token: {
+    _id: unknown;
+    userId: string;
+    clientId: string;
+    scopes: string[];
+    expiresAt: Date;
+  };
   userId: string;
   clientId: string;
   scopes: string[];
-} | null> {
+}
+
+/**
+ * Extract and validate OAuth access token from request
+ */
+export async function getAccessTokenFromRequest(request: NextRequest): Promise<AccessToken | null> {
   try {
     // Get access token from Authorization header
     const authHeader = request.headers.get('authorization');

@@ -7,7 +7,8 @@ const config: RedConfig = {
   redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
   vectorDbUrl: process.env.VECTOR_DB_URL || "http://localhost:8200",
   databaseUrl: process.env.DATABASE_URL || "http://localhost:5432",
-  defaultLlmUrl: process.env.LLM_URL || "http://localhost:11434",
+  chatLlmUrl: process.env.CHAT_LLM_URL || "http://localhost:11434",
+  workLlmUrl: process.env.WORK_LLM_URL || "http://localhost:11434",
 };
 
 let redInstance: Red | null = null;

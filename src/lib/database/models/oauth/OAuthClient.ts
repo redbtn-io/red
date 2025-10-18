@@ -20,6 +20,7 @@ interface IOAuthClientMethods {
 }
 
 // Model type with instance methods
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 type OAuthClientModel = Model<IOAuthClient, {}, IOAuthClientMethods>;
 
 const oauthClientSchema = new Schema<IOAuthClient, OAuthClientModel, IOAuthClientMethods>(
