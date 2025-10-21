@@ -17,22 +17,22 @@ interface StreamingThinkingBubbleProps {
   thinking: string | null;
   isStreaming: boolean;
   isThinkingDisplayComplete: boolean;
+  onOpenModal?: () => void;
 }
 
-export function StreamingThinkingBubble({ thinking, isStreaming, isThinkingDisplayComplete }: StreamingThinkingBubbleProps) {
+export function StreamingThinkingBubble({ thinking, isStreaming, isThinkingDisplayComplete, onOpenModal }: StreamingThinkingBubbleProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isShrinking, setIsShrinking] = useState(false);
   
   const hasThinking = thinking && thinking.length > 0;
-  const isCurrentlyStreaming = isStreaming && hasThinking;
   
   useEffect(() => {
-    if (isCurrentlyStreaming) {
-      // Show bubble when thinking starts streaming
+    if (hasThinking && isStreaming) {
+      // Show bubble when thinking is streaming
       setIsVisible(true);
       setIsShrinking(false);
-    } else if (hasThinking && isThinkingDisplayComplete) {
-      // Start shrinking when thinking display completes
+    } else if (hasThinking && !isStreaming) {
+      // Start shrinking when streaming stops
       setIsShrinking(true);
       
       // Hide completely after shrink animation (400ms duration)
@@ -44,16 +44,18 @@ export function StreamingThinkingBubble({ thinking, isStreaming, isThinkingDispl
       setIsVisible(false);
       setIsShrinking(false);
     }
-  }, [isCurrentlyStreaming, hasThinking, isThinkingDisplayComplete]);
+  }, [hasThinking, isStreaming]);
   
   if (!isVisible) return null;
   
   return (
     <div className="flex justify-start">
-      <div className={`
-        max-w-[80%] rounded-xl px-5 py-3.5 shadow-lg cursor-pointer transition-all duration-400 ease-in-out
+      <div 
+        onClick={onOpenModal}
+        className={`
+        max-w-[80%] rounded-xl px-5 py-3.5 shadow-lg cursor-pointer transition-all duration-400 ease-in-out select-none
         bg-purple-600 border border-purple-500/50 text-white hover:bg-purple-700
-        ${isCurrentlyStreaming ? 'thinking-pulse' : ''}
+        ${isStreaming ? 'thinking-pulse' : ''}
         ${isShrinking ? 'transform scale-x-0 scale-y-0 opacity-0 origin-top-left' : 'transform scale-x-100 scale-y-100 opacity-100 origin-top-left'}
       `}>
         {/* Header with brain icon and minimal text */}
@@ -62,7 +64,7 @@ export function StreamingThinkingBubble({ thinking, isStreaming, isThinkingDispl
           <span className="text-sm font-medium text-purple-100">
             Thinking...
           </span>
-          {isCurrentlyStreaming && (
+          {isStreaming && (
             <div className="flex items-center gap-1 ml-auto">
               <div className="w-1 h-1 bg-purple-200 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
               <div className="w-1 h-1 bg-purple-200 rounded-full animate-bounce [animation-delay:-0.15s]"></div>

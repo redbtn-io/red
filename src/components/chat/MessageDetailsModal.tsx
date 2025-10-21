@@ -190,22 +190,22 @@ export function MessageDetailsModal({
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div 
-          className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col pointer-events-auto animate-in zoom-in-95 duration-200"
+          className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col pointer-events-auto animate-in zoom-in-95 duration-200 overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-[#2a2a2a]">
+          {/* Header - Sticky on mobile */}
+          <div className="flex items-center justify-between p-4 md:p-6 border-b border-[#2a2a2a] sticky top-0 bg-[#1a1a1a] z-10">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-500/10 rounded-lg">
+              <div className="p-2 bg-red-500/10 rounded-lg flex-shrink-0">
                 {message.role === 'assistant' ? (
                   <Bot className="w-5 h-5 text-red-500" />
                 ) : (
                   <User className="w-5 h-5 text-red-500" />
                 )}
               </div>
-              <div>
-                <h2 className="text-xl font-semibold text-white">Message Details</h2>
-                <div className="flex items-center gap-4 text-sm text-gray-400 mt-1">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg md:text-xl font-semibold text-white truncate">Message Details</h2>
+                <div className="flex items-center gap-2 md:gap-4 text-xs md:text-sm text-gray-400 mt-1 flex-wrap">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     {message.timestamp ? formatTimestamp(message.timestamp) : 'No timestamp'}
@@ -241,25 +241,25 @@ export function MessageDetailsModal({
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
             {/* Message Content */}
-            <div className="p-6 border-b border-[#2a2a2a]">
+            <div className="p-4 md:p-6 border-b border-[#2a2a2a]">
               <div className="flex items-center gap-2 mb-3">
                 <MessageSquare className="w-4 h-4 text-gray-400" />
                 <h3 className="text-lg font-medium text-white">Message Content</h3>
               </div>
               <div className="prose prose-invert max-w-none
                 prose-p:my-2 prose-p:leading-relaxed prose-p:text-gray-300
-                prose-pre:bg-black/40 prose-pre:border prose-pre:border-white/10 prose-pre:my-3
-                prose-code:text-red-400 prose-code:bg-black/30 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm
-                prose-a:text-red-400 prose-a:underline prose-a:decoration-red-400/30 hover:prose-a:decoration-red-400
+                prose-pre:bg-black/40 prose-pre:border prose-pre:border-white/10 prose-pre:my-3 prose-pre:overflow-x-auto
+                prose-code:text-red-400 prose-code:bg-black/30 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:break-words
+                prose-a:text-red-400 prose-a:underline prose-a:decoration-red-400/30 hover:prose-a:decoration-red-400 prose-a:break-words
                 prose-strong:text-white prose-strong:font-semibold
                 prose-em:text-gray-300 prose-em:italic
-                prose-headings:text-white prose-headings:font-bold prose-headings:mt-4 prose-headings:mb-2
+                prose-headings:text-white prose-headings:font-bold prose-headings:mt-4 prose-headings:mb-2 prose-headings:break-words
                 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-li:text-gray-300
                 prose-table:my-3 prose-th:px-3 prose-th:py-2 prose-th:bg-white/5 prose-td:px-3 prose-td:py-2 prose-td:border-white/10
                 prose-blockquote:border-l-4 prose-blockquote:border-red-500/50 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-gray-400
-                [&_.katex]:text-white [&_.katex-display]:my-3 [&_.katex-display]:overflow-x-auto">
+                [&_.katex]:text-white [&_.katex-display]:my-3 [&_.katex-display]:overflow-x-auto break-words">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkMath]}
                   rehypePlugins={[rehypeKatex]}
@@ -271,7 +271,7 @@ export function MessageDetailsModal({
 
             {/* AI Reasoning Section (separate from tools) */}
             {hasThinking && (
-              <div className="p-6 border-b border-[#2a2a2a]">
+              <div className="p-4 md:p-6 border-b border-[#2a2a2a]">
                 <div 
                   className="flex items-center gap-2 mb-3 cursor-pointer hover:bg-white/5 rounded-lg p-2 -m-2 transition-colors"
                   onClick={() => setIsReasoningExpanded(!isReasoningExpanded)}
@@ -301,8 +301,9 @@ export function MessageDetailsModal({
                       <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-4">
                         <div className="prose prose-invert max-w-none prose-sm
                           prose-p:my-2 prose-p:leading-relaxed prose-p:text-gray-300
-                          prose-pre:bg-black/40 prose-pre:border prose-pre:border-white/10
-                          prose-code:text-purple-400 prose-code:bg-black/30 prose-code:px-2 prose-code:py-1 prose-code:rounded">
+                          prose-pre:bg-black/40 prose-pre:border prose-pre:border-white/10 prose-pre:overflow-x-auto
+                          prose-code:text-purple-400 prose-code:bg-black/30 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:break-words
+                          break-words">
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm, remarkMath]}
                             rehypePlugins={[rehypeKatex]}
@@ -319,7 +320,7 @@ export function MessageDetailsModal({
 
             {/* Tool Executions Timeline */}
             {hasToolExecutions && (
-              <div className="p-6 border-b border-[#2a2a2a]">
+              <div className="p-4 md:p-6 border-b border-[#2a2a2a]">
                 <div 
                   className="flex items-center gap-2 mb-4 cursor-pointer hover:bg-white/5 rounded-lg p-2 -m-2 transition-colors"
                   onClick={() => setIsToolsExpanded(!isToolsExpanded)}

@@ -81,26 +81,26 @@ export function ToolExecutionSection({
   const statusDisplay = getStatusDisplay();
 
   return (
-    <div className="border-l-2 border-white/10 pl-4 pb-4 last:pb-0">
+    <div className="border-l-2 border-white/10 pl-4 pb-4 last:pb-0 overflow-hidden">
       {/* Tool Header - Clickable to expand/collapse */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between gap-3 p-3 -ml-4 hover:bg-white/5 rounded-lg transition-colors text-left"
+        className="w-full flex items-center justify-between gap-2 md:gap-3 p-2 md:p-3 -ml-4 hover:bg-white/5 rounded-lg transition-colors text-left"
       >
         <div className="flex items-center gap-3 flex-1">
           {/* Tool Icon */}
-          <div className={`p-2 rounded-lg ${toolDisplay.bgColor}`}>
-            <span className="text-lg">{toolDisplay.icon}</span>
+          <div className={`p-1.5 md:p-2 rounded-lg ${toolDisplay.bgColor} flex-shrink-0`}>
+            <span className="text-base md:text-lg">{toolDisplay.icon}</span>
           </div>
 
           {/* Tool Name and Status */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h4 className={`font-medium ${toolDisplay.color}`}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className={`font-medium text-sm md:text-base ${toolDisplay.color} truncate`}>
                 {execution.toolName}
               </h4>
               {execution.duration !== undefined && execution.status !== 'running' && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-500 whitespace-nowrap">
                   ({formatDuration(execution.duration)})
                 </span>
               )}
@@ -108,31 +108,36 @@ export function ToolExecutionSection({
             
             {/* Current Step or Status */}
             {execution.currentStep && execution.status === 'running' ? (
-              <p className="text-sm text-gray-400 truncate">
-                {execution.currentStep}
+              <p className="text-xs md:text-sm text-gray-400 truncate">
+                {typeof execution.currentStep === 'string' 
+                  ? execution.currentStep 
+                  : typeof execution.currentStep === 'object' && 'step' in execution.currentStep
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    ? String((execution.currentStep as any).step)
+                    : String(execution.currentStep)}
               </p>
             ) : execution.status === 'error' && execution.error ? (
-              <p className="text-sm text-red-400 truncate">
+              <p className="text-xs md:text-sm text-red-400 truncate">
                 {execution.error}
               </p>
             ) : execution.steps.length > 0 && execution.status === 'completed' ? (
-              <p className="text-sm text-gray-400 truncate">
-                {execution.steps[execution.steps.length - 1]?.step}
+              <p className="text-xs md:text-sm text-gray-400 truncate">
+                {execution.steps[execution.steps.length - 1]?.step ? String(execution.steps[execution.steps.length - 1].step) : ''}
               </p>
             ) : null}
           </div>
 
-          {/* Status Badge */}
-          <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${statusDisplay.bgColor}`}>
+          {/* Status Badge - Always visible, icon only on mobile, text on desktop */}
+          <div className={`flex items-center gap-2 px-2 md:px-3 py-1 rounded-full ${statusDisplay.bgColor} flex-shrink-0`}>
             {statusDisplay.icon}
-            <span className={`text-xs font-medium ${statusDisplay.color}`}>
+            <span className={`hidden md:inline text-xs font-medium ${statusDisplay.color}`}>
               {statusDisplay.label}
             </span>
           </div>
         </div>
 
         {/* Expand/Collapse Icon */}
-        <div className="text-gray-400">
+        <div className="text-gray-400 flex-shrink-0">
           {isExpanded ? (
             <ChevronDown className="w-4 h-4" />
           ) : (
@@ -143,7 +148,7 @@ export function ToolExecutionSection({
 
       {/* Tool Content - Expanded State */}
       {isExpanded && (
-        <div className="mt-3 space-y-3">
+        <div className="mt-3 space-y-3 overflow-hidden">
           {/* Progress Bar */}
           {execution.progress !== undefined && execution.status === 'running' && (
             <div className="space-y-1">
@@ -161,33 +166,57 @@ export function ToolExecutionSection({
           )}
 
           {/* Steps Timeline */}
-          {execution.steps.length > 0 ? (
+          {execution.steps && Array.isArray(execution.steps) && execution.steps.length > 0 ? (
             <div className="space-y-2">
               <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
                 Execution Steps
               </h5>
               <div className="space-y-2">
-                {execution.steps.map((step, index) => (
-                  <div 
-                    key={index}
-                    className="flex items-start gap-2 text-sm"
-                  >
-                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-gray-300">{step.step}</p>
-                      {step.data && typeof step.data === 'object' ? (
-                        <pre className="text-xs text-gray-500 mt-1 overflow-x-auto">
-                          {JSON.stringify(step.data, null, 2)}
-                        </pre>
+                {execution.steps.map((step, index) => {
+                  // Defensive check: ensure step is the right shape
+                  if (!step || typeof step !== 'object') {
+                    console.warn('[ToolExecutionSection] Invalid step (not an object):', step);
+                    return null;
+                  }
+                  
+                  // Check if this is accidentally the whole event object
+                  if ('type' in step && 'toolType' in step && 'toolId' in step) {
+                    console.warn('[ToolExecutionSection] Step is an event object, not a step!', step);
+                    return null;
+                  }
+                  
+                  if (!('step' in step)) {
+                    console.warn('[ToolExecutionSection] Step missing "step" property:', step);
+                    return null;
+                  }
+                  
+                  return (
+                    <div 
+                      key={index}
+                      className="flex items-start gap-2 text-sm overflow-hidden"
+                    >
+                      <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="text-gray-300 break-words">{String(step.step)}</p>
+                        {step.data && typeof step.data === 'object' && (
+                          <pre className="text-xs text-gray-500 mt-1 overflow-x-auto whitespace-pre-wrap break-words">
+                            {JSON.stringify(step.data, null, 2)}
+                          </pre>
+                        )}
+                        {step.data && typeof step.data !== 'object' && (
+                          <p className="text-xs text-gray-500 mt-1 break-words">
+                            {String(step.data)}
+                          </p>
+                        )}
+                      </div>
+                      {step.progress !== undefined && typeof step.progress === 'number' ? (
+                        <span className="text-xs text-gray-500">
+                          {Math.round(step.progress)}%
+                        </span>
                       ) : null}
                     </div>
-                    {step.progress !== undefined ? (
-                      <span className="text-xs text-gray-500">
-                        {Math.round(step.progress)}%
-                      </span>
-                    ) : null}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ) : null}
@@ -200,13 +229,14 @@ export function ToolExecutionSection({
               </h5>
               <div className="prose prose-invert max-w-none prose-sm
                 prose-p:my-2 prose-p:leading-relaxed prose-p:text-gray-300
-                prose-pre:bg-black/40 prose-pre:border prose-pre:border-white/10
-                prose-code:text-blue-400 prose-code:bg-black/30 prose-code:px-2 prose-code:py-1 prose-code:rounded
-                prose-a:text-blue-400 prose-a:underline
+                prose-pre:bg-black/40 prose-pre:border prose-pre:border-white/10 prose-pre:overflow-x-auto
+                prose-code:text-blue-400 prose-code:bg-black/30 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:break-words
+                prose-a:text-blue-400 prose-a:underline prose-a:break-words
                 prose-strong:text-white prose-strong:font-semibold
-                prose-headings:text-white prose-headings:font-bold
+                prose-headings:text-white prose-headings:font-bold prose-headings:break-words
                 prose-ul:my-2 prose-ol:my-2 prose-li:my-1
-                prose-blockquote:border-l-4 prose-blockquote:border-blue-500/50 prose-blockquote:pl-4">
+                prose-blockquote:border-l-4 prose-blockquote:border-blue-500/50 prose-blockquote:pl-4
+                break-words overflow-hidden">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkMath]}
                   rehypePlugins={[rehypeKatex]}
@@ -223,8 +253,8 @@ export function ToolExecutionSection({
               <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
                 Result
               </h5>
-              <div className="bg-black/20 border border-white/10 rounded-lg p-3">
-                <pre className="text-xs text-gray-300 overflow-x-auto">
+              <div className="bg-black/20 border border-white/10 rounded-lg p-3 overflow-hidden">
+                <pre className="text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap break-words">
                   {typeof execution.result === 'string' 
                     ? execution.result 
                     : JSON.stringify(execution.result, null, 2)}
@@ -240,31 +270,43 @@ export function ToolExecutionSection({
                 Metadata
               </h5>
               <div className="flex flex-wrap gap-2">
-                {Object.entries(execution.metadata).map(([key, value]) => (
-                  <div 
-                    key={key}
-                    className="px-2 py-1 bg-white/5 rounded text-xs"
-                  >
-                    <span className="text-gray-400">{key}:</span>{' '}
-                    <span className="text-gray-300">
-                      {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                    </span>
-                  </div>
-                ))}
+                {Object.entries(execution.metadata).map(([key, value]) => {
+                  // Convert value to string safely
+                  let displayValue: string;
+                  if (value === null || value === undefined) {
+                    displayValue = String(value);
+                  } else if (typeof value === 'object') {
+                    displayValue = JSON.stringify(value);
+                  } else {
+                    displayValue = String(value);
+                  }
+                  
+                  return (
+                    <div 
+                      key={key}
+                      className="px-2 py-1 bg-white/5 rounded text-xs break-words"
+                    >
+                      <span className="text-gray-400">{key}:</span>{' '}
+                      <span className="text-gray-300 break-all">
+                        {displayValue}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
 
           {/* Error Display */}
           {execution.error && execution.status === 'error' && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 overflow-hidden">
               <div className="flex items-start gap-2">
                 <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                <div>
+                <div className="min-w-0 flex-1">
                   <h5 className="text-sm font-medium text-red-400 mb-1">
                     Execution Failed
                   </h5>
-                  <p className="text-sm text-red-300">
+                  <p className="text-sm text-red-300 break-words">
                     {execution.error}
                   </p>
                 </div>

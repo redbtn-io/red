@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 });
 
 /**
- * Generate a secure random token for magic links
+ * Generate a secure random token for sign in links
  */
 export function generateMagicToken(): string {
   // Generate 32-byte random token, base64url encoded
@@ -22,7 +22,7 @@ export function generateMagicToken(): string {
 }
 
 /**
- * Send magic link email
+ * Send sign in link email
  */
 export async function sendMagicLinkEmail(
   email: string,
@@ -158,10 +158,10 @@ If you didn't request this sign in link, you can safely ignore this email.
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log('[Email] Magic link sent to:', email);
+    console.log('[Email] Sign in link sent to:', email);
   } catch (error) {
-    console.error('[Email] Failed to send magic link:', error);
-    throw new Error('Failed to send magic link email');
+    console.error('[Email] Failed to send sign in link:', error);
+    throw new Error('Failed to send sign in link email');
   }
 }
 

@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
                 text-align: center;
                 padding: 40px;
                 max-width: 500px;
+                margin: 0 auto;
               }
               .icon { font-size: 64px; margin-bottom: 20px; }
               h1 { font-size: 24px; margin: 20px 0; }
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
             <div class="container">
               <div class="icon">❌</div>
               <h1>Invalid Link</h1>
-              <p>This magic link is invalid or missing.</p>
+              <p>This link is invalid or missing.</p>
             </div>
           </body>
         </html>
@@ -93,6 +94,7 @@ export async function GET(request: NextRequest) {
                 text-align: center;
                 padding: 40px;
                 max-width: 500px;
+                margin: 0 auto;
               }
               .icon { font-size: 64px; margin-bottom: 20px; }
               h1 { font-size: 24px; margin: 20px 0; }
@@ -103,7 +105,7 @@ export async function GET(request: NextRequest) {
             <div class="container">
               <div class="icon">⏰</div>
               <h1>Link Expired</h1>
-              <p>This magic link has expired or has already been used. Please request a new one.</p>
+              <p>This link has expired or has already been used. Please request a new one.</p>
             </div>
           </body>
         </html>
@@ -142,7 +144,7 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    console.log('[Auth] Magic link verified:', authCode.email, 'sessionId:', authCode.sessionId);
+    console.log('[Auth] Sign in link verified:', authCode.email, 'sessionId:', authCode.sessionId);
 
     // Return success page that auto-closes
     return new NextResponse(
@@ -168,6 +170,7 @@ export async function GET(request: NextRequest) {
               text-align: center;
               padding: 40px;
               max-width: 500px;
+              margin: 0 auto;
             }
             .icon { font-size: 64px; margin-bottom: 20px; animation: bounce 0.5s; }
             @keyframes bounce {
@@ -214,32 +217,24 @@ export async function GET(request: NextRequest) {
           <title>Error - Red AI</title>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              display: flex;
-              align-items: center;
-              justify-center;
-              min-height: 100vh;
-              margin: 0;
-              background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-              color: white;
-            }
-            .container {
-              text-align: center;
-              padding: 40px;
-              max-width: 500px;
-            }
-            .icon { font-size: 64px; margin-bottom: 20px; }
-            h1 { font-size: 24px; margin: 20px 0; }
-            p { font-size: 16px; color: #999; line-height: 1.6; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="icon">⚠️</div>
-            <h1>Something Went Wrong</h1>
-            <p>There was an error verifying your magic link. Please try again.</p>
+                          color: white;
+              }
+              .container {
+                text-align: center;
+                padding: 40px;
+                max-width: 500px;
+                margin: 0 auto;
+              }
+              .icon { font-size: 64px; margin-bottom: 20px; }
+              h1 { font-size: 24px; margin: 20px 0; }
+              p { font-size: 16px; color: #999; line-height: 1.6; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="icon">⚠️</div>
+              <h1>Something Went Wrong</h1>
+            <p>There was an error verifying your link. Please try again.</p>
           </div>
         </body>
       </html>

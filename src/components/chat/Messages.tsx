@@ -1,4 +1,4 @@
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Brain, Wrench } from 'lucide-react';
 import { type Message } from '@/lib/storage/conversation';
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -73,9 +73,11 @@ export function Messages({
       )}
       {messages?.filter(msg => {
         // Filter out streaming message to prevent duplicate rendering
-        return !(streamingMessage && !isLoading && msg.id === streamingMessage.id);
-      }).map((message) => {
+        // If streamingMessage exists with this ID, don't render the permanent version
+        return !(streamingMessage && msg.id === streamingMessage.id);
+      }).map((message, index, array) => {
         // Get thinking from prop for this message (not currently displayed in bubble)
+        const isLatest = index === array.length - 1;
         
         return (
           <MessageBubble
@@ -83,6 +85,7 @@ export function Messages({
             message={message}
             isStreaming={isStreaming && streamingMessageId === message.id}
             onOpenModal={() => onOpenModal(message.id)}
+            isLatest={isLatest}
           />
         );
       })}
@@ -91,8 +94,9 @@ export function Messages({
       {streamingThinking && streamingMessageId && (
         <StreamingThinkingBubble
           thinking={streamingThinking}
-          isStreaming={isStreaming}
+          isStreaming={thoughts[streamingMessageId]?.isStreaming ?? false}
           isThinkingDisplayComplete={isThinkingDisplayComplete}
+          onOpenModal={() => onOpenModal(streamingMessageId)}
         />
       )}
       
@@ -108,6 +112,7 @@ export function Messages({
           }}
           isStreaming={true}
           onOpenModal={() => onOpenModal(streamingMessage.id)}
+          isLatest={true}
         />
       )}
       
@@ -118,6 +123,7 @@ export function Messages({
           thinking={thoughts[streamingMessageId]?.content || null}
           skeletonShrinking={skeletonShrinking}
           isReconnecting={isReconnecting}
+          onOpenModal={() => onOpenModal(streamingMessageId)}
         />
       )}
       
@@ -224,9 +230,17 @@ interface MessageBubbleProps {
   message: Message;
   isStreaming: boolean;
   onOpenModal: () => void;
+  isLatest?: boolean;
 }
 
-function MessageBubble({ message, isStreaming, onOpenModal }: MessageBubbleProps) {
+function MessageBubble({ message, isStreaming, onOpenModal, isLatest = false }: MessageBubbleProps) {
+  // Check if this message has tools or thinking available
+  const toolExecutions = conversationState.getToolExecutions(message.id);
+  const hasTools = toolExecutions.length > 0;
+  const thoughtData = conversationState.getThought(message.id);
+  const hasThinking = thoughtData?.content && thoughtData.content.length > 0;
+  const hasDetails = hasTools || hasThinking;
+  
   // All messages can show modal, but emphasis on assistant messages
   const handleMessageClick = () => {
     onOpenModal();
@@ -237,7 +251,7 @@ function MessageBubble({ message, isStreaming, onOpenModal }: MessageBubbleProps
       className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
     >
       <div
-        className={`max-w-[80%] rounded-xl px-5 py-3.5 shadow-lg cursor-pointer transition-colors ${
+        className={`max-w-[80%] rounded-xl px-5 py-3.5 shadow-lg cursor-pointer transition-colors relative select-none ${
           message.role === 'user'
             ? 'bg-[#1a1a1a] border border-[#2a2a2a] text-gray-100 hover:bg-[#1f1f1f]'
             : `bg-red-500 text-white hover:bg-red-600 ${isStreaming ? 'streaming-pulse' : ''}`
@@ -285,6 +299,24 @@ function MessageBubble({ message, isStreaming, onOpenModal }: MessageBubbleProps
             {message.content}
           </ReactMarkdown>
         </div>
+        
+        {/* Subtle status indicators at bottom */}
+        {message.role === 'assistant' && hasDetails && (
+          <div className="flex items-center gap-2 mt-3 pt-2 border-t border-white/10">
+            {hasThinking && (
+              <div className="flex items-center gap-1.5 text-xs text-white/60" title="AI reasoning available">
+                <div className="w-1.5 h-1.5 rounded-full bg-purple-400"></div>
+                {isLatest && <span>Thinking</span>}
+              </div>
+            )}
+            {hasTools && (
+              <div className="flex items-center gap-1.5 text-xs text-white/60" title={`${toolExecutions.length} tool${toolExecutions.length > 1 ? 's' : ''} used`}>
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                {isLatest && <span>{toolExecutions.length} tool{toolExecutions.length > 1 ? 's' : ''}</span>}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

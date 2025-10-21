@@ -90,12 +90,12 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to send magic link');
+        throw new Error(data.error || 'Failed to send sign in link');
       }
 
       setStep('waiting');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send magic link');
+      setError(err instanceof Error ? err.message : 'Failed to send sign in link');
     } finally {
       setLoading(false);
     }
@@ -127,12 +127,12 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to send magic link');
+        throw new Error(data.error || 'Failed to send sign in link');
       }
 
       setError('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to resend magic link');
+      setError(err instanceof Error ? err.message : 'Failed to resend sign in link');
     } finally {
       setLoading(false);
     }
@@ -158,7 +158,7 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
           <p className="text-gray-400 text-sm">
             {step === 'email'
               ? 'Enter your email to get started'
-              : 'Check your email for the magic link'}
+              : 'Check your email for the sign in link'}
           </p>
         </div>
 
@@ -204,7 +204,7 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
               ) : (
                 <>
                   <Mail size={20} />
-                  Send Magic Link
+                  Send Sign In Link
                 </>
               )}
             </button>
@@ -223,9 +223,9 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
 
             {/* Instructions */}
             <div className="text-center space-y-4">
-              <p className="text-white font-medium">Magic link sent!</p>
+              <p className="text-white font-medium">Sign in link sent!</p>
               <p className="text-gray-400 text-sm">
-                We&apos;ve sent a magic link to <strong className="text-white">{email}</strong>
+                We&apos;ve sent a sign in link to <strong className="text-white">{email}</strong>
               </p>
               <p className="text-gray-400 text-sm">
                 Click the link in your email to sign in. You can open it on any device.
@@ -238,7 +238,7 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
             </div>
 
             <p className="text-center text-gray-500 text-xs">
-              Waiting for you to click the magic link...
+              Waiting for you to click the link...
             </p>
 
             {error && (
@@ -254,7 +254,7 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
                 disabled={loading}
                 className="w-full text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-50"
               >
-                {loading ? 'Sending...' : "Didn't receive the email? Resend magic link"}
+                {loading ? 'Sending...' : "Didn't receive the email? Resend link"}
               </button>
             </div>
 

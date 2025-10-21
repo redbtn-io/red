@@ -5,14 +5,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { conversationStorage, Conversation } from '@/lib/storage/conversation';
+import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
-import { Sidebar } from '@/components/chat/Sidebar';
+import { LogsSidebar } from '@/components/logging/LogsSidebar';
 import { LogViewer } from '@/components/logging/LogViewer';
 import { LogFilters } from '@/components/logging/LogFilters';
 import { LogStats } from '@/components/logging/LogStats';
 
 export default function LogsPage() {
+  const searchParams = useSearchParams();
+  const conversationParam = searchParams.get('conversation');
+  
   const [conversationId, setConversationId] = useState('');
   const [generationId, setGenerationId] = useState('');
   const [filterLevel, setFilterLevel] = useState('all');
@@ -20,59 +23,34 @@ export default function LogsPage() {
   const [showThoughts, setShowThoughts] = useState(true);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Load conversations on mount
+  // Set conversation from URL parameter on mount
   useEffect(() => {
-    const stored = conversationStorage.getAll();
-    setConversations(stored);
-    
-    const activeId = conversationStorage.getActiveId();
-    if (activeId && stored.some(c => c.id === activeId)) {
-      setActiveConversationId(activeId);
-      setConversationId(activeId);
+    if (conversationParam && conversationParam !== 'undefined') {
+      setConversationId(conversationParam);
     }
-  }, []);
-
-  const createNewConversation = () => {
-    const newConv = conversationStorage.create();
-    setConversations(prev => [newConv, ...prev]);
-    setActiveConversationId(newConv.id);
-    conversationStorage.setActiveId(newConv.id);
-    setConversationId(newConv.id);
-    setIsSidebarOpen(false);
-  };
+  }, [conversationParam]);
 
   const switchConversation = (id: string) => {
-    setActiveConversationId(id);
-    conversationStorage.setActiveId(id);
     setConversationId(id);
     setGenerationId(''); // Clear generation when switching conversations
     setIsSidebarOpen(false);
   };
 
-  const handleDeleteClick = () => {
-    // Not implemented for logs page
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1);
   };
 
   return (
     <div className="flex bg-[var(--background)]" style={{ height: 'calc(var(--vh, 1vh) * 100)' }}>
-      {/* Sidebar */}
-      <Sidebar
+      {/* Logs Sidebar */}
+      <LogsSidebar
         isOpen={isSidebarOpen}
-        conversations={conversations}
-        activeConversationId={activeConversationId}
-        editingTitleId={null}
-        editingTitleValue=""
+        activeConversationId={conversationId}
         onClose={() => setIsSidebarOpen(false)}
-        onNewChat={createNewConversation}
         onSwitchConversation={switchConversation}
-        onDeleteClick={handleDeleteClick}
-        onStartEditingTitle={() => {}}
-        onSaveEditedTitle={() => {}}
-        onCancelEditingTitle={() => {}}
-        onEditingTitleChange={() => {}}
+        onRefresh={handleRefresh}
       />
 
       {/* Main content */}
@@ -81,7 +59,7 @@ export default function LogsPage() {
         <Header
           title="📝 Virtual Terminal"
           onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          onNewChat={createNewConversation}
+          onNewChat={() => {}}
         />
 
         {/* Logs Content */}

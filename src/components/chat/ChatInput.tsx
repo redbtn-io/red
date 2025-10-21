@@ -30,8 +30,10 @@ export function ChatInput({ value, disabled, messagesEndRef, onChange, onSend }:
                 messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
               }, 300);
             }}
-            placeholder="Type your message..."
-            className="w-full resize-none bg-[#1a1a1a] border border-[#2a2a2a] text-gray-100 placeholder-gray-500 rounded-xl px-4 pr-16 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all leading-tight block"
+            placeholder={disabled ? "Generating response..." : "Type your message..."}
+            className={`w-full resize-none bg-[#1a1a1a] border border-[#2a2a2a] text-gray-100 placeholder-gray-500 rounded-xl px-4 pr-16 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all leading-tight block ${
+              disabled ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
             rows={1}
             disabled={disabled}
           />

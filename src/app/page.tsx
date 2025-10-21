@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { generationStorage } from '@/lib/storage/generation-storage';
 import { lastConversationStorage } from '@/lib/storage/last-conversation-storage';
 import { useConversationState } from '@/lib/conversation/use-conversation-state';
 import { conversationState } from '@/lib/conversation/conversation-state';
 import { ConfirmModal } from '@/components/ui/Modal';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/chat/Sidebar';
 import { ChatInput } from '@/components/chat/ChatInput';
@@ -14,8 +16,30 @@ import { LoginModal } from '@/components/auth/LoginModal';
 import { CompleteProfileModal } from '@/components/auth/CompleteProfileModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConversations } from '@/contexts/ConversationContext';
+import type { ToolExecution } from '@/lib/tools/tool-types';
+
+/**
+ * Extract tool executions from messages and organize by messageId
+ * API returns toolExecutions at message level, but we store at conversation level
+ */
+function extractToolExecutionsFromMessages(messages: Array<{id: string; toolExecutions?: ToolExecution[]}>): Record<string, ToolExecution[]> {
+  const toolExecutionsMap: Record<string, ToolExecution[]> = {};
+  
+  for (const message of messages) {
+    if (message.id && message.toolExecutions && Array.isArray(message.toolExecutions) && message.toolExecutions.length > 0) {
+      toolExecutionsMap[message.id] = message.toolExecutions;
+      console.log(`[Load] Found ${message.toolExecutions.length} tool executions for message ${message.id}`);
+    }
+  }
+  
+  return toolExecutionsMap;
+}
 
 export default function ChatPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  
   const { user, loading: authLoading, refreshUser } = useAuth();
   const {
     conversations,
@@ -53,6 +77,9 @@ export default function ChatPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSwitchingConversation, setIsSwitchingConversation] = useState(false);
+  const [isIntentionallyEmpty, setIsIntentionallyEmpty] = useState(false); // Track "new chat" state
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [editingTitleValue, setEditingTitleValue] = useState('');
   const [reconnectAttempted, setReconnectAttempted] = useState(false);
@@ -68,10 +95,20 @@ export default function ChatPage() {
   }, [modalState]);
   
   const activeStreamRef = useRef<string | null>(null);
+  const activeReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null); // Track active reader for aborting
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamingContentRef = useRef<string>(''); // Track streaming content immediately
   const streamingMessageIdRef = useRef<string | null>(null); // Track which message is streaming
   const currentStreamingMessageRef = useRef<{ id: string; content: string } | null>(null); // Track current streaming message
+
+  // Helper function to update URL with conversation parameter
+  const updateConversationUrl = (conversationId: string | null) => {
+    if (conversationId) {
+      router.push(`${pathname}?conversation=${conversationId}`, { scroll: false });
+    } else {
+      router.push(pathname, { scroll: false });
+    }
+  };
 
   // Helper function to save tool executions to database
   const saveToolExecutionsToDatabase = async (messageId: string, conversationId: string | null) => {
@@ -111,7 +148,7 @@ export default function ChatPage() {
 
   // Check for active generation and reconnect
   useEffect(() => {
-    if (!user || !user.profileComplete || reconnectAttempted || !currentConversation || !currentConversation.id) {
+    if (!user || !user.profileComplete || reconnectAttempted || !currentConversation || !currentConversation.id || !conversationLoaded) {
       return;
     }
 
@@ -142,6 +179,8 @@ export default function ChatPage() {
         setIsReconnecting(true);
         setIsLoading(true);
         setStreamingMessageId(messageId);
+        // Set initial status so LoadingStates shows immediately
+        setCurrentStatus({ action: 'processing', description: 'Reconnecting...' });
 
         // Reconnect to the stream
         const reconnectUrl = `/api/v1/messages/${messageId}/reconnect`;
@@ -157,7 +196,7 @@ export default function ChatPage() {
     
     checkActiveGeneration();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, currentConversation, reconnectAttempted]);
+  }, [user, currentConversation, reconnectAttempted, conversationLoaded]);
 
   // Handle page visibility changes (mobile app background/foreground)
   useEffect(() => {
@@ -174,9 +213,10 @@ export default function ChatPage() {
 
       console.log('[Visibility] Page became visible, checking for active generation');
       
-      // If already streaming, don't interrupt
-      if (isStreaming || streamingMessageId) {
-        console.log('[Visibility] Already streaming, skipping check');
+      // If already actively streaming (not just having a streamingMessageId), don't interrupt
+      // Note: streamingMessageId can be set from a previous generation, so we check isStreaming
+      if (isStreaming) {
+        console.log('[Visibility] Already actively streaming, skipping check');
         return;
       }
 
@@ -204,6 +244,8 @@ export default function ChatPage() {
         setIsReconnecting(true);
         setIsLoading(true);
         setStreamingMessageId(messageId);
+        // Set initial status so LoadingStates shows immediately
+        setCurrentStatus({ action: 'processing', description: 'Reconnecting...' });
 
         // Reconnect to the stream
         const reconnectUrl = `/api/v1/messages/${messageId}/reconnect`;
@@ -241,94 +283,151 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [currentConversation?.messages]);
 
-  // Load last conversation on mount
+  // Debug: Track message state changes
+  useEffect(() => {
+    console.log('[Debug] localMessages changed:', localMessages.length, 'messages');
+    console.log('[Debug] Message IDs:', localMessages.map(m => m.id));
+    console.log('[Debug] conversationLoaded:', conversationLoaded);
+    console.log('[Debug] localConversationId:', localConversationId);
+    console.log('[Debug] streamingMessage:', streamingMessage?.id);
+  }, [localMessages, conversationLoaded, localConversationId, streamingMessage]);
+
+  // Load conversation on mount - prioritize URL parameter, then lastConversationStorage
   useEffect(() => {
     if (!user || !user.profileComplete || conversationsLoading) return;
     if (conversationLoaded && localConversationId) return; // Already have a conversation loaded
+    if (isIntentionallyEmpty) return; // User clicked "New Chat" - stay empty
     if (conversations.length === 0) return; // No conversations yet
 
+    // Priority 1: Check URL parameter
+    const urlConversationId = searchParams.get('conversation');
+    
+    // Priority 2: Check lastConversationStorage
     const lastConvId = lastConversationStorage.get();
-    if (lastConvId && lastConvId !== 'undefined') {
-      // Check if the last conversation still exists
+    
+    // Determine which conversation to load
+    let conversationToLoad: string | null = null;
+    
+    if (urlConversationId && urlConversationId !== 'undefined') {
+      // URL parameter takes precedence
+      const exists = conversations.some(c => c.id === urlConversationId);
+      if (exists) {
+        conversationToLoad = urlConversationId;
+        console.log('[Init] Loading conversation from URL:', urlConversationId);
+      } else {
+        console.warn('[Init] URL conversation not found:', urlConversationId);
+      }
+    }
+    
+    if (!conversationToLoad && lastConvId && lastConvId !== 'undefined') {
+      // Fall back to last conversation from storage
       const exists = conversations.some(c => c.id === lastConvId);
       if (exists) {
-        fetchConversation(lastConvId).then(conv => {
-          // Load conversation into our state manager
-          if (conv) {
-            loadConversation({
-              id: conv.id,
-              title: conv.title,
-              messages: conv.messages || [],
-              thoughts: conv.thoughts || {}
-            });
-          }
-        }).catch(err => {
-          console.error('[Init] Failed to load last conversation:', err);
-          // If fails, just use the first conversation
-          if (conversations.length > 0 && conversations[0].id) {
-            fetchConversation(conversations[0].id).then((conv) => {
-              lastConversationStorage.set(conversations[0].id);
-              if (conv) {
-                loadConversation({
-                  id: conv.id,
-                  title: conv.title,
-                  messages: conv.messages || [],
-                  thoughts: conv.thoughts || {}
-                });
-              }
-            }).catch(console.error);
-          }
-        });
-      } else {
-        // Last conversation doesn't exist anymore, load first available
-        if (conversations.length > 0 && conversations[0].id) {
-          fetchConversation(conversations[0].id).then((conv) => {
-            lastConversationStorage.set(conversations[0].id);
-            if (conv) {
-              loadConversation({
-                id: conv.id,
-                title: conv.title,
-                messages: conv.messages || [],
-                thoughts: conv.thoughts || {}
-              });
-            }
-          }).catch(console.error);
-        }
+        conversationToLoad = lastConvId;
+        console.log('[Init] Loading last conversation from storage:', lastConvId);
       }
-    } else if (conversations.length > 0 && conversations[0].id) {
-      // No last conversation stored, load first available
-      fetchConversation(conversations[0].id).then((conv) => {
-        lastConversationStorage.set(conversations[0].id);
+    }
+    
+    if (!conversationToLoad && conversations.length > 0 && conversations[0].id) {
+      // Fall back to first available conversation
+      conversationToLoad = conversations[0].id;
+      console.log('[Init] Loading first available conversation:', conversationToLoad);
+    }
+    
+    // Load the determined conversation
+    if (conversationToLoad) {
+      fetchConversation(conversationToLoad).then(conv => {
         if (conv) {
           loadConversation({
             id: conv.id,
             title: conv.title,
             messages: conv.messages || [],
-            thoughts: conv.thoughts || {}
+            thoughts: conv.thoughts || {},
+            toolExecutions: extractToolExecutionsFromMessages(conv.messages || [])
           });
+          lastConversationStorage.set(conv.id);
+          // Sync URL if it's different
+          if (urlConversationId !== conv.id) {
+            updateConversationUrl(conv.id);
+          }
         }
-      }).catch(console.error);
+      }).catch(err => {
+        console.error('[Init] Failed to load conversation:', err);
+      });
     }
-  }, [user, conversations, conversationLoaded, localConversationId, conversationsLoading, fetchConversation, loadConversation]);
+  }, [user, conversations, conversationLoaded, localConversationId, conversationsLoading, fetchConversation, loadConversation, searchParams]);
 
   const createNewConversation = async () => {
     try {
-      const newConv = await createConversation('New Conversation');
-      setCurrentConversation(newConv);
-      lastConversationStorage.set(newConv.id); // Save as last conversation
+      console.log('[NewChat] Starting new chat - clearing all state');
+      
+      // Clean up any active streaming
+      cleanupActiveStream();
+      
+      // Mark as intentionally empty (prevents auto-load)
+      setIsIntentionallyEmpty(true);
+      
+      // Clear current conversation state
+      clearConversation();
+      setCurrentConversation(null);
       setIsSidebarOpen(false);
       
-      // Load the new conversation into local state
-      loadConversation({
-        id: newConv.id,
-        title: newConv.title,
-        messages: [],
-        thoughts: {}
-      });
+      // Clear URL parameter - conversation will be created on first message
+      updateConversationUrl(null);
+      
+      // Clear lastConversationStorage so the load effect doesn't reload it
+      lastConversationStorage.clear();
+      
+      // Clear any streaming/loading states
+      setCurrentStatus(null);
+      setIsLoading(false);
+      setIsStreaming(false);
+      setStreamingMessageId(null);
+      setStreamingMessage(null);
+      setInput('');
+      
+      console.log('[NewChat] State cleared - localMessages should be empty now');
+      console.log('[NewChat] conversationLoaded:', conversationLoaded);
+      console.log('[NewChat] localConversationId:', localConversationId);
     } catch (error) {
-      console.error('[Chat] Failed to create conversation:', error);
-      alert('Failed to create conversation');
+      console.error('[Chat] Failed to clear conversation:', error);
     }
+  };
+
+  // Cleanup active stream and all streaming state
+  const cleanupActiveStream = () => {
+    console.log('[Chat] Cleaning up active stream');
+    
+    // Cancel the active reader if it exists
+    if (activeReaderRef.current) {
+      console.log('[Chat] Cancelling active stream reader');
+      try {
+        activeReaderRef.current.cancel();
+      } catch (error) {
+        console.error('[Chat] Error cancelling reader:', error);
+      }
+      activeReaderRef.current = null;
+    }
+    
+    // Clear all streaming state
+    activeStreamRef.current = null;
+    streamingContentRef.current = '';
+    streamingMessageIdRef.current = null;
+    currentStreamingMessageRef.current = null;
+    
+    setIsLoading(false);
+    setSkeletonShrinking(false);
+    setIsStreaming(false);
+    setIsThinkingDisplayComplete(false);
+    setStreamingMessageId(null);
+    setStreamingMessage(null);
+    setCurrentStatus(null);
+    setIsReconnecting(false);
+    
+    // Clear generation storage
+    generationStorage.clear();
+    
+    console.log('[Chat] Stream cleanup complete');
   };
 
   const switchConversation = async (id: string) => {
@@ -337,7 +436,13 @@ export default function ChatPage() {
       return;
     }
     
+    // Clean up any active streaming before switching
+    cleanupActiveStream();
+    
     try {
+      setIsSwitchingConversation(true);
+      setIsIntentionallyEmpty(false); // Clear the empty flag when switching
+      
       const conversation = await fetchConversation(id);
       lastConversationStorage.set(id); // Save as last conversation
       setIsSidebarOpen(false);
@@ -348,8 +453,12 @@ export default function ChatPage() {
           id: conversation.id,
           title: conversation.title,
           messages: conversation.messages || [],
-          thoughts: conversation.thoughts || {}
+          thoughts: conversation.thoughts || {},
+          toolExecutions: extractToolExecutionsFromMessages(conversation.messages || [])
         });
+        
+        // Update URL with new conversation ID
+        updateConversationUrl(conversation.id);
       } else {
         clearConversation();
       }
@@ -361,6 +470,8 @@ export default function ChatPage() {
       if (!isReconnecting) {
         alert('Failed to load conversation');
       }
+    } finally {
+      setIsSwitchingConversation(false);
     }
   };
 
@@ -374,17 +485,25 @@ export default function ChatPage() {
     if (!conversationToDelete) return;
 
     try {
+      setIsDeleting(true);
       await deleteConversation(conversationToDelete);
 
       // If we deleted the active conversation, clear it
       if (conversationToDelete === currentConversation?.id) {
         setCurrentConversation(null);
-        // Switch to first available conversation
-        if (conversations.length > 0) {
-          const firstConv = conversations.find(c => c.id !== conversationToDelete);
-          if (firstConv) {
-            await fetchConversation(firstConv.id);
-          }
+        
+        // Switch to first available conversation OR clear state if none left
+        const remainingConversations = conversations.filter(c => c.id !== conversationToDelete);
+        if (remainingConversations.length > 0) {
+          const firstConv = remainingConversations[0];
+          await fetchConversation(firstConv.id);
+        } else {
+          // No more conversations - clear all local state
+          console.log('[Chat] No conversations remaining - clearing local state');
+          clearConversation();
+          updateConversationUrl(null);
+          lastConversationStorage.clear();
+          setIsIntentionallyEmpty(true);
         }
       }
 
@@ -393,6 +512,8 @@ export default function ChatPage() {
     } catch (error) {
       console.error('[Chat] Failed to delete conversation:', error);
       alert('Failed to delete conversation');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -441,6 +562,8 @@ export default function ChatPage() {
     let thinkingCompleted = false; // Track when thinking animation finishes
     let thinkingStreamingComplete = false; // Track when thinking streaming from server is complete
     let contentCanStart = false; // Track when content display can begin
+    let hasTools = false; // Track if this message uses tools
+    let allToolsComplete = false; // Track when all tools have finished
 
     const startSkeletonShrink = () => {
       if (streamingStarted) return;
@@ -477,27 +600,27 @@ export default function ChatPage() {
 
       isDisplayingThinking = false;
       
-      // When thinking animation completes AND server thinking is done, start content after delay
-      if (!thinkingCompleted && displayedThinking.length > 0 && thinkingStreamingComplete && thinkingQueue.length === 0) {
+      // After displaying all queued thinking, mark thinking as complete
+      if (thinkingStreamingComplete && !thinkingCompleted) {
         thinkingCompleted = true;
-        setIsThinkingDisplayComplete(true); // Mark thinking display as complete
-        console.log('[Stream] Thinking fully completed (server done + display done), starting content after brief delay');
         
-        // Wait for thinking bubble shrink animation to complete (400ms)
+        // Mark thinking as NOT streaming - this triggers the shrink
+        setThought(messageId, displayedThinking, false);
+        
+        // Wait for shrink animation (400ms), then allow content to start
         setTimeout(() => {
           contentCanStart = true;
-          console.log('[Stream] Content can now start after thinking bubble shrink completed');
           
-          // Create initial streaming message immediately so bubble appears
+          // Create streaming message bubble
           const initialStreamingMsg = { id: messageId, content: '' };
           setStreamingMessage(initialStreamingMsg);
           currentStreamingMessageRef.current = initialStreamingMsg;
           
-          // Trigger content display if there's queued content
+          // Start displaying queued content
           if (displayQueue.length > 0 && !isDisplaying) {
             displayNextChar();
           }
-        }, 400); // Wait for full shrink animation duration
+        }, 400);
       }
     };
 
@@ -562,6 +685,11 @@ export default function ChatPage() {
 
       const reader = eventSource.body?.getReader();
       const decoder = new TextDecoder();
+      
+      // Store reader ref so it can be cancelled during conversation switching
+      if (reader) {
+        activeReaderRef.current = reader;
+      }
 
       if (reader) {
         while (true) {
@@ -623,31 +751,60 @@ export default function ChatPage() {
                   console.log('[Stream] Received tool_event:', toolEvent.type, toolEvent.toolName || toolEvent.toolId);
                   
                   if (toolEvent.type === 'tool_start') {
-                    // Create new tool execution
-                    const newExecution = {
-                      toolId: toolEvent.toolId,
-                      toolType: toolEvent.toolType,
-                      toolName: toolEvent.toolName,
-                      status: 'running' as const,
-                      startTime: toolEvent.timestamp,
-                      steps: [],
-                      streamingContent: '',
-                      metadata: toolEvent.metadata,
-                    };
-                    conversationState.addToolExecution(messageId, newExecution);
-                    console.log(`[Stream] Tool started: ${toolEvent.toolName}, executions for ${messageId}:`, conversationState.getToolExecutions(messageId).length);
-                    console.log(`[Stream] Current tool executions for ${messageId}:`, conversationState.getToolExecutions(messageId).map(t => `${t.toolName}(${t.status})`));
+                    // Mark that this message uses tools
+                    hasTools = true;
                     
-                    // Immediately save tool execution when it starts
-                    saveToolExecutionsToDatabase(messageId, localConversationId || null);
+                    // Update status to show tool is running
+                    const toolAction = toolEvent.toolType === 'search' ? 'searching' 
+                      : toolEvent.toolType === 'scrape' ? 'scraping'
+                      : toolEvent.toolType === 'command' ? 'running_command'
+                      : 'processing';
+                    const toolDescription = toolEvent.toolName || toolEvent.toolType || 'Running tool';
+                    setCurrentStatus({ action: toolAction, description: toolDescription });
+                    
+                    // Check if this tool execution already exists (e.g., during reconnection)
+                    const existingExecutions = conversationState.getToolExecutions(messageId);
+                    const existingExecution = existingExecutions.find(e => e.toolId === toolEvent.toolId);
+                    
+                    if (!existingExecution) {
+                      // Create new tool execution
+                      const newExecution = {
+                        toolId: toolEvent.toolId,
+                        toolType: toolEvent.toolType,
+                        toolName: toolEvent.toolName,
+                        status: 'running' as const,
+                        startTime: toolEvent.timestamp,
+                        steps: [],
+                        streamingContent: '',
+                        metadata: toolEvent.metadata,
+                      };
+                      conversationState.addToolExecution(messageId, newExecution);
+                      console.log(`[Stream] Tool started: ${toolEvent.toolName}, executions for ${messageId}:`, conversationState.getToolExecutions(messageId).length);
+                      console.log(`[Stream] Current tool executions for ${messageId}:`, conversationState.getToolExecutions(messageId).map(t => `${t.toolName}(${t.status})`));
+                      
+                      // Immediately save tool execution when it starts
+                      saveToolExecutionsToDatabase(messageId, localConversationId || null);
+                    } else {
+                      console.log(`[Stream] Tool execution already exists (reconnection): ${toolEvent.toolName} (${toolEvent.toolId})`);
+                    }
                   } else if (toolEvent.type === 'tool_progress') {
                     // Add progress step
-                    conversationState.addToolStep(messageId, toolEvent.toolId, {
+                    const stepData = {
                       step: toolEvent.step,
                       timestamp: toolEvent.timestamp,
                       progress: toolEvent.progress,
                       data: toolEvent.data,
+                    };
+                    
+                    // Debug log to see what we're storing
+                    console.log('[Stream] Adding tool step:', {
+                      messageId,
+                      toolId: toolEvent.toolId,
+                      stepData,
+                      rawEvent: toolEvent
                     });
+                    
+                    conversationState.addToolStep(messageId, toolEvent.toolId, stepData);
                     
                     // Handle streaming content (not for thinking - that has its own state)
                     if (toolEvent.streamingContent && toolEvent.toolType !== 'thinking') {
@@ -677,6 +834,37 @@ export default function ChatPage() {
                     console.log(`[Stream] Tool completed: ${toolEvent.toolName} (${duration}ms)`);
                     console.log(`[Stream] Updated tool executions for ${messageId}:`, conversationState.getToolExecutions(messageId).map(t => `${t.toolName}(${t.status})`));
                     
+                    // Check if all tools are now complete
+                    const runningTools = conversationState.getToolExecutions(messageId).filter(t => t.status === 'running');
+                    if (runningTools.length === 0) {
+                      allToolsComplete = true;
+                      console.log('[Stream] All tools completed, content can now start');
+                      
+                      // Update status to show we're generating response
+                      setCurrentStatus({ action: 'processing', description: 'Generating response' });
+                      
+                      // Allow content to start - whether it's already queued or will arrive soon
+                      if (!contentCanStart) {
+                        contentCanStart = true;
+                        console.log('[Stream] Content flag set to true, ready for content chunks');
+                        
+                        // If there's already queued content, start displaying it
+                        if (displayQueue.length > 0) {
+                          // Create streaming message if it doesn't exist
+                          if (!currentStreamingMessageRef.current) {
+                            const initialStreamingMsg = { id: messageId, content: '' };
+                            setStreamingMessage(initialStreamingMsg);
+                            currentStreamingMessageRef.current = initialStreamingMsg;
+                          }
+                          
+                          // Start displaying content
+                          if (!isDisplaying) {
+                            displayNextChar();
+                          }
+                        }
+                      }
+                    }
+                    
                     // Save completion immediately
                     saveToolExecutionsToDatabase(messageId, localConversationId || null);
                   } else if (toolEvent.type === 'tool_error') {
@@ -699,7 +887,7 @@ export default function ChatPage() {
                   // Check if this is a thinking chunk or content chunk
                   if (event.thinking) {
                     // Handle thinking chunks - only queue for character-by-character animation
-                    console.log('[Stream] Received thinking chunk, length:', event.content.length, 'content:', event.content.substring(0, 50));
+                    // console.log('[Stream] Received thinking chunk, length:', event.content.length, 'content:', event.content.substring(0, 50));
                     
                     // Start UI on first thinking chunk (same as content)
                     if (!firstThinkingReceived) {
@@ -712,24 +900,39 @@ export default function ChatPage() {
                     if (!isDisplayingThinking) displayNextThinkingChar();
                   } else {
                     // Handle regular content chunks
-                    console.log('[Stream] Received content chunk, length:', event.content.length);
+                    
+                    // If we received thinking before, thinking is NOW DONE (streaming from backend complete)
+                    if (firstThinkingReceived && !thinkingStreamingComplete) {
+                      thinkingStreamingComplete = true;
+                      console.log('🔥🔥🔥 THINKING STREAMING ENDED - First content chunk arrived:', JSON.stringify(event.content));
+                      
+                      // The shrink will be triggered by displayNextThinkingChar() when it finishes
+                      // Don't call setThought here - let the display loop finish first
+                    }
+                    
                     if (!firstCharReceived) {
                       firstCharReceived = true;
                       startSkeletonShrink();
                       
-                      // If no thinking was received, allow content to start immediately
+                      // If no thinking was received, check if we can start content
                       if (!firstThinkingReceived) {
-                        contentCanStart = true;
-                        
-                        // Create initial streaming message immediately so bubble appears
-                        const initialStreamingMsg = { id: messageId, content: '' };
-                        setStreamingMessage(initialStreamingMsg);
-                        currentStreamingMessageRef.current = initialStreamingMsg;
+                        // Only allow content if no tools, or all tools are complete
+                        if (!hasTools || allToolsComplete) {
+                          contentCanStart = true;
+                          console.log('[Stream] ✅ No thinking - starting content immediately');
+                          
+                          // Create initial streaming message immediately so bubble appears
+                          const initialStreamingMsg = { id: messageId, content: '' };
+                          setStreamingMessage(initialStreamingMsg);
+                          currentStreamingMessageRef.current = initialStreamingMsg;
+                        } else {
+                          console.log('[Stream] Content blocked - waiting for tools to complete (no thinking case)');
+                        }
                       }
                     }
                     
                     // Always queue content chunks, but don't display until thinking is complete
-                    console.log('[Stream] Queueing content chunk for later display');
+                    // console.log('[Stream] Queueing content chunk for later display');
                     displayQueue.push(...event.content.split(''));
                     
                     // Only start displaying if content can start (thinking is complete)
@@ -741,10 +944,10 @@ export default function ChatPage() {
                 }
 
                 if (event.type === 'thinking' && event.content) {
-                  console.log('[Stream] Received thinking (full block), length:', event.content.length);
+                  // console.log('[Stream] Received thinking (full block), length:', event.content.length);
                   // This is the final complete thinking (sent after chunks)
                   thinkingStreamingComplete = true;
-                  console.log('[Stream] Thinking streaming from server is now complete');
+                  // console.log('[Stream] Thinking streaming from server is now complete');
                   
                   // Don't accumulate - just replace with the complete version
                   // to avoid duplication if we already received thinking chunks
@@ -753,7 +956,7 @@ export default function ChatPage() {
                     displayedThinking = event.content;
                     setThought(messageId, displayedThinking, false); // Not streaming
                   } else {
-                    console.log('[Stream] Ignoring thinking event, already have chunks');
+                    // console.log('[Stream] Ignoring thinking event, already have chunks');
                   }
                   continue;
                 }
@@ -809,9 +1012,13 @@ export default function ChatPage() {
           messageId: completedStreamingMessage?.id,
           contentLength: completedStreamingMessage?.content?.length || 0
         });
+        
+        console.log(`[Stream] 🔍 CRITICAL CHECK - completedStreamingMessage:`, !!completedStreamingMessage, 'convId (param):', convId, 'localConversationId (closure):', localConversationId);
 
         // Save the completed streaming message to permanent conversation state
-        if (completedStreamingMessage && localConversationId) {
+        // USE convId parameter, not localConversationId from closure!
+        if (completedStreamingMessage && convId) {
+          console.log(`[Stream] ✅ ADDING MESSAGE TO PERMANENT STATE using convId:`, convId);
           console.log(`[Stream] Adding completed message to permanent state:`, {
             messageId: completedStreamingMessage.id,
             contentLength: completedStreamingMessage.content.length,
@@ -825,16 +1032,19 @@ export default function ChatPage() {
             content: completedStreamingMessage.content,
             timestamp: new Date(),
             metadata: {
-              conversationId: localConversationId,
+              conversationId: convId, // Use convId parameter, not localConversationId!
             }
           });
           
           console.log(`[Stream] addLocalMessage called, waiting for state update...`);
+          console.log(`[Stream] localMessages.length BEFORE addLocalMessage:`, localMessages.length);
           
           // Wait a bit to ensure state has updated
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 200)); // Increased wait time
           
-          console.log(`[Stream] After state update wait - messageCount should be:`, localMessages.length + 1);
+          console.log(`[Stream] After state update wait - checking if message appeared in state...`);
+          // Note: localMessages might not update here due to closure, but that's okay
+          // The important thing is that conversationState has it
 
           // Save tool execution data to database (if any exist for this message)
           const toolExecutions = conversationState.getToolExecutions(completedStreamingMessage.id);
@@ -842,7 +1052,7 @@ export default function ChatPage() {
             console.log(`[Stream] Saving ${toolExecutions.length} tool executions for message ${completedStreamingMessage.id}`);
             
             try {
-              const response = await fetch(`/api/v1/conversations/${localConversationId}/messages/${completedStreamingMessage.id}/tool-executions`, {
+              const response = await fetch(`/api/v1/conversations/${convId}/messages/${completedStreamingMessage.id}/tool-executions`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -861,6 +1071,9 @@ export default function ChatPage() {
           } else {
             console.log(`[Stream] No tool executions to save for message ${completedStreamingMessage.id}`);
           }
+        } else {
+          console.error(`[Stream] ❌ FAILED TO ADD MESSAGE - completedStreamingMessage:`, !!completedStreamingMessage, 'convId:', convId);
+          console.error(`[Stream] ❌ This is why the message disappears! It's never added to localMessages!`);
         }
 
         // Mark any streaming thoughts as completed
@@ -870,21 +1083,13 @@ export default function ChatPage() {
 
         console.log(`[Stream] Streaming completed for message ${messageId}.`);
         
-        console.log(`[Stream] About to clear streaming message. Current state:`, {
-          capturedMessageId: completedStreamingMessage?.id,
-          capturedMessageContent: completedStreamingMessage?.content?.length || 0,
-          currentStreamingMessageId: streamingMessage?.id,
-          currentStreamingMessageContent: streamingMessage?.content?.length || 0,
-          localMessagesCount: localMessages.length,
-          hasStreamingMessage: !!streamingMessage
-        });
+        console.log(`[Stream] Message should now be in permanent state. Waiting to ensure React has rendered it...`);
         
-        // Clear streaming state
-        console.log(`[Stream] Clearing streaming message in completion`);
-        setStreamingMessage(null);
-        currentStreamingMessageRef.current = null;
+        // DON'T clear streamingMessage immediately - let it stay until we're sure the permanent message is rendered
+        // This prevents the message from disappearing during the React render cycle
+        // The streaming message will be cleaned up in finally{} when all streaming state is cleared
         
-        console.log(`[Stream] Streaming message cleared`);
+        console.log(`[Stream] Keeping streaming message visible until finally cleanup`);
       }
     } catch (error: unknown) {
       console.error('[Stream] Error:', error);
@@ -893,9 +1098,15 @@ export default function ChatPage() {
       currentStreamingMessageRef.current = null;
       throw error;
     } finally {
-      console.log('[Stream] Cleaning up - clearing generation storage');
+      console.log('[Stream] Cleaning up - clearing all streaming state');
+      
+      // Clear streaming message (if not already cleared by error)
+      setStreamingMessage(null);
+      currentStreamingMessageRef.current = null;
+      
       generationStorage.clear();
       activeStreamRef.current = null;
+      activeReaderRef.current = null; // Clear reader ref
       setIsLoading(false);
       setSkeletonShrinking(false);
       setIsStreaming(false);
@@ -917,6 +1128,11 @@ export default function ChatPage() {
         const newConv = await createConversation('New Conversation');
         convId = newConv.id;
         setCurrentConversation(newConv);
+        lastConversationStorage.set(newConv.id);
+        
+        // Clear the intentionally empty flag
+        setIsIntentionallyEmpty(false);
+        
         // Load the new conversation into local state
         loadConversation({
           id: newConv.id,
@@ -924,6 +1140,9 @@ export default function ChatPage() {
           messages: [],
           thoughts: {}
         });
+        
+        // Update URL with new conversation ID
+        updateConversationUrl(newConv.id);
       } catch (error) {
         console.error('[Chat] Failed to create conversation:', error);
         alert('Failed to create conversation');
@@ -1085,7 +1304,7 @@ export default function ChatPage() {
 
                 <ChatInput
                   value={input}
-                  disabled={isLoading}
+                  disabled={isLoading || isStreaming}
                   messagesEndRef={messagesEndRef}
                   onChange={setInput}
                   onSend={sendMessage}
@@ -1104,6 +1323,22 @@ export default function ChatPage() {
             cancelText="Cancel"
             variant="danger"
           />
+          
+          {isDeleting && (
+            <LoadingSpinner 
+              mode="fullscreen" 
+              message="Deleting conversation..." 
+              size={32}
+            />
+          )}
+          
+          {isSwitchingConversation && (
+            <LoadingSpinner 
+              mode="fullscreen" 
+              message="Loading conversation..." 
+              size={32}
+            />
+          )}
         </>
       )}
     </div>

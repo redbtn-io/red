@@ -3,6 +3,61 @@ import { conversationState, type ConversationState, type ConversationMessage, ty
 import type { ToolExecution } from '../tools/tool-types';
 
 /**
+ * Sanitize tool executions to ensure steps are valid
+ */
+function sanitizeToolExecutions(executions?: Record<string, ToolExecution[]>): Record<string, ToolExecution[]> {
+  if (!executions) return {};
+  
+  const sanitized: Record<string, ToolExecution[]> = {};
+  
+  for (const [messageId, tools] of Object.entries(executions)) {
+    sanitized[messageId] = tools.map(tool => {
+      // Sanitize currentStep if it exists
+      let sanitizedCurrentStep: string | undefined;
+      if (tool.currentStep) {
+        if (typeof tool.currentStep === 'string') {
+          sanitizedCurrentStep = tool.currentStep;
+        } else if (typeof tool.currentStep === 'object' && 'step' in tool.currentStep) {
+          // currentStep was accidentally set to step object
+          console.warn('[Sanitize] currentStep was an object, extracting step property:', tool.currentStep);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          sanitizedCurrentStep = String((tool.currentStep as any).step);
+        } else {
+          // Fallback: try to convert to string
+          sanitizedCurrentStep = String(tool.currentStep);
+        }
+      }
+      
+      return {
+        ...tool,
+        currentStep: sanitizedCurrentStep,
+        steps: (tool.steps || [])
+          .filter(step => {
+            // Filter out invalid steps
+            if (!step || typeof step !== 'object') return false;
+            // Filter out if this is accidentally an event object
+            if ('type' in step && 'toolType' in step && 'toolId' in step) {
+              console.warn('[Sanitize] Removed event object from steps:', step);
+              return false;
+            }
+            // Must have a 'step' property
+            if (!('step' in step)) return false;
+            return true;
+          })
+          .map(step => ({
+            step: String(step.step),
+            timestamp: step.timestamp || Date.now(),
+            progress: typeof step.progress === 'number' ? step.progress : undefined,
+            data: step.data,
+          })),
+      };
+    });
+  }
+  
+  return sanitized;
+}
+
+/**
  * React hook for managing conversation state
  */
 export function useConversationState() {
@@ -24,7 +79,12 @@ export function useConversationState() {
     thoughts?: Record<string, string>;
     toolExecutions?: Record<string, ToolExecution[]>; // Add tool executions support
   }) => {
-    conversationState.loadConversation(conversationData);
+    // Sanitize tool executions before loading
+    const sanitizedData = {
+      ...conversationData,
+      toolExecutions: sanitizeToolExecutions(conversationData.toolExecutions),
+    };
+    conversationState.loadConversation(sanitizedData);
   }, []);
 
   const clearConversation = useCallback(() => {

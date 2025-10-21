@@ -88,8 +88,8 @@ export function Sidebar({
                   className={`
                     relative rounded-lg transition-all group
                     ${conv.id === activeConversationId 
-                      ? 'bg-[#1a1a1a] border border-[#2a2a2a]' 
-                      : 'hover:bg-[#1a1a1a] border border-transparent'
+                      ? 'bg-[#1a1a1a] border-2 border-red-500/50 shadow-lg shadow-red-500/10' 
+                      : 'hover:bg-[#1a1a1a] border-2 border-transparent'
                     }
                   `}
                 >
@@ -99,7 +99,14 @@ export function Sidebar({
                     disabled={editingTitleId === conv.id}
                   >
                     <div className="flex items-start gap-2 pr-16">
-                      <MessageSquare size={16} className="mt-0.5 flex-shrink-0 text-gray-400" />
+                      <MessageSquare 
+                        size={16} 
+                        className={`mt-0.5 flex-shrink-0 ${
+                          conv.id === activeConversationId 
+                            ? 'text-red-400' 
+                            : 'text-gray-400'
+                        }`} 
+                      />
                       <div className="flex-1 min-w-0">
                         {editingTitleId === conv.id ? (
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -130,7 +137,13 @@ export function Sidebar({
                             </button>
                           </div>
                         ) : (
-                          <div className="text-sm font-medium truncate text-gray-200">{conv.title}</div>
+                          <div className={`text-sm font-medium truncate ${
+                            conv.id === activeConversationId 
+                              ? 'text-red-100 font-semibold' 
+                              : 'text-gray-200'
+                          }`}>
+                            {conv.title}
+                          </div>
                         )}
                         <div className="text-xs text-gray-500 mt-0.5">
                           {('messageCount' in conv ? conv.messageCount : 'messages' in conv ? conv.messages?.length : 0) || 0} messages
@@ -167,7 +180,7 @@ export function Sidebar({
           <div className="p-4 border-t border-[#2a2a2a] space-y-3">
             {/* Logs Link */}
             <Link
-              href="/logs"
+              href={activeConversationId ? `/logs?conversation=${activeConversationId}` : '/logs'}
               className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#1a1a1a] transition-colors group"
             >
               <Terminal size={16} className="text-gray-400 group-hover:text-[var(--red-primary)]" />

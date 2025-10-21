@@ -3,6 +3,7 @@ import { verifyAuth } from '@/lib/auth/auth';
 import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
 import { RateLimits } from '@/lib/rate-limit/rate-limit';
 import { getDatabase } from '@redbtn/ai';
+import { extractThinking } from '@/lib/api/thinking';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -69,14 +70,25 @@ export async function GET(
       conversation: {
         id: conversation.conversationId,
         title: conversation.title || 'Untitled Conversation',
-        messages: messages.map((msg: DbMessage) => ({
-          id: msg.messageId || msg._id?.toString() || '', // Prefer messageId, fallback to ObjectId
-          role: msg.role,
-          content: msg.content,
-          timestamp: msg.timestamp,
-          metadata: msg.metadata,
-          toolExecutions: msg.toolExecutions || [], // Include tool executions
-        })),
+        messages: messages.map((msg: DbMessage) => {
+          // Clean thinking tags from message content
+          const { thinking, cleanedContent } = extractThinking(msg.content);
+          
+          // If thinking was found in content, add it to thoughtsMap (if not already there)
+          const msgId = msg.messageId || msg._id?.toString() || '';
+          if (thinking && msgId && !thoughtsMap[msgId]) {
+            thoughtsMap[msgId] = thinking;
+          }
+          
+          return {
+            id: msgId,
+            role: msg.role,
+            content: cleanedContent, // Use cleaned content without <think> tags
+            timestamp: msg.timestamp,
+            metadata: msg.metadata,
+            toolExecutions: msg.toolExecutions || [], // Include tool executions
+          };
+        }),
         thoughts: thoughtsMap, // Include thoughts mapped by messageId
         lastMessageAt: conversation.updatedAt,
         messageCount: conversation.metadata?.messageCount || messages.length,
@@ -141,13 +153,18 @@ export async function PATCH(
       conversation: {
         id: updatedConversation!.conversationId,
         title: updatedConversation!.title || 'Untitled Conversation',
-        messages: messages.map((msg: DbMessage) => ({
-          id: msg.messageId || msg._id?.toString() || '', // Prefer messageId, fallback to ObjectId
-          role: msg.role,
-          content: msg.content,
-          timestamp: msg.timestamp,
-          metadata: msg.metadata,
-        })),
+        messages: messages.map((msg: DbMessage) => {
+          // Clean thinking tags from message content
+          const { cleanedContent } = extractThinking(msg.content);
+          
+          return {
+            id: msg.messageId || msg._id?.toString() || '',
+            role: msg.role,
+            content: cleanedContent, // Use cleaned content without <think> tags
+            timestamp: msg.timestamp,
+            metadata: msg.metadata,
+          };
+        }),
         lastMessageAt: updatedConversation!.updatedAt,
         messageCount: updatedConversation!.metadata?.messageCount || messages.length,
         isArchived: false,

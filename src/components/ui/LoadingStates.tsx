@@ -13,13 +13,15 @@ interface LoadingStateContainerProps {
   thinking: string | null;
   skeletonShrinking: boolean;
   isReconnecting: boolean;
+  onOpenModal?: () => void;
 }
 
 export function LoadingStateContainer({
   currentStatus,
   thinking,
   skeletonShrinking,
-  isReconnecting
+  isReconnecting,
+  onOpenModal
 }: LoadingStateContainerProps) {
   const [showThinking, setShowThinking] = useState(false);
 
@@ -78,7 +80,8 @@ export function LoadingStateContainer({
                 ? 'transition-all duration-[800ms] ease-out opacity-0 scale-x-0 -translate-x-4' 
                 : 'transition-all duration-[800ms] ease-out opacity-100 scale-x-100 translate-x-0'
             }`}
-            title="Processing"
+            title="Click to view details"
+            onClick={onOpenModal}
           >
           {/* Line 1: Current status with icon */}
           <div className="flex items-center gap-2 text-sm text-red-400">

@@ -175,11 +175,22 @@ export function ThinkingSection({ thinkingExecutions, isContentStreaming = false
                       </div>
                       {execution.steps.length > 0 && (
                         <div className="mt-1 space-y-1">
-                          {execution.steps.map((step, stepIndex) => (
-                            <p key={stepIndex} className="text-xs text-gray-400">
-                              {step.step}
-                            </p>
-                          ))}
+                          {execution.steps.map((step, stepIndex) => {
+                            // Defensive check: ensure step is valid
+                            if (!step || typeof step !== 'object') {
+                              console.warn('[ThinkingSection] Invalid step:', step);
+                              return null;
+                            }
+                            if (!('step' in step)) {
+                              console.warn('[ThinkingSection] Step missing "step" property:', step);
+                              return null;
+                            }
+                            return (
+                              <p key={stepIndex} className="text-xs text-gray-400">
+                                {String(step.step)}
+                              </p>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
