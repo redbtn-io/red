@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
-import User from '@/lib/models/User';
-import { getUserFromRequest } from '@/lib/auth';
+import connectToDatabase from '@/lib/database/mongodb';
+import User from '@/lib/database/models/auth/User';
+import { getUserFromRequest } from '@/lib/auth/auth';
 
 /**
  * GET /api/auth/me

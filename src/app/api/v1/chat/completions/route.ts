@@ -6,9 +6,15 @@ import {
   extractUserMessage,
   getConversationIdFromBody,
   generateStableConversationId
-} from '@/lib/api-helpers';
+} from '@/lib/api/api-helpers';
+import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
+import { RateLimits } from '@/lib/rate-limit/rate-limit';
 
 export async function POST(request: NextRequest) {
+  // Apply rate limiting (30 requests/minute for chat)
+  const rateLimitResult = await rateLimitAPI(request, RateLimits.CHAT);
+  if (rateLimitResult) return rateLimitResult;
+
   try {
     const body: ChatCompletionRequest = await request.json();
 
@@ -58,7 +64,8 @@ export async function POST(request: NextRequest) {
         checkReady();
       });
       
-      const generationPromise = (async () => {
+      // Start generation in background
+      (async () => {
         try {
           console.log('[Completions] Waiting for subscription to be ready...');
           await subscriptionReadyPromise;
@@ -86,7 +93,7 @@ export async function POST(request: NextRequest) {
             }
             
             if (typeof chunk === 'object' && chunk._thinkingChunk) {
-              await red.messageQueue.publishThinkingChunk(messageId, chunk.content);
+              // Thinking chunk already published by respond.ts - skip duplicate
               continue;
             }
             
@@ -110,6 +117,9 @@ export async function POST(request: NextRequest) {
                 } : undefined
               };
               await red.messageQueue.completeGeneration(messageId, metadata);
+              
+              // Note: Assistant message is already saved by red.memory in respond.ts
+              // No need to save here - the AI package handles all message persistence
             }
           }
         } catch (error) {
@@ -162,20 +172,20 @@ export async function POST(request: NextRequest) {
                 break;
               }
               
-              console.log('[Completions] Received event from Redis:', event.type);
-              
               if (event.type === 'init' && event.existingContent) {
                 const chunks = event.existingContent.match(/.{1,50}/g) || [];
                 for (const chunk of chunks) {
                   if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                    type: 'content',
+                    type: 'chunk',
                     content: chunk
                   })}\n\n`))) break;
                 }
               } else if (event.type === 'chunk') {
+                // Forward chunk with thinking property if present
                 if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'content',
-                  content: event.content
+                  type: 'chunk',
+                  content: event.content,
+                  thinking: event.thinking || false
                 })}\n\n`))) break;
               } else if (event.type === 'status') {
                 console.log('[Completions] Forwarding status:', event.action);
@@ -183,11 +193,6 @@ export async function POST(request: NextRequest) {
                   type: 'status',
                   action: event.action,
                   description: event.description
-                })}\n\n`))) break;
-              } else if (event.type === 'thinking_chunk') {
-                if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'thinking_chunk',
-                  content: event.content
                 })}\n\n`))) break;
               } else if (event.type === 'thinking') {
                 if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
@@ -200,6 +205,12 @@ export async function POST(request: NextRequest) {
                   type: 'tool_status',
                   status: event.status,
                   action: event.action
+                })}\n\n`))) break;
+              } else if (event.type === 'tool_event') {
+                console.log('[Completions] Forwarding tool_event:', event.event?.type);
+                if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'tool_event',
+                  event: event.event
                 })}\n\n`))) break;
               } else if (event.type === 'complete') {
                 safeEnqueue(encoder.encode(`data: ${JSON.stringify({
@@ -273,12 +284,13 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(completion);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Completion error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
       {
         error: {
-          message: error.message || 'Internal server error',
+          message: errorMessage,
           type: 'internal_error'
         }
       },

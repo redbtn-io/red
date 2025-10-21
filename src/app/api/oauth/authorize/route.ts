@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
-import OAuthClient from '@/lib/models/OAuthClient';
-import OAuthAuthorizationCode from '@/lib/models/OAuthAuthorizationCode';
-import User from '@/lib/models/User';
-import { getUserFromRequest } from '@/lib/auth';
+import connectToDatabase from '@/lib/database/mongodb';
+import OAuthClient from '@/lib/database/models/oauth/OAuthClient';
+import OAuthAuthorizationCode from '@/lib/database/models/oauth/OAuthAuthorizationCode';
+import User from '@/lib/database/models/auth/User';
+import { getUserFromRequest } from '@/lib/auth/auth';
 import {
   generateAuthorizationCode,
   parseScopes,
@@ -11,7 +11,7 @@ import {
   isValidRedirectUri,
   canGrantScope,
   AVAILABLE_SCOPES,
-} from '@/lib/oauth';
+} from '@/lib/auth/oauth';
 
 /**
  * GET /api/oauth/authorize

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
-import OAuthAccessToken from '@/lib/models/OAuthAccessToken';
-import OAuthClient from '@/lib/models/OAuthClient';
-import User from '@/lib/models/User';
+import connectToDatabase from '@/lib/database/mongodb';
+import OAuthAccessToken from '@/lib/database/models/oauth/OAuthAccessToken';
+import OAuthClient from '@/lib/database/models/oauth/OAuthClient';
+import User from '@/lib/database/models/auth/User';
 
 /**
  * POST /api/oauth/introspect
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { token, token_type_hint } = body;
+    const { token } = body;
 
     // Get client from form data if not in Basic Auth
     if (!clientId) {

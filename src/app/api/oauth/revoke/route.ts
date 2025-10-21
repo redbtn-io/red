@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
-import OAuthAccessToken from '@/lib/models/OAuthAccessToken';
-import OAuthClient from '@/lib/models/OAuthClient';
-import { verifyClientSecret } from '@/lib/oauth';
+import connectToDatabase from '@/lib/database/mongodb';
+import OAuthAccessToken from '@/lib/database/models/oauth/OAuthAccessToken';
+import OAuthClient from '@/lib/database/models/oauth/OAuthClient';
+import { verifyClientSecret } from '@/lib/auth/oauth';
 
 /**
  * POST /api/oauth/revoke

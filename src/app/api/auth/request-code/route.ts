@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
-import AuthCode from '@/lib/models/AuthCode';
-import AuthSession from '@/lib/models/AuthSession';
-import { generateMagicToken, sendMagicLinkEmail } from '@/lib/email';
-import { rateLimitAPI } from '@/lib/rate-limit-helpers';
-import { RateLimits } from '@/lib/rate-limit';
-import crypto from 'crypto';
+import connectToDatabase from '@/lib/database/mongodb';
+import AuthCode from '@/lib/database/models/auth/AuthCode';
+import AuthSession from '@/lib/database/models/auth/AuthSession';
+import { generateMagicToken, sendMagicLinkEmail } from '@/lib/email/email';
+import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
+import { RateLimits } from '@/lib/rate-limit/rate-limit';
 
 /**
  * POST /api/auth/request-code
- * Request a magic link for login/signup
+ * Request a sign in link for login/signup
  */
 export async function POST(request: NextRequest) {
   // Apply strict rate limiting for auth endpoints
@@ -48,7 +47,7 @@ export async function POST(request: NextRequest) {
     // Delete any existing codes for this email
     await AuthCode.deleteMany({ email: email.toLowerCase() });
 
-    // Generate new magic link token
+    // Generate new sign in link token
     const token = generateMagicToken();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
@@ -76,20 +75,20 @@ export async function POST(request: NextRequest) {
     // Get base URL from environment or fall back to request URL
     const baseUrl = process.env.BASE_URL || `${request.nextUrl.protocol}//${request.nextUrl.host}`;
 
-    // Send email with magic link
+    // Send email with sign in link
     await sendMagicLinkEmail(email, token, baseUrl);
 
-    console.log('[Auth] Magic link sent to:', email, 'sessionId:', sessionId);
+    console.log('[Auth] Sign in link sent to:', email, 'sessionId:', sessionId);
 
     return NextResponse.json({
       success: true,
-      message: 'Magic link sent to your email',
+      message: 'Sign in link sent to your email',
       sessionId, // Return sessionId so frontend can poll for authentication
     });
   } catch (error) {
     console.error('[Auth] Request code error:', error);
     return NextResponse.json(
-      { error: 'Failed to send magic link' },
+      { error: 'Failed to send sign in link' },
       { status: 500 }
     );
   }
