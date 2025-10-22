@@ -291,15 +291,7 @@ data: {JSON}\n\n
 }
 ```
 
-**2. Thinking Event** (optional, for AI reasoning):
-```json
-{
-  "type": "thinking",
-  "content": "Let me analyze this request..."
-}
-```
-
-**3. Chunk Events** (text content):
+**2. Chunk Events** (text content):
 ```json
 {
   "type": "chunk",
@@ -308,7 +300,9 @@ data: {JSON}\n\n
 }
 ```
 
-**4. Status Events** (AI is performing actions):
+**Note:** Chunks with `thinking: true` indicate the content is AI reasoning/thinking rather than final response. Thinking content is sent as regular chunks with this flag, not as separate events.
+
+**3. Status Events** (AI is performing actions):
 ```json
 {
   "type": "status",
@@ -317,7 +311,7 @@ data: {JSON}\n\n
 }
 ```
 
-**5. Tool Event** (tool execution details):
+**4. Tool Event** (tool execution details):
 ```json
 {
   "type": "tool_event",
@@ -340,7 +334,7 @@ Tool event types:
 - `tool_complete` - Tool execution completed
 - `tool_error` - Tool execution failed
 
-**6. Complete Event** (final event):
+**5. Complete Event** (final event):
 ```json
 {
   "type": "complete",
@@ -355,7 +349,7 @@ Tool event types:
 }
 ```
 
-**7. Error Event:**
+**6. Error Event:**
 ```json
 {
   "type": "error",
@@ -363,7 +357,7 @@ Tool event types:
 }
 ```
 
-**8. Done Event** (stream termination):
+**7. Done Event** (stream termination):
 ```
 data: [DONE]\n\n
 ```

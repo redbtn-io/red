@@ -194,11 +194,6 @@ export async function POST(request: NextRequest) {
                   action: event.action,
                   description: event.description
                 })}\n\n`))) break;
-              } else if (event.type === 'thinking') {
-                if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'thinking',
-                  content: event.content
-                })}\n\n`))) break;
               } else if (event.type === 'tool_status') {
                 console.log('[Completions] Forwarding tool_status:', event.action);
                 if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
