@@ -869,13 +869,18 @@ export default function ChatPage() {
                     saveToolExecutionsToDatabase(messageId, localConversationId || null);
                   } else if (toolEvent.type === 'tool_error') {
                     // Mark tool as failed
+                    // Ensure error is a string (handle cases where it might be an object)
+                    const errorMessage = typeof toolEvent.error === 'string' 
+                      ? toolEvent.error 
+                      : JSON.stringify(toolEvent.error);
+                    
                     conversationState.failToolExecution(
                       messageId,
                       toolEvent.toolId,
-                      toolEvent.error,
+                      errorMessage,
                       toolEvent.timestamp
                     );
-                    console.error(`[Stream] Tool failed: ${toolEvent.toolName} - ${toolEvent.error}`);
+                    console.error(`[Stream] Tool failed: ${toolEvent.toolName} - ${errorMessage}`);
                     
                     // Save error state immediately
                     saveToolExecutionsToDatabase(messageId, localConversationId || null);

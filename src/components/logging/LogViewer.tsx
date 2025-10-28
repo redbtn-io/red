@@ -395,9 +395,31 @@ function LogLine({ log, compact }: { log: LogEntry; compact?: boolean }) {
 
       {/* Message line */}
       {(!compact || expanded) && (
-        <div className="pl-2 break-words text-sm leading-relaxed font-mono text-[var(--foreground)]/90">
-          <div dangerouslySetInnerHTML={{ __html: messageHtml }} />
-        </div>
+        <>
+          <div className="pl-2 break-words text-sm leading-relaxed font-mono text-[var(--foreground)]/90">
+            <div dangerouslySetInnerHTML={{ __html: messageHtml }} />
+          </div>
+          
+          {/* Metadata section - show when expanded */}
+          {expanded && log.metadata && Object.keys(log.metadata).length > 0 && (
+            <div className="mt-3 pl-2 border-l-2 border-[var(--border-color)] ml-2">
+              <div className="text-xs text-[var(--foreground)]/60 font-semibold mb-2 uppercase">Metadata</div>
+              <div className="space-y-1">
+                {Object.entries(log.metadata).map(([key, value]) => (
+                  <div key={key} className="flex gap-2 text-xs">
+                    <span className="text-cyan-400 font-mono shrink-0">{key}:</span>
+                    <span className="text-[var(--foreground)]/80 font-mono break-all">
+                      {typeof value === 'object' 
+                        ? JSON.stringify(value, null, 2)
+                        : String(value)
+                      }
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

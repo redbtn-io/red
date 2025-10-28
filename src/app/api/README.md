@@ -1012,6 +1012,6 @@ For questions, issues, or feature requests:
 
 ---
 
-**Built with ❤️ by the Red Button team**
+**Built with 🔴 by redbtn**
 
 Last Updated: October 21, 2025
