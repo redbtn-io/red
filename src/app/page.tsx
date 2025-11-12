@@ -72,7 +72,7 @@ export default function ChatPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isThinkingDisplayComplete, setIsThinkingDisplayComplete] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
-  const [currentStatus, setCurrentStatus] = useState<{action: string; description?: string} | null>(null);
+  const [currentStatus, setCurrentStatus] = useState<{action: string; description?: string; reasoning?: string; confidence?: number} | null>(null);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -736,12 +736,12 @@ export default function ChatPage() {
                 }
 
                 if (event.type === 'status') {
-                  setCurrentStatus({ action: event.action, description: event.description });
+                  setCurrentStatus({ action: event.action, description: event.description, reasoning: event.reasoning, confidence: event.confidence });
                   continue;
                 }
 
                 if (event.type === 'tool_status') {
-                  setCurrentStatus({ action: event.action, description: event.status });
+                  setCurrentStatus({ action: event.action, description: event.status, reasoning: event.reasoning, confidence: event.confidence });
                   continue;
                 }
 

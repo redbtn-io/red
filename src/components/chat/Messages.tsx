@@ -15,7 +15,7 @@ interface MessagesProps {
   messages: ConversationMessage[];
   streamingMessage: { id: string; content: string } | null;
   thoughts: Record<string, ConversationThought>; // messageId -> thought data
-  currentStatus: { action: string; description?: string } | null;
+  currentStatus: { action: string; description?: string; reasoning?: string; confidence?: number } | null;
   isLoading: boolean;
   isStreaming: boolean;
   isThinkingDisplayComplete: boolean;
@@ -161,22 +161,41 @@ export function Messages({
           const getContentByStatus = () => {
             if (!currentStatus) return 'Initializing your request...';
             
+            let statusText = '';
             switch (currentStatus.action) {
               case 'thinking':
-                return 'AI is analyzing your request and formulating a response...';
+                statusText = 'AI is analyzing your request and formulating a response...';
+                break;
               case 'processing':
               case 'routing':
-                return 'Processing your request and determining the best approach...';
+                statusText = 'Processing your request and determining the best approach...';
+                break;
               case 'searching':
               case 'web_search':
-                return 'Searching for relevant information to answer your question...';
+                statusText = 'Searching for relevant information to answer your question...';
+                break;
               case 'system_command':
               case 'running_command':
               case 'commands':
-                return 'Executing system commands to fulfill your request...';
+                statusText = 'Executing system commands to fulfill your request...';
+                break;
               default:
-                return currentStatus.description || `${currentStatus.action}...`;
+                statusText = currentStatus.description || `${currentStatus.action}...`;
             }
+            
+            // Append reasoning and confidence if available
+            if (currentStatus.reasoning) {
+              statusText += `\n\n💭 Router reasoning: ${currentStatus.reasoning}`;
+            }
+            if (currentStatus.confidence !== undefined) {
+              const confidencePercent = (currentStatus.confidence * 100).toFixed(0);
+              const confidenceLabel = currentStatus.confidence >= 0.9 ? 'Very High' :
+                                     currentStatus.confidence >= 0.7 ? 'High' :
+                                     currentStatus.confidence >= 0.5 ? 'Moderate' : 'Low';
+              statusText += `\n\n📊 Confidence: ${confidencePercent}% (${confidenceLabel})`;
+            }
+            
+            return statusText;
           };
           
           modalMessage = {

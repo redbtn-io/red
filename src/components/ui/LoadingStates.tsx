@@ -9,6 +9,8 @@ interface LoadingStateContainerProps {
   currentStatus: {
     action: string;
     description?: string;
+    reasoning?: string;
+    confidence?: number;
   } | null;
   thinking: string | null;
   skeletonShrinking: boolean;
@@ -83,13 +85,33 @@ export function LoadingStateContainer({
             title="Click to view details"
             onClick={onOpenModal}
           >
-          {/* Line 1: Current status with icon */}
+          {/* Line 1: Current status with icon and confidence */}
           <div className="flex items-center gap-2 text-sm text-red-400">
             {getIcon()}
             <span>{getStatusText()}</span>
+            {currentStatus?.confidence !== undefined && (
+              <span 
+                className={`text-xs px-1.5 py-0.5 rounded ${
+                  currentStatus.confidence >= 0.9 ? 'bg-green-500/20 text-green-400' :
+                  currentStatus.confidence >= 0.7 ? 'bg-yellow-500/20 text-yellow-400' :
+                  currentStatus.confidence >= 0.5 ? 'bg-orange-500/20 text-orange-400' :
+                  'bg-red-500/20 text-red-400'
+                }`}
+                title={`Confidence: ${(currentStatus.confidence * 100).toFixed(0)}%`}
+              >
+                {(currentStatus.confidence * 100).toFixed(0)}%
+              </span>
+            )}
           </div>
 
-          {/* Line 2: Show thinking button (only if thinking exists) */}
+          {/* Line 2: Router reasoning (if available) */}
+          {currentStatus?.reasoning && (
+            <div className="text-xs text-gray-400 italic pl-6">
+              💭 {currentStatus.reasoning}
+            </div>
+          )}
+
+          {/* Line 3: Show thinking button (only if thinking exists) */}
           {hasThinking && (
             <button
               onClick={(e) => {
