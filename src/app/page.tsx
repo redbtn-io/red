@@ -448,6 +448,16 @@ function ChatPageContent() {
     }
   };
 
+  const scrollToBottom = () => {
+    if (messagesScrollRef.current) {
+      // With flex-col-reverse, scrollTop 0 is the bottom (newest messages)
+      messagesScrollRef.current.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   const createNewConversation = async () => {
     try {
       console.log('[NewChat] Starting new chat - clearing all state');
@@ -1366,7 +1376,6 @@ function ChatPageContent() {
             {conversationsLoading ? (
               <LoadingSpinner 
                 mode="fullscreen" 
-                message="Loading conversations..." 
                 size={32}
               />
             ) : (
@@ -1399,6 +1408,7 @@ function ChatPageContent() {
                   messagesEndRef={messagesEndRef}
                   onChange={setInput}
                   onSend={sendMessage}
+                  onScrollToBottom={scrollToBottom}
                 />
               </>
             )}

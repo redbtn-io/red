@@ -152,18 +152,47 @@ export function Messages({
   
   return (
     <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pt-12 pb-6 px-6 flex flex-col-reverse space-y-6 space-y-reverse">
-      {/* Empty state */}
-      {!messages?.length && !isLoading && (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center text-gray-500">
-            <MessageSquare size={48} className="mx-auto mb-4 opacity-20" />
-            <p className="text-lg font-medium">Start a conversation</p>
-            <p className="text-sm mt-2">Send a message to begin chatting with Red AI</p>
-          </div>
-        </div>
+      {/* messagesEndRef - renders first (visual bottom with flex-col-reverse) */}
+      <div ref={messagesEndRef} />
+      
+      {/* Loading State with Status, Skeleton, and Thinking - renders after messagesEndRef (visual bottom) */}
+      {isLoading && streamingMessageId && (
+        <LoadingStateContainer
+          currentStatus={currentStatus}
+          thinking={thoughts[streamingMessageId]?.content || null}
+          skeletonShrinking={skeletonShrinking}
+          isReconnecting={isReconnecting}
+          onOpenModal={() => onOpenModal(streamingMessageId)}
+        />
       )}
       
-      {/* Messages rendered in reverse (newest at bottom visually) */}
+      {/* Streaming message that shows character-by-character - appears at visual bottom */}
+      {streamingMessage && (
+        <MessageBubble
+          key={streamingMessage.id}
+          message={{
+            id: streamingMessage.id,
+            role: 'assistant',
+            content: streamingMessage.content,
+            timestamp: new Date(),
+          }}
+          isStreaming={true}
+          onOpenModal={() => onOpenModal(streamingMessage.id)}
+          isLatest={true}
+        />
+      )}
+      
+      {/* Streaming Thinking Bubble - appears at visual bottom */}
+      {streamingThinking && streamingMessageId && (
+        <StreamingThinkingBubble
+          thinking={streamingThinking}
+          isStreaming={thoughts[streamingMessageId]?.isStreaming ?? false}
+          isThinkingDisplayComplete={isThinkingDisplayComplete}
+          onOpenModal={() => onOpenModal(streamingMessageId)}
+        />
+      )}
+      
+      {/* Messages rendered in reverse (newest at bottom visually, then going up) */}
       {messages?.slice().reverse().filter(msg => {
         // Filter out streaming message to prevent duplicate rendering
         return !(streamingMessage && msg.id === streamingMessage.id);
@@ -181,6 +210,17 @@ export function Messages({
         );
       })}
       
+      {/* Empty state */}
+      {!messages?.length && !isLoading && (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center text-gray-500">
+            <MessageSquare size={48} className="mx-auto mb-4 opacity-20" />
+            <p className="text-lg font-medium">Start a conversation</p>
+            <p className="text-sm mt-2">Send a message to begin chatting with Red AI</p>
+          </div>
+        </div>
+      )}
+      
       {/* Loading spinner for pagination - appears at visual top (oldest messages) due to flex-col-reverse */}
       {pagination?.isLoadingMore ? (
         <div className="flex items-center justify-center py-8 bg-gray-900/50 backdrop-blur-sm rounded-lg border border-gray-800 mb-1">
@@ -188,49 +228,9 @@ export function Messages({
           <span className="text-sm font-medium text-gray-300">Loading older messages...</span>
         </div>
       ) : (
-        /* Spacer at the end (visual top due to flex-col-reverse) to prevent oldest messages from touching navbar */
+        /* Spacer - renders last (visual top due to flex-col-reverse) to prevent oldest messages from touching navbar */
         <div className="min-h-6 mb-1" />
       )}
-      
-      {/* Streaming Thinking Bubble - shown when thinking is streaming */}
-      {streamingThinking && streamingMessageId && (
-        <StreamingThinkingBubble
-          thinking={streamingThinking}
-          isStreaming={thoughts[streamingMessageId]?.isStreaming ?? false}
-          isThinkingDisplayComplete={isThinkingDisplayComplete}
-          onOpenModal={() => onOpenModal(streamingMessageId)}
-        />
-      )}
-      
-      {/* Streaming message that shows character-by-character */}
-      {streamingMessage && (
-        <MessageBubble
-          key={streamingMessage.id}
-          message={{
-            id: streamingMessage.id,
-            role: 'assistant',
-            content: streamingMessage.content,
-            timestamp: new Date(),
-          }}
-          isStreaming={true}
-          onOpenModal={() => onOpenModal(streamingMessage.id)}
-          isLatest={true}
-        />
-      )}
-      
-      {/* Loading State with Status, Skeleton, and Thinking */}
-      {isLoading && streamingMessageId && (
-        <LoadingStateContainer
-          currentStatus={currentStatus}
-          thinking={thoughts[streamingMessageId]?.content || null}
-          skeletonShrinking={skeletonShrinking}
-          isReconnecting={isReconnecting}
-          onOpenModal={() => onOpenModal(streamingMessageId)}
-        />
-      )}
-      
-      {/* messagesEndRef at visual bottom (newest messages) - renders first due to flex-col-reverse */}
-      <div ref={messagesEndRef} />
       
       {/* Thoughts Modal - Rendered at Messages level to persist across message re-renders */}
       {modalState.isOpen && modalState.messageId && (() => {
