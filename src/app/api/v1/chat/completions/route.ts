@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
     const red = await getRed();
 
     const messageId = body.messageId || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const userMessageId = body.userMessageId; // Get user message ID from request
 
     if (body.stream) {
       await red.messageQueue.startGeneration(conversationId, messageId);
@@ -77,7 +78,8 @@ export async function POST(request: NextRequest) {
               source: { application: 'redChat' },
               stream: true,
               conversationId,
-              messageId
+              messageId,
+              userMessageId // Pass user message ID to respond
             }
           );
 

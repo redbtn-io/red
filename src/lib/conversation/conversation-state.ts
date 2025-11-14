@@ -43,6 +43,12 @@ export interface ConversationState {
     lastActivity: Date;
     messageCount: number;
   };
+  // Pagination state
+  pagination?: {
+    hasMore: boolean;
+    isLoadingMore: boolean;
+    totalMessages?: number;
+  };
 }
 
 class ConversationStateManager {
@@ -77,6 +83,8 @@ class ConversationStateManager {
     messages: ConversationMessage[];
     thoughts?: Record<string, string>;
     toolExecutions?: Record<string, ToolExecution[]>; // Add tool executions support
+    hasMore?: boolean;
+    totalMessages?: number;
   }): void {
     console.log(`[ConversationState] Loading conversation ${conversationData.id}`);
     
@@ -129,10 +137,16 @@ class ConversationStateManager {
       metadata: {
         lastActivity: new Date(),
         messageCount: messages.length
+      },
+      pagination: {
+        hasMore: conversationData.hasMore ?? false,
+        isLoadingMore: false,
+        totalMessages: conversationData.totalMessages
       }
     };
 
     console.log(`[ConversationState] Loaded ${messages.length} messages, ${Object.keys(thoughts).length} thoughts, and ${Object.keys(toolExecutions).length} messages with tool executions`);
+    console.log(`[ConversationState] Pagination: hasMore=${conversationData.hasMore}, total=${conversationData.totalMessages}`);
     console.log(`[ConversationState] Tool execution details:`, Object.entries(toolExecutions).map(([msgId, executions]) => `${msgId}: ${executions.length} tools`));
     this.notify();
   }
@@ -192,6 +206,112 @@ class ConversationStateManager {
       lastMessageId: this.currentConversation.messages[this.currentConversation.messages.length - 1]?.id
     });
     
+    this.notify();
+  }
+
+  /**
+   * Prepend older messages to the current conversation (for pagination)
+   */
+  prependMessages(olderMessages: ConversationMessage[], hasMore: boolean): void {
+    if (!this.currentConversation) {
+      console.error('[ConversationState] Cannot prepend messages - no current conversation');
+      return;
+    }
+
+    console.log(`[ConversationState] Prepending ${olderMessages.length} older messages`);
+
+    // Avoid duplicates
+    const existingIds = new Set(this.currentConversation.messages.map(m => m.id));
+    const uniqueOlderMessages = olderMessages.filter(msg => !existingIds.has(msg.id));
+
+    if (uniqueOlderMessages.length !== olderMessages.length) {
+      console.log(`[ConversationState] Filtered out ${olderMessages.length - uniqueOlderMessages.length} duplicate messages`);
+    }
+
+    // Convert timestamps if needed
+    const formattedMessages = uniqueOlderMessages.map(msg => ({
+      ...msg,
+      timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)
+    }));
+
+    // Prepend to beginning of array
+    this.currentConversation.messages.unshift(...formattedMessages);
+
+    // Extract and store tool executions from older messages
+    formattedMessages.forEach(message => {
+      if (message.toolExecutions && message.toolExecutions.length > 0) {
+        this.currentConversation!.toolExecutions[message.id] = message.toolExecutions;
+      }
+    });
+
+    // Update pagination state
+    if (this.currentConversation.pagination) {
+      this.currentConversation.pagination.hasMore = hasMore;
+      this.currentConversation.pagination.isLoadingMore = false;
+    }
+
+    // Update metadata
+    this.currentConversation.metadata!.messageCount = this.currentConversation.messages.length;
+    this.currentConversation.metadata!.lastActivity = new Date();
+
+    console.log(`[ConversationState] After prepend: ${this.currentConversation.messages.length} total messages, hasMore: ${hasMore}`);
+    this.notify();
+  }
+
+  /**
+   * Append new messages to the current conversation (for incremental updates)
+   */
+  appendMessages(newMessages: ConversationMessage[], newThoughts?: Record<string, string>): void {
+    if (!this.currentConversation) {
+      console.error('[ConversationState] Cannot append messages - no current conversation');
+      return;
+    }
+
+    console.log(`[ConversationState] Appending ${newMessages.length} new messages`);
+
+    // Add new messages, avoiding duplicates
+    const existingIds = new Set(this.currentConversation.messages.map(m => m.id));
+    const uniqueNewMessages = newMessages.filter(msg => !existingIds.has(msg.id));
+
+    if (uniqueNewMessages.length !== newMessages.length) {
+      console.log(`[ConversationState] Filtered out ${newMessages.length - uniqueNewMessages.length} duplicate messages`);
+    }
+
+    // Convert timestamps if needed
+    const formattedMessages = uniqueNewMessages.map(msg => ({
+      ...msg,
+      timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)
+    }));
+
+    this.currentConversation.messages.push(...formattedMessages);
+
+    // Extract and store tool executions from new messages
+    formattedMessages.forEach(message => {
+      if (message.toolExecutions && message.toolExecutions.length > 0) {
+        this.currentConversation!.toolExecutions[message.id] = message.toolExecutions;
+        console.log(`[ConversationState] Stored ${message.toolExecutions.length} tool executions for message ${message.id}`);
+      }
+    });
+
+    // Add new thoughts if provided
+    if (newThoughts) {
+      Object.entries(newThoughts).forEach(([messageId, content]) => {
+        if (content && !this.currentConversation!.thoughts[messageId]) {
+          this.currentConversation!.thoughts[messageId] = {
+            messageId,
+            content,
+            isStreaming: false,
+            lastUpdated: Date.now()
+          };
+        }
+      });
+    }
+
+    // Update metadata
+    this.currentConversation.metadata!.messageCount = this.currentConversation.messages.length;
+    this.currentConversation.metadata!.lastActivity = new Date();
+
+    console.log(`[ConversationState] After append: ${this.currentConversation.messages.length} total messages`);
     this.notify();
   }
 
@@ -438,6 +558,27 @@ class ConversationStateManager {
   getToolExecution(messageId: string, toolId: string): ToolExecution | null {
     const executions = this.getToolExecutions(messageId);
     return executions.find(e => e.toolId === toolId) || null;
+  }
+
+  /**
+   * Set loading more state for pagination
+   */
+  setLoadingMore(isLoading: boolean): void {
+    if (!this.currentConversation || !this.currentConversation.pagination) {
+      return;
+    }
+    this.currentConversation.pagination.isLoadingMore = isLoading;
+    this.notify();
+  }
+
+  /**
+   * Get pagination state
+   */
+  getPaginationState(): { hasMore: boolean; isLoadingMore: boolean; totalMessages?: number } | null {
+    if (!this.currentConversation || !this.currentConversation.pagination) {
+      return null;
+    }
+    return this.currentConversation.pagination;
   }
 }
 

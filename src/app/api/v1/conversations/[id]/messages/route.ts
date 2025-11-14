@@ -13,7 +13,8 @@ interface DbMessage {
 
 /**
  * GET /api/v1/conversations/:id/messages
- * Fetch all messages for a conversation from MongoDB
+ * Fetch messages for a conversation from MongoDB
+ * Supports optional 'after' query parameter to fetch only messages newer than a timestamp
  * Used for resyncing frontend after stream disconnection
  */
 export async function GET(
@@ -30,13 +31,66 @@ export async function GET(
       );
     }
 
+    // Parse query parameters
+    const { searchParams } = new URL(request.url);
+    const afterParam = searchParams.get('after');
+    const beforeParam = searchParams.get('before');
+    const limitParam = searchParams.get('limit');
+    
+    const afterTimestamp = afterParam ? parseInt(afterParam, 10) : null;
+    const beforeTimestamp = beforeParam ? parseInt(beforeParam, 10) : null;
+    const limit = limitParam ? parseInt(limitParam, 10) : null;
+
     // Get messages from MongoDB (if available)
     try {
       const db = getDatabase();
-      const messages = await db.getMessages(conversationId);
+      const allMessages = await db.getMessages(conversationId);
+
+      // Apply filters
+      let filteredMessages = allMessages;
+      
+      // Filter by 'after' (for incremental updates - messages newer than timestamp)
+      if (afterTimestamp && !isNaN(afterTimestamp)) {
+        filteredMessages = filteredMessages.filter((msg: DbMessage) => 
+          msg.timestamp.getTime() > afterTimestamp
+        );
+        console.log(`[API] Filtered messages after ${new Date(afterTimestamp).toISOString()}: ${filteredMessages.length} of ${allMessages.length}`);
+      }
+      
+      // Filter by 'before' (for pagination - messages older than timestamp)
+      if (beforeTimestamp && !isNaN(beforeTimestamp)) {
+        filteredMessages = filteredMessages.filter((msg: DbMessage) => 
+          msg.timestamp.getTime() < beforeTimestamp
+        );
+        console.log(`[API] Filtered messages before ${new Date(beforeTimestamp).toISOString()}: ${filteredMessages.length} messages`);
+      }
+      
+      // Sort by timestamp ascending (oldest first)
+      filteredMessages.sort((a: DbMessage, b: DbMessage) => 
+        a.timestamp.getTime() - b.timestamp.getTime()
+      );
+      
+      // Apply limit (get last N messages if no 'before', or first N if 'before' specified)
+      let limitedMessages = filteredMessages;
+      let hasMore = false;
+      
+      if (limit && !isNaN(limit) && limit > 0) {
+        if (beforeTimestamp) {
+          // For pagination (loading older): take last N messages before the timestamp
+          // Reverse to get oldest first, take limit, reverse back
+          limitedMessages = [...filteredMessages].reverse().slice(0, limit).reverse();
+          hasMore = filteredMessages.length > limit;
+        } else {
+          // For initial load: take last N messages (most recent)
+          const startIndex = Math.max(0, filteredMessages.length - limit);
+          limitedMessages = filteredMessages.slice(startIndex);
+          hasMore = startIndex > 0;
+        }
+        console.log(`[API] Limited to ${limit} messages: ${limitedMessages.length} returned, hasMore: ${hasMore}`);
+      }
 
       // Transform to frontend format
-      const formattedMessages = messages.map((msg: DbMessage) => ({
+      const formattedMessages = limitedMessages.map((msg: DbMessage) => ({
         id: msg.messageId || msg._id?.toString() || '', // Include message ID
         role: msg.role,
         content: msg.content,
@@ -48,7 +102,10 @@ export async function GET(
       return NextResponse.json({
         conversationId,
         messages: formattedMessages,
-        total: formattedMessages.length
+        total: allMessages.length,
+        returned: formattedMessages.length,
+        hasMore,
+        filtered: afterTimestamp !== null || beforeTimestamp !== null
       });
     } catch (dbError) {
       // MongoDB not available or not authenticated - return empty array

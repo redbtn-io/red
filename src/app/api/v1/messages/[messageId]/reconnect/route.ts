@@ -52,12 +52,14 @@ export async function GET(
         };
         
         try {
-          // Send init event (no existing content - we'll send everything as chunks)
-          console.log('[Reconnect] Sending init event');
+          // Send init event with existing content and thinking
+          console.log('[Reconnect] Sending init event with existing content');
           if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'init',
             messageId,
-            conversationId: existingState.conversationId
+            conversationId: existingState.conversationId,
+            existingContent: existingState.content || '',
+            existingThinking: existingState.thinking || ''
           })}\n\n`))) {
             return;
           }
@@ -75,42 +77,6 @@ export async function GET(
               }
               // Small delay to allow frontend to process events in order
               await new Promise(resolve => setTimeout(resolve, 5));
-            }
-          }
-          
-          // If there's thinking content, send it character-by-character as chunks
-          if (existingState.thinking) {
-            console.log('[Reconnect] Sending thinking chunks, length:', existingState.thinking.length);
-            const thinkingChars = existingState.thinking.split('');
-            for (const char of thinkingChars) {
-              if (streamClosed) break;
-              if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                type: 'chunk',
-                content: char,
-                thinking: true
-              })}\n\n`))) {
-                return;
-              }
-              // Small delay between characters for smooth animation (10ms like frontend)
-              await new Promise(resolve => setTimeout(resolve, 10));
-            }
-          }
-          
-          // If there's content, send it character-by-character as chunks
-          if (existingState.content) {
-            console.log('[Reconnect] Sending content chunks, length:', existingState.content.length);
-            const contentChars = existingState.content.split('');
-            for (const char of contentChars) {
-              if (streamClosed) break;
-              if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                type: 'chunk',
-                content: char,
-                thinking: false
-              })}\n\n`))) {
-                return;
-              }
-              // Small delay between characters for smooth animation
-              await new Promise(resolve => setTimeout(resolve, 10));
             }
           }
           

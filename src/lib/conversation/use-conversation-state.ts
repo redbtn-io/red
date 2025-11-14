@@ -99,6 +99,18 @@ export function useConversationState() {
     conversationState.addMessage(message);
   }, []);
 
+  const appendMessages = useCallback((newMessages: ConversationMessage[], newThoughts?: Record<string, string>) => {
+    conversationState.appendMessages(newMessages, newThoughts);
+  }, []);
+
+  const prependMessages = useCallback((olderMessages: ConversationMessage[], hasMore: boolean) => {
+    conversationState.prependMessages(olderMessages, hasMore);
+  }, []);
+
+  const setLoadingMore = useCallback((isLoading: boolean) => {
+    conversationState.setLoadingMore(isLoading);
+  }, []);
+
   const updateMessage = useCallback((messageId: string, updates: Partial<ConversationMessage>) => {
     conversationState.updateMessage(messageId, updates);
   }, []);
@@ -128,12 +140,16 @@ export function useConversationState() {
     conversation: state,
     messages: state?.messages || [],
     thoughts: state?.thoughts || {},
+    pagination: state?.pagination || null,
     
     // Actions
     loadConversation,
     clearConversation,
     createConversation,
     addMessage,
+    appendMessages,
+    prependMessages,
+    setLoadingMore,
     updateMessage,
     setThought,
     updateStreamingThought,

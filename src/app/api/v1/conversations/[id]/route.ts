@@ -41,6 +41,11 @@ export async function GET(
 
     const { id: conversationId } = await context.params;
 
+    // Check for limit query parameter
+    const { searchParams } = new URL(request.url);
+    const limitParam = searchParams.get('limit');
+    const limit = limitParam ? parseInt(limitParam, 10) : null;
+
     // Fetch conversation from AI package database
     const db = getDatabase();
     const conversation = await db.getConversation(conversationId);
@@ -50,7 +55,22 @@ export async function GET(
     }
 
     // Fetch messages for this conversation
-    const messages = await db.getMessages(conversationId);
+    const allMessages = await db.getMessages(conversationId);
+    
+    // Sort by timestamp ascending
+    allMessages.sort((a: DbMessage, b: DbMessage) => 
+      a.timestamp.getTime() - b.timestamp.getTime()
+    );
+    
+    // Apply limit if specified (get last N messages)
+    let messages = allMessages;
+    let hasMore = false;
+    if (limit && !isNaN(limit) && limit > 0) {
+      const startIndex = Math.max(0, allMessages.length - limit);
+      messages = allMessages.slice(startIndex);
+      hasMore = startIndex > 0;
+      console.log(`[V1 Conversation] Limited to ${limit} messages: ${messages.length} returned, hasMore: ${hasMore}`);
+    }
     
     // Fetch thoughts for this conversation
     const thoughts = await db.getThoughtsByConversation(conversationId).catch(err => {
@@ -70,6 +90,8 @@ export async function GET(
       conversation: {
         id: conversation.conversationId,
         title: conversation.title || 'Untitled Conversation',
+        hasMore, // Indicate if there are more messages to load
+        totalMessages: allMessages.length,
         messages: messages.map((msg: DbMessage) => {
           // Clean thinking tags from message content
           const { thinking, cleanedContent } = extractThinking(msg.content);

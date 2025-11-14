@@ -4,15 +4,16 @@
  */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { LogsSidebar } from '@/components/logging/LogsSidebar';
 import { LogViewer } from '@/components/logging/LogViewer';
 import { LogFilters } from '@/components/logging/LogFilters';
 import { LogStats } from '@/components/logging/LogStats';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
-export default function LogsPage() {
+function LogsPageContent() {
   const searchParams = useSearchParams();
   const conversationParam = searchParams.get('conversation');
   
@@ -113,5 +114,13 @@ export default function LogsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LogsPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner mode="fullscreen" message="Loading logs..." size={32} />}>
+      <LogsPageContent />
+    </Suspense>
   );
 }
