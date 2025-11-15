@@ -8,9 +8,10 @@ interface HeaderProps {
   title: string;
   onMenuClick: () => void;
   onNewChat: () => void;
+  onTitleClick?: () => void;
 }
 
-export function Header({ title, onMenuClick, onNewChat }: HeaderProps) {
+export function Header({ title, onMenuClick, onNewChat, onTitleClick }: HeaderProps) {
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
@@ -33,7 +34,11 @@ export function Header({ title, onMenuClick, onNewChat }: HeaderProps) {
       >
         <Menu size={24} />
       </button>
-      <h1 className="text-lg font-semibold text-gray-100">
+      <h1 
+        onClick={onTitleClick}
+        className={`text-lg font-semibold text-gray-100 ${onTitleClick ? 'cursor-pointer hover:text-white transition-colors' : ''}`}
+        title={onTitleClick ? 'Scroll to top' : undefined}
+      >
         {title}
       </h1>
       <button

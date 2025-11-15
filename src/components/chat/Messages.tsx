@@ -1,6 +1,6 @@
-import { MessageSquare, Brain, Wrench } from 'lucide-react';
+import { MessageSquare, Brain, Wrench, Loader2 } from 'lucide-react';
 import { type Message } from '@/lib/storage/conversation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -15,7 +15,7 @@ interface MessagesProps {
   messages: ConversationMessage[];
   streamingMessage: { id: string; content: string } | null;
   thoughts: Record<string, ConversationThought>; // messageId -> thought data
-  currentStatus: { action: string; description?: string } | null;
+  currentStatus: { action: string; description?: string; reasoning?: string; confidence?: number } | null;
   isLoading: boolean;
   isStreaming: boolean;
   isThinkingDisplayComplete: boolean;
@@ -27,6 +27,10 @@ interface MessagesProps {
   modalState: { isOpen: boolean; messageId: string | null };
   onOpenModal: (messageId: string) => void;
   onCloseModal: () => void;
+  pagination: { hasMore: boolean; isLoadingMore: boolean; totalMessages?: number } | null;
+  onLoadMore: () => Promise<void>;
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+  preventScrollRestorationRef?: React.RefObject<boolean>;
 }
 
 export function Messages({
@@ -44,10 +48,19 @@ export function Messages({
   conversationId,
   modalState,
   onOpenModal,
-  onCloseModal
+  onCloseModal,
+  pagination,
+  onLoadMore,
+  scrollContainerRef: externalScrollRef,
+  preventScrollRestorationRef: externalPreventScrollRef
 }: MessagesProps) {
   // Force re-render when conversation state changes (for tool executions)
   const [, forceUpdate] = useState({});
+  const internalScrollRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = externalScrollRef || internalScrollRef;
+  const isLoadingRef = useRef(false);
+  const internalPreventScrollRef = useRef(false);
+  const preventScrollRestorationRef = externalPreventScrollRef || internalPreventScrollRef;
   
   // Subscribe to conversation state changes to update modal when tool executions change
   useEffect(() => {
@@ -57,50 +70,103 @@ export function Messages({
     return unsubscribe;
   }, []);
   
+  // Scroll detection for pagination
+  // With flex-col-reverse, scrollTop is 0 at bottom, negative when scrolling up
+  const handleScroll = useCallback(() => {
+    if (!scrollContainerRef.current || !pagination || isLoadingRef.current) return;
+    
+    const container = scrollContainerRef.current;
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    
+    // Calculate how far we've scrolled from the bottom
+    // In flex-col-reverse, scrollTop goes negative as we scroll up
+    const scrolledFromBottom = Math.abs(scrollTop);
+    const maxScroll = scrollHeight - clientHeight;
+    
+    // Require scrolling to within 100px of the top (older messages)
+    // This creates an overscroll-like effect where you need to intentionally scroll near the top
+    const threshold = 100;
+    const distanceFromTop = maxScroll - scrolledFromBottom;
+    
+    console.log('[Scroll Debug]', {
+      scrollTop,
+      scrollHeight,
+      clientHeight,
+      scrolledFromBottom,
+      maxScroll,
+      distanceFromTop,
+      threshold,
+      hasMore: pagination.hasMore,
+      isLoadingMore: pagination.isLoadingMore
+    });
+    
+    // If scrolled very close to top and more messages available, load them
+    if (distanceFromTop < threshold && pagination.hasMore && !pagination.isLoadingMore) {
+      console.log('[Pagination] Triggering load more messages');
+      isLoadingRef.current = true;
+      
+      // Save scroll position to restore after prepend (unless prevented by manual scroll)
+      const oldScrollHeight = scrollHeight;
+      const oldScrollTop = scrollTop;
+      const shouldRestoreScroll = !preventScrollRestorationRef.current;
+      
+      // Reset the prevention flag
+      preventScrollRestorationRef.current = false;
+      
+      onLoadMore().then(() => {
+        // Restore scroll position after new messages are added (only if not manually scrolling)
+        if (shouldRestoreScroll) {
+          requestAnimationFrame(() => {
+            if (scrollContainerRef.current) {
+              const newScrollHeight = scrollContainerRef.current.scrollHeight;
+              const heightDiff = newScrollHeight - oldScrollHeight;
+              // Adjust scrollTop by the height difference to maintain position
+              scrollContainerRef.current.scrollTop = oldScrollTop - heightDiff;
+              console.log('[Pagination] Restored scroll position');
+            }
+            isLoadingRef.current = false;
+          });
+        } else {
+          console.log('[Pagination] Skipped scroll restoration (manual scroll)');
+          isLoadingRef.current = false;
+        }
+      }).catch((err) => {
+        console.error('Failed to load more messages:', err);
+        isLoadingRef.current = false;
+        preventScrollRestorationRef.current = false;
+      });
+    }
+  }, [pagination, onLoadMore]);
+  
+  // Attach scroll listener
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+  
   // Get thinking content for the streaming message (if any)
   const streamingThinking = streamingMessageId ? thoughts[streamingMessageId]?.content : null;
   
   return (
-    <div className="flex-1 overflow-y-auto pt-6 pb-6 px-6 space-y-6">
-      {!messages?.length && !isLoading && (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center text-gray-500">
-            <MessageSquare size={48} className="mx-auto mb-4 opacity-20" />
-            <p className="text-lg font-medium">Start a conversation</p>
-            <p className="text-sm mt-2">Send a message to begin chatting with Red AI</p>
-          </div>
-        </div>
-      )}
-      {messages?.filter(msg => {
-        // Filter out streaming message to prevent duplicate rendering
-        // If streamingMessage exists with this ID, don't render the permanent version
-        return !(streamingMessage && msg.id === streamingMessage.id);
-      }).map((message, index, array) => {
-        // Get thinking from prop for this message (not currently displayed in bubble)
-        const isLatest = index === array.length - 1;
-        
-        return (
-          <MessageBubble
-            key={message.id}
-            message={message}
-            isStreaming={isStreaming && streamingMessageId === message.id}
-            onOpenModal={() => onOpenModal(message.id)}
-            isLatest={isLatest}
-          />
-        );
-      })}
+    <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pt-12 pb-6 px-6 flex flex-col-reverse space-y-6 space-y-reverse">
+      {/* messagesEndRef - renders first (visual bottom with flex-col-reverse) */}
+      <div ref={messagesEndRef} />
       
-      {/* Streaming Thinking Bubble - shown when thinking is streaming */}
-      {streamingThinking && streamingMessageId && (
-        <StreamingThinkingBubble
-          thinking={streamingThinking}
-          isStreaming={thoughts[streamingMessageId]?.isStreaming ?? false}
-          isThinkingDisplayComplete={isThinkingDisplayComplete}
+      {/* Loading State with Status, Skeleton, and Thinking - renders after messagesEndRef (visual bottom) */}
+      {isLoading && streamingMessageId && (
+        <LoadingStateContainer
+          currentStatus={currentStatus}
+          thinking={thoughts[streamingMessageId]?.content || null}
+          skeletonShrinking={skeletonShrinking}
+          isReconnecting={isReconnecting}
           onOpenModal={() => onOpenModal(streamingMessageId)}
         />
       )}
       
-      {/* Streaming message that shows character-by-character */}
+      {/* Streaming message that shows character-by-character - appears at visual bottom */}
       {streamingMessage && (
         <MessageBubble
           key={streamingMessage.id}
@@ -116,18 +182,55 @@ export function Messages({
         />
       )}
       
-      {/* Loading State with Status, Skeleton, and Thinking */}
-      {isLoading && streamingMessageId && (
-        <LoadingStateContainer
-          currentStatus={currentStatus}
-          thinking={thoughts[streamingMessageId]?.content || null}
-          skeletonShrinking={skeletonShrinking}
-          isReconnecting={isReconnecting}
+      {/* Streaming Thinking Bubble - appears at visual bottom */}
+      {streamingThinking && streamingMessageId && (
+        <StreamingThinkingBubble
+          thinking={streamingThinking}
+          isStreaming={thoughts[streamingMessageId]?.isStreaming ?? false}
+          isThinkingDisplayComplete={isThinkingDisplayComplete}
           onOpenModal={() => onOpenModal(streamingMessageId)}
         />
       )}
       
-      <div ref={messagesEndRef} />
+      {/* Messages rendered in reverse (newest at bottom visually, then going up) */}
+      {messages?.slice().reverse().filter(msg => {
+        // Filter out streaming message to prevent duplicate rendering
+        return !(streamingMessage && msg.id === streamingMessage.id);
+      }).map((message, index, array) => {
+        const isLatest = index === array.length - 1;
+        
+        return (
+          <MessageBubble
+            key={message.id}
+            message={message}
+            isStreaming={isStreaming && streamingMessageId === message.id}
+            onOpenModal={() => onOpenModal(message.id)}
+            isLatest={isLatest}
+          />
+        );
+      })}
+      
+      {/* Empty state */}
+      {!messages?.length && !isLoading && (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center text-gray-500">
+            <MessageSquare size={48} className="mx-auto mb-4 opacity-20" />
+            <p className="text-lg font-medium">Start a conversation</p>
+            <p className="text-sm mt-2">Send a message to begin chatting with Red AI</p>
+          </div>
+        </div>
+      )}
+      
+      {/* Loading spinner for pagination - appears at visual top (oldest messages) due to flex-col-reverse */}
+      {pagination?.isLoadingMore ? (
+        <div className="flex items-center justify-center py-8 bg-gray-900/50 backdrop-blur-sm rounded-lg border border-gray-800 mb-1">
+          <Loader2 className="w-6 h-6 animate-spin text-blue-400 mr-3" />
+          <span className="text-sm font-medium text-gray-300">Loading older messages...</span>
+        </div>
+      ) : (
+        /* Spacer - renders last (visual top due to flex-col-reverse) to prevent oldest messages from touching navbar */
+        <div className="min-h-6 mb-1" />
+      )}
       
       {/* Thoughts Modal - Rendered at Messages level to persist across message re-renders */}
       {modalState.isOpen && modalState.messageId && (() => {
@@ -161,22 +264,41 @@ export function Messages({
           const getContentByStatus = () => {
             if (!currentStatus) return 'Initializing your request...';
             
+            let statusText = '';
             switch (currentStatus.action) {
               case 'thinking':
-                return 'AI is analyzing your request and formulating a response...';
+                statusText = 'AI is analyzing your request and formulating a response...';
+                break;
               case 'processing':
               case 'routing':
-                return 'Processing your request and determining the best approach...';
+                statusText = 'Processing your request and determining the best approach...';
+                break;
               case 'searching':
               case 'web_search':
-                return 'Searching for relevant information to answer your question...';
+                statusText = 'Searching for relevant information to answer your question...';
+                break;
               case 'system_command':
               case 'running_command':
               case 'commands':
-                return 'Executing system commands to fulfill your request...';
+                statusText = 'Executing system commands to fulfill your request...';
+                break;
               default:
-                return currentStatus.description || `${currentStatus.action}...`;
+                statusText = currentStatus.description || `${currentStatus.action}...`;
             }
+            
+            // Append reasoning and confidence if available
+            if (currentStatus.reasoning) {
+              statusText += `\n\n💭 Router reasoning: ${currentStatus.reasoning}`;
+            }
+            if (currentStatus.confidence !== undefined) {
+              const confidencePercent = (currentStatus.confidence * 100).toFixed(0);
+              const confidenceLabel = currentStatus.confidence >= 0.9 ? 'Very High' :
+                                     currentStatus.confidence >= 0.7 ? 'High' :
+                                     currentStatus.confidence >= 0.5 ? 'Moderate' : 'Low';
+              statusText += `\n\n📊 Confidence: ${confidencePercent}% (${confidenceLabel})`;
+            }
+            
+            return statusText;
           };
           
           modalMessage = {

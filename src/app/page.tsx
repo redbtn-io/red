@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { generationStorage } from '@/lib/storage/generation-storage';
 import { lastConversationStorage } from '@/lib/storage/last-conversation-storage';
@@ -35,7 +35,7 @@ function extractToolExecutionsFromMessages(messages: Array<{id: string; toolExec
   return toolExecutionsMap;
 }
 
-export default function ChatPage() {
+function ChatPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -57,9 +57,13 @@ export default function ChatPage() {
     conversation: localConversation,
     messages: localMessages,
     thoughts: localThoughts,
+    pagination,
     loadConversation,
     clearConversation,
     addMessage: addLocalMessage,
+    appendMessages,
+    prependMessages,
+    setLoadingMore,
     setThought,
     completeThought,
     isLoaded: conversationLoaded,
@@ -72,7 +76,7 @@ export default function ChatPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isThinkingDisplayComplete, setIsThinkingDisplayComplete] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
-  const [currentStatus, setCurrentStatus] = useState<{action: string; description?: string} | null>(null);
+  const [currentStatus, setCurrentStatus] = useState<{action: string; description?: string; reasoning?: string; confidence?: number} | null>(null);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -97,6 +101,8 @@ export default function ChatPage() {
   const activeStreamRef = useRef<string | null>(null);
   const activeReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null); // Track active reader for aborting
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
+  const preventScrollRestorationRef = useRef<boolean>(false);
   const streamingContentRef = useRef<string>(''); // Track streaming content immediately
   const streamingMessageIdRef = useRef<string | null>(null); // Track which message is streaming
   const currentStreamingMessageRef = useRef<{ id: string; content: string } | null>(null); // Track current streaming message
@@ -107,34 +113,6 @@ export default function ChatPage() {
       router.push(`${pathname}?conversation=${conversationId}`, { scroll: false });
     } else {
       router.push(pathname, { scroll: false });
-    }
-  };
-
-  // Helper function to save tool executions to database
-  const saveToolExecutionsToDatabase = async (messageId: string, conversationId: string | null) => {
-    if (!conversationId) return;
-    
-    const toolExecutions = conversationState.getToolExecutions(messageId);
-    if (toolExecutions.length === 0) return;
-    
-    console.log(`[Stream] Saving ${toolExecutions.length} tool executions for message ${messageId}`);
-    
-    try {
-      const response = await fetch(`/api/v1/conversations/${conversationId}/messages/${messageId}/tool-executions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ toolExecutions }),
-      });
-      
-      if (response.ok) {
-        console.log(`[Stream] Successfully saved tool executions to database`);
-      } else {
-        console.warn(`[Stream] Failed to save tool executions:`, response.status);
-      }
-    } catch (error) {
-      console.warn(`[Stream] Error saving tool executions:`, error);
     }
   };
 
@@ -234,6 +212,38 @@ export default function ChatPage() {
         
         if (!data.active) {
           console.log('[Visibility] No active generation found');
+          // Only check for new messages if we have messages and last one is from user
+          // This means there might be an assistant response that completed while we were away
+          const shouldCheckForNewMessages = localMessages.length > 0 && 
+            localMessages[localMessages.length - 1].role === 'user';
+
+          if (shouldCheckForNewMessages) {
+            console.log('[Visibility] Last message is from user, checking for assistant response');
+            try {
+              // Get timestamp of the latest message (the user message)
+              const latestMessage = localMessages[localMessages.length - 1];
+              const afterTimestamp = latestMessage.timestamp instanceof Date ? 
+                latestMessage.timestamp.getTime() : latestMessage.timestamp;
+
+              // Fetch messages after this timestamp (user message ID now matches between frontend and DB)
+              const messagesResponse = await fetch(
+                `/api/v1/conversations/${currentConversation.id}/messages?after=${afterTimestamp}`,
+                { credentials: 'include' }
+              );
+
+              if (messagesResponse.ok) {
+                const messagesData = await messagesResponse.json();
+                if (messagesData.messages && messagesData.messages.length > 0) {
+                  console.log(`[Visibility] Appending ${messagesData.messages.length} new messages`);
+                  appendMessages(messagesData.messages);
+                }
+              }
+            } catch (err) {
+              console.error('[Visibility] Failed to fetch new messages:', err);
+            }
+          } else {
+            console.log('[Visibility] No need to check for new messages (last message not from user)');
+          }
           return;
         }
         
@@ -278,10 +288,8 @@ export default function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, currentConversation, isStreaming, streamingMessageId]);
 
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [currentConversation?.messages]);
+  // Note: Removed auto-scroll effect - with flex-col-reverse, scroll naturally starts at bottom (newest messages)
+  // messagesEndRef is still used for programmatic scrolling when new messages arrive during streaming
 
   // Debug: Track message state changes
   useEffect(() => {
@@ -334,16 +342,18 @@ export default function ChatPage() {
       console.log('[Init] Loading first available conversation:', conversationToLoad);
     }
     
-    // Load the determined conversation
+    // Load the determined conversation (limit to 50 most recent messages)
     if (conversationToLoad) {
-      fetchConversation(conversationToLoad).then(conv => {
+      fetchConversation(conversationToLoad, false, 50).then(conv => {
         if (conv) {
           loadConversation({
             id: conv.id,
             title: conv.title,
             messages: conv.messages || [],
             thoughts: conv.thoughts || {},
-            toolExecutions: extractToolExecutionsFromMessages(conv.messages || [])
+            toolExecutions: extractToolExecutionsFromMessages(conv.messages || []),
+            ...(conv.hasMore !== undefined && { hasMore: conv.hasMore }),
+            ...(conv.totalMessages !== undefined && { totalMessages: conv.totalMessages })
           });
           lastConversationStorage.set(conv.id);
           // Sync URL if it's different
@@ -356,6 +366,97 @@ export default function ChatPage() {
       });
     }
   }, [user, conversations, conversationLoaded, localConversationId, conversationsLoading, fetchConversation, loadConversation, searchParams]);
+
+  // Load more (older) messages for pagination
+  const loadMoreMessages = async () => {
+    if (!localConversationId || !pagination || !pagination.hasMore || pagination.isLoadingMore) {
+      return;
+    }
+
+    // Get the oldest message timestamp
+    const oldestMessage = localMessages[0];
+    if (!oldestMessage) return;
+
+    const beforeTimestamp = oldestMessage.timestamp instanceof Date ?
+      oldestMessage.timestamp.getTime() : oldestMessage.timestamp;
+
+    console.log(`[Pagination] Loading messages before ${new Date(beforeTimestamp).toISOString()}`);
+    
+    setLoadingMore(true);
+
+    try {
+      const response = await fetch(
+        `/api/v1/conversations/${localConversationId}/messages?before=${beforeTimestamp}&limit=50`,
+        { credentials: 'include' }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.messages && data.messages.length > 0) {
+          console.log(`[Pagination] Prepending ${data.messages.length} older messages, hasMore: ${data.hasMore}`);
+          prependMessages(data.messages, data.hasMore);
+        } else {
+          console.log('[Pagination] No more messages to load');
+          setLoadingMore(false);
+        }
+      } else {
+        console.error('[Pagination] Failed to load more messages:', response.status);
+        setLoadingMore(false);
+      }
+    } catch (err) {
+      console.error('[Pagination] Error loading more messages:', err);
+      setLoadingMore(false);
+    }
+  };
+
+  const scrollToTop = () => {
+    if (messagesScrollRef.current) {
+      const container = messagesScrollRef.current;
+      const currentScroll = container.scrollTop;
+      const maxScroll = -(container.scrollHeight - container.clientHeight);
+      
+      // Set flag to prevent scroll restoration when manually scrolling to top
+      preventScrollRestorationRef.current = true;
+      
+      // If all messages are loaded (no more to paginate), toggle between top and bottom
+      if (pagination && !pagination.hasMore) {
+        // If we're close to the top (within 100px), scroll to bottom
+        // Otherwise, scroll to top
+        const threshold = 100;
+        const distanceFromTop = Math.abs(currentScroll - maxScroll);
+        
+        if (distanceFromTop < threshold) {
+          // Currently at top, scroll to bottom (newest messages)
+          container.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+          });
+        } else {
+          // Not at top, scroll to top (oldest messages)
+          container.scrollTo({
+            top: maxScroll,
+            behavior: 'smooth'
+          });
+        }
+      } else {
+        // If there are more messages to load, always scroll to top
+        container.scrollTo({
+          top: maxScroll,
+          behavior: 'smooth'
+        });
+      }
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (messagesScrollRef.current) {
+      // With flex-col-reverse, scrollTop 0 is the bottom (newest messages)
+      messagesScrollRef.current.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   const createNewConversation = async () => {
     try {
@@ -736,12 +837,12 @@ export default function ChatPage() {
                 }
 
                 if (event.type === 'status') {
-                  setCurrentStatus({ action: event.action, description: event.description });
+                  setCurrentStatus({ action: event.action, description: event.description, reasoning: event.reasoning, confidence: event.confidence });
                   continue;
                 }
 
                 if (event.type === 'tool_status') {
-                  setCurrentStatus({ action: event.action, description: event.status });
+                  setCurrentStatus({ action: event.action, description: event.status, reasoning: event.reasoning, confidence: event.confidence });
                   continue;
                 }
 
@@ -782,8 +883,8 @@ export default function ChatPage() {
                       console.log(`[Stream] Tool started: ${toolEvent.toolName}, executions for ${messageId}:`, conversationState.getToolExecutions(messageId).length);
                       console.log(`[Stream] Current tool executions for ${messageId}:`, conversationState.getToolExecutions(messageId).map(t => `${t.toolName}(${t.status})`));
                       
-                      // Immediately save tool execution when it starts
-                      saveToolExecutionsToDatabase(messageId, localConversationId || null);
+                      // Tool executions are saved by backend when streaming completes
+                      // No need for immediate save - this caused race conditions and duplicates
                     } else {
                       console.log(`[Stream] Tool execution already exists (reconnection): ${toolEvent.toolName} (${toolEvent.toolId})`);
                     }
@@ -816,8 +917,7 @@ export default function ChatPage() {
                       );
                     }
                     
-                    // Save progress step immediately
-                    saveToolExecutionsToDatabase(messageId, localConversationId || null);
+                    // Progress steps are tracked in memory and saved by backend on completion
                   } else if (toolEvent.type === 'tool_complete') {
                     // Mark tool as complete
                     conversationState.completeToolExecution(
@@ -865,20 +965,23 @@ export default function ChatPage() {
                       }
                     }
                     
-                    // Save completion immediately
-                    saveToolExecutionsToDatabase(messageId, localConversationId || null);
+                    // Tool completion tracked in memory, saved by backend on stream completion
                   } else if (toolEvent.type === 'tool_error') {
                     // Mark tool as failed
+                    // Ensure error is a string (handle cases where it might be an object)
+                    const errorMessage = typeof toolEvent.error === 'string' 
+                      ? toolEvent.error 
+                      : JSON.stringify(toolEvent.error);
+                    
                     conversationState.failToolExecution(
                       messageId,
                       toolEvent.toolId,
-                      toolEvent.error,
+                      errorMessage,
                       toolEvent.timestamp
                     );
-                    console.error(`[Stream] Tool failed: ${toolEvent.toolName} - ${toolEvent.error}`);
+                    console.error(`[Stream] Tool failed: ${toolEvent.toolName} - ${errorMessage}`);
                     
-                    // Save error state immediately
-                    saveToolExecutionsToDatabase(messageId, localConversationId || null);
+                    // Tool error tracked in memory, saved by backend on stream completion
                   }
                   continue;
                 }
@@ -1018,58 +1121,48 @@ export default function ChatPage() {
         // Save the completed streaming message to permanent conversation state
         // USE convId parameter, not localConversationId from closure!
         if (completedStreamingMessage && convId) {
-          console.log(`[Stream] ✅ ADDING MESSAGE TO PERMANENT STATE using convId:`, convId);
-          console.log(`[Stream] Adding completed message to permanent state:`, {
-            messageId: completedStreamingMessage.id,
-            contentLength: completedStreamingMessage.content.length,
-            currentStateMessageCount: localMessages.length
-          });
-          console.log(`[Stream] Before saving - tool executions for ${completedStreamingMessage.id}:`, conversationState.getToolExecutions(completedStreamingMessage.id).map(t => `${t.toolName}(${t.status})`));
+          // Check if message already exists (can happen during reconnect to completed generation)
+          const existingMessage = localMessages.find(m => m.id === completedStreamingMessage.id);
           
-          addLocalMessage({
-            id: completedStreamingMessage.id,
-            role: 'assistant',
-            content: completedStreamingMessage.content,
-            timestamp: new Date(),
-            metadata: {
-              conversationId: convId, // Use convId parameter, not localConversationId!
-            }
-          });
+          if (existingMessage) {
+            console.log(`[Stream] Message ${completedStreamingMessage.id} already exists in conversation, skipping add`);
+          } else {
+            console.log(`[Stream] ✅ ADDING MESSAGE TO PERMANENT STATE using convId:`, convId);
+            console.log(`[Stream] Adding completed message to permanent state:`, {
+              messageId: completedStreamingMessage.id,
+              contentLength: completedStreamingMessage.content.length,
+              currentStateMessageCount: localMessages.length
+            });
+            console.log(`[Stream] Before saving - tool executions for ${completedStreamingMessage.id}:`, conversationState.getToolExecutions(completedStreamingMessage.id).map(t => `${t.toolName}(${t.status})`));
+            
+            addLocalMessage({
+              id: completedStreamingMessage.id,
+              role: 'assistant',
+              content: completedStreamingMessage.content,
+              timestamp: new Date(),
+              metadata: {
+                conversationId: convId, // Use convId parameter, not localConversationId!
+              }
+            });
+            
+            console.log(`[Stream] addLocalMessage called, waiting for state update...`);
+            console.log(`[Stream] localMessages.length BEFORE addLocalMessage:`, localMessages.length);
+            
+            // Wait a bit to ensure state has updated
+            await new Promise(resolve => setTimeout(resolve, 200)); // Increased wait time
+            
+            console.log(`[Stream] After state update wait - checking if message appeared in state...`);
+          }
           
-          console.log(`[Stream] addLocalMessage called, waiting for state update...`);
-          console.log(`[Stream] localMessages.length BEFORE addLocalMessage:`, localMessages.length);
-          
-          // Wait a bit to ensure state has updated
-          await new Promise(resolve => setTimeout(resolve, 200)); // Increased wait time
-          
-          console.log(`[Stream] After state update wait - checking if message appeared in state...`);
           // Note: localMessages might not update here due to closure, but that's okay
           // The important thing is that conversationState has it
 
-          // Save tool execution data to database (if any exist for this message)
+          // Tool executions are already saved by the backend in respond.ts when streaming completes
+          // Backend collects tool executions from Redis state and passes to store_message
+          // No need for frontend to make a separate POST - that caused race conditions
           const toolExecutions = conversationState.getToolExecutions(completedStreamingMessage.id);
           if (toolExecutions.length > 0) {
-            console.log(`[Stream] Saving ${toolExecutions.length} tool executions for message ${completedStreamingMessage.id}`);
-            
-            try {
-              const response = await fetch(`/api/v1/conversations/${convId}/messages/${completedStreamingMessage.id}/tool-executions`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ toolExecutions }),
-              });
-              
-              if (response.ok) {
-                console.log(`[Stream] Successfully saved tool executions to database`);
-              } else {
-                console.warn(`[Stream] Failed to save tool executions:`, response.status);
-              }
-            } catch (error) {
-              console.warn(`[Stream] Error saving tool executions:`, error);
-            }
-          } else {
-            console.log(`[Stream] No tool executions to save for message ${completedStreamingMessage.id}`);
+            console.log(`[Stream] Tool executions already saved by backend: ${toolExecutions.length} executions for message ${completedStreamingMessage.id}`);
           }
         } else {
           console.error(`[Stream] ❌ FAILED TO ADD MESSAGE - completedStreamingMessage:`, !!completedStreamingMessage, 'convId:', convId);
@@ -1158,7 +1251,7 @@ export default function ChatPage() {
 
     try {
       // Add user message to conversation state immediately
-      const userMessageId = `msg_user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const userMessageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       addLocalMessage({
         id: userMessageId,
         role: 'user',
@@ -1204,6 +1297,7 @@ export default function ChatPage() {
           stream: true,
           conversationId: convId,
           messageId,
+          userMessageId, // Pass frontend's user message ID so backend uses the same one
         }),
       });
 
@@ -1276,12 +1370,14 @@ export default function ChatPage() {
               title={localConversation?.title || 'Chat'}
               onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
               onNewChat={createNewConversation}
+              onTitleClick={scrollToTop}
             />
 
             {conversationsLoading ? (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-white/60">Loading conversations...</div>
-              </div>
+              <LoadingSpinner 
+                mode="fullscreen" 
+                size={32}
+              />
             ) : (
               <>
                 <Messages
@@ -1300,6 +1396,10 @@ export default function ChatPage() {
                   modalState={modalState}
                   onOpenModal={(messageId: string) => setModalState({ isOpen: true, messageId })}
                   onCloseModal={() => setModalState({ isOpen: false, messageId: null })}
+                  pagination={pagination}
+                  onLoadMore={loadMoreMessages}
+                  scrollContainerRef={messagesScrollRef}
+                  preventScrollRestorationRef={preventScrollRestorationRef}
                 />
 
                 <ChatInput
@@ -1308,6 +1408,7 @@ export default function ChatPage() {
                   messagesEndRef={messagesEndRef}
                   onChange={setInput}
                   onSend={sendMessage}
+                  onScrollToBottom={scrollToBottom}
                 />
               </>
             )}
@@ -1342,5 +1443,13 @@ export default function ChatPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner mode="fullscreen" message="Loading..." size={32} />}>
+      <ChatPageContent />
+    </Suspense>
   );
 }

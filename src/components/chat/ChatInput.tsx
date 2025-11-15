@@ -6,9 +6,10 @@ interface ChatInputProps {
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   onChange: (value: string) => void;
   onSend: () => void;
+  onScrollToBottom?: () => void;
 }
 
-export function ChatInput({ value, disabled, messagesEndRef, onChange, onSend }: ChatInputProps) {
+export function ChatInput({ value, disabled, messagesEndRef, onChange, onSend, onScrollToBottom }: ChatInputProps) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -26,9 +27,15 @@ export function ChatInput({ value, disabled, messagesEndRef, onChange, onSend }:
             onKeyDown={handleKeyDown}
             onFocus={() => {
               // On mobile, keyboard may resize viewport; scroll after a short delay
-              setTimeout(() => {
-                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-              }, 300);
+              if (onScrollToBottom) {
+                setTimeout(() => {
+                  onScrollToBottom();
+                }, 300);
+              } else {
+                setTimeout(() => {
+                  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }, 300);
+              }
             }}
             placeholder={disabled ? "Generating response..." : "Type your message..."}
             className={`w-full resize-none bg-[#1a1a1a] border border-[#2a2a2a] text-gray-100 placeholder-gray-500 rounded-xl px-4 pr-16 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all leading-tight block ${

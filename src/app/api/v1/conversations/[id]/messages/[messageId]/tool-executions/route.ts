@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ObjectId } from 'mongodb';
 import { getDatabase } from '@redbtn/ai';
 
 /**
@@ -34,16 +35,48 @@ export async function POST(
 
     // Update the message in the database with tool execution data
     const db = getDatabase();
-    
-    // Update the message using MongoDB updateOne
-    await db.updateOne('messages', 
-      { messageId: messageId },
-      { $set: { toolExecutions: toolExecutions } }
-    ).catch((err: unknown) => {
+
+    const updatePayload = { $set: { toolExecutions } } as const;
+
+    let updateApplied = false;
+
+    try {
+      updateApplied = await db.updateOne('messages', { messageId }, updatePayload);
+    } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      console.warn('[API] Failed to update message with tool executions:', errorMessage);
-      // Continue anyway - tool executions are primarily for UI enhancement
-    });
+      console.warn('[API] Failed to update message with tool executions by messageId:', errorMessage);
+    }
+
+    if (!updateApplied) {
+      try {
+        const existingMessage = await db.findOne('messages', { messageId });
+        if (existingMessage) {
+          // Record already contained matching tool executions; treat as success to avoid noisy fallbacks
+          updateApplied = true;
+        }
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        console.warn('[API] Failed to verify message existence by messageId:', errorMessage);
+      }
+    }
+
+    // Fallback: some legacy records are missing messageId, so try the Mongo _id field
+    if (!updateApplied && ObjectId.isValid(messageId)) {
+      try {
+        const fallbackApplied = await db.updateOne('messages', { _id: new ObjectId(messageId) }, updatePayload);
+        if (fallbackApplied) {
+          updateApplied = true;
+          console.log('[API] Updated tool executions using _id fallback for message', messageId);
+        }
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        console.warn('[API] Failed to update message with tool executions by _id fallback:', errorMessage);
+      }
+    }
+
+    if (!updateApplied) {
+      console.warn('[API] No message was updated with tool executions for messageId:', messageId);
+    }
 
     return NextResponse.json({
       success: true,

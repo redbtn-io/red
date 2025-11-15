@@ -139,7 +139,7 @@ export function LogsSidebar({
                       <MessageSquare size={16} className="mt-0.5 flex-shrink-0 text-gray-400" />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium truncate text-gray-200">
-                          {conv.title || conv.conversationId.slice(0, 8)}
+                          {conv.title || (conv.conversationId ? conv.conversationId.slice(0, 8) : 'Unknown')}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
                           <span>{conv.logCount} logs</span>

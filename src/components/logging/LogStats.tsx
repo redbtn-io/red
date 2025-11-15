@@ -100,6 +100,7 @@ export function LogStats({ conversationId }: LogStatsProps) {
               debug: '🐛',
               info: 'ℹ️',
               success: '✅',
+              warn: '⚠️',
               warning: '⚠️',
               error: '❌',
             };
@@ -107,23 +108,28 @@ export function LogStats({ conversationId }: LogStatsProps) {
               debug: 'text-gray-500',
               info: 'text-blue-400',
               success: 'text-green-400',
+              warn: 'text-yellow-400',
               warning: 'text-yellow-400',
               error: 'text-red-400',
             };
+            
+            // Fallback for unexpected levels
+            const icon = icons[level] || '📝';
+            const color = colors[level] || 'text-gray-400';
             
             const percentage = stats.totalLogs > 0 ? (count / stats.totalLogs) * 100 : 0;
             
             return (
               <div key={level}>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className={colors[level]}>
-                    {icons[level]} {level}
+                  <span className={color}>
+                    {icon} {level}
                   </span>
                   <span className="text-[var(--foreground)] opacity-60">{count}</span>
                 </div>
                 <div className="w-full bg-[var(--background)] rounded-full h-1.5">
                   <div
-                    className={`h-1.5 rounded-full ${colors[level].replace('text-', 'bg-')}`}
+                    className={`h-1.5 rounded-full ${color.replace('text-', 'bg-')}`}
                     style={{ width: `${percentage}%` }}
                   ></div>
                 </div>

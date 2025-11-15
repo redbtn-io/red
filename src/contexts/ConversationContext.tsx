@@ -29,6 +29,8 @@ export interface Conversation {
   isArchived: boolean;
   createdAt: Date;
   updatedAt: Date;
+  hasMore?: boolean; // Pagination: are there more messages to load
+  totalMessages?: number; // Pagination: total messages in conversation
 }
 
 export interface ConversationSummary {
@@ -50,7 +52,7 @@ interface ConversationContextType {
 
   // Actions
   fetchConversations: () => Promise<void>;
-  fetchConversation: (id: string, silent?: boolean) => Promise<Conversation | undefined>;
+  fetchConversation: (id: string, silent?: boolean, limit?: number) => Promise<Conversation | undefined>;
   createConversation: (title?: string, initialMessage?: Partial<Message>) => Promise<Conversation>;
   updateConversation: (id: string, updates: Partial<Pick<Conversation, 'title' | 'isArchived'>>) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
@@ -97,8 +99,8 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  // Fetch a specific conversation with all messages
-  const fetchConversation = useCallback(async (id: string, silent: boolean = false) => {
+  // Fetch a specific conversation with messages (optionally limited)
+  const fetchConversation = useCallback(async (id: string, silent: boolean = false, limit?: number) => {
     if (!id || id === 'undefined') {
       console.error('[Conversation] Invalid conversation ID:', id);
       return;
@@ -111,7 +113,8 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      const response = await fetch(`/api/v1/conversations/${id}`, {
+      const url = limit ? `/api/v1/conversations/${id}?limit=${limit}` : `/api/v1/conversations/${id}`;
+      const response = await fetch(url, {
         credentials: 'include',
       });
 

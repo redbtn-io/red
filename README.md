@@ -15,6 +15,34 @@ This is the web frontend for Red AI, built with Next.js 15, React 19, and Tailwi
 - ⚡ **Server-Sent Events**: Efficient streaming with native browser support
 - 🎨 **Smooth UX**: Character-by-character display with skeleton animation during generation
 
+## Workspace Layout & Shared Tooling
+
+This app lives beside the LangGraph library in the same workspace:
+
+- `ai/` – LangGraph-based library, MCP servers, shared types
+- `webapp/` – this Next.js frontend and API surface
+- `scripts/` – shared automation such as `pre-commit-cleanup.sh`
+- `explanations/` – single home for every markdown document that is not a README
+
+When contributing to the webapp you often need to rebuild or relink the sibling `ai/` package and keep documentation hygiene consistent between both projects.
+
+## Documentation Cleanup & Git Hooks
+
+All non-README `.md` files should live under `/explanations`. A shared script enforces that policy and removes stray `explanations/` or `scripts/` folders inside individual projects.
+
+```bash
+# From the workspace root
+./scripts/pre-commit-cleanup.sh ./webapp
+```
+
+To run this automatically before each commit inside the `webapp` repo, point Git to the local hook directory (one-time per clone):
+
+```bash
+git config core.hooksPath .githooks
+```
+
+The hook simply proxies to the shared script with the project path, so CI or manual workflows can reuse the same command. You can run the script manually anytime you touch documentation.
+
 ## Getting Started
 
 ### Prerequisites

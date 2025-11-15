@@ -9,6 +9,9 @@ import {
 } from '@/lib/api/api-helpers';
 import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
 import { RateLimits } from '@/lib/rate-limit/rate-limit';
+import type { InvokeOptions } from '@redbtn/ai';
+
+type ExtendedInvokeOptions = InvokeOptions & { userMessageId?: string };
 
 export async function POST(request: NextRequest) {
   // Apply rate limiting (30 requests/minute for chat)
@@ -45,7 +48,8 @@ export async function POST(request: NextRequest) {
 
     const red = await getRed();
 
-    const messageId = body.messageId || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const messageId = body.messageId || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const userMessageId = typeof body.userMessageId === 'string' ? body.userMessageId : undefined;
 
     if (body.stream) {
       await red.messageQueue.startGeneration(conversationId, messageId);
@@ -71,14 +75,17 @@ export async function POST(request: NextRequest) {
           await subscriptionReadyPromise;
           console.log('[Completions] Subscription ready, starting generation for', messageId);
           
+          const respondOptions: ExtendedInvokeOptions = {
+            source: { application: 'redChat' },
+            stream: true,
+            conversationId,
+            messageId,
+            userMessageId
+          };
+
           const responseStream = await red.respond(
             { message: userMessage },
-            {
-              source: { application: 'redChat' },
-              stream: true,
-              conversationId,
-              messageId
-            }
+            respondOptions
           );
 
           for await (const chunk of responseStream) {
@@ -194,11 +201,6 @@ export async function POST(request: NextRequest) {
                   action: event.action,
                   description: event.description
                 })}\n\n`))) break;
-              } else if (event.type === 'thinking') {
-                if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'thinking',
-                  content: event.content
-                })}\n\n`))) break;
               } else if (event.type === 'tool_status') {
                 console.log('[Completions] Forwarding tool_status:', event.action);
                 if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
@@ -252,12 +254,15 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const respondOptions: ExtendedInvokeOptions = {
+      source: { application: 'redChat' },
+      conversationId,
+      userMessageId
+    };
+
     const response = await red.respond(
       { message: userMessage },
-      {
-        source: { application: 'redChat' },
-        conversationId
-      }
+      respondOptions
     );
 
     const completion = {
