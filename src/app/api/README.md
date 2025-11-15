@@ -18,6 +18,31 @@ Complete documentation for the Red AI REST API. This API provides AI chat comple
 7. [Error Handling](#error-handling)
 8. [Streaming Protocol](#streaming-protocol)
 
+## 🗂️ Directory Overview & Local Tooling
+
+The API surface lives inside the Next.js app directory. Key folders:
+
+- `src/app/api/auth/*` – magic-link authentication endpoints (request code, check session, logout)
+- `src/app/api/v1/chat/completions` – OpenAI-compatible entry point that decouples HTTP from generation
+- `src/app/api/v1/messages/[messageId]/*` – reconnectable SSE stream endpoints
+- `src/app/api/v1/conversations/*` – CRUD + telemetry for stored conversations
+- `src/app/api/v1/logs/*` and `generations/*` – diagnostics, log tailing, and generation metadata
+- `src/app/api/health` – lightweight readiness probe for load balancers
+
+Because this workspace also contains the `ai/` package, we keep shared automation at the root under `scripts/`. In particular, `scripts/pre-commit-cleanup.sh` moves stray markdown documents into `/explanations` and removes nested `explanations/` or `scripts/` folders from the Next.js project. Run it manually before submitting docs-heavy changes:
+
+```bash
+./scripts/pre-commit-cleanup.sh ./webapp
+```
+
+To automate the process, configure Git once inside `webapp/`:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+The hook simply calls the shared script with `./webapp` so local commits and CI both enforce the documentation policy.
+
 ---
 
 ## 🔐 Authentication
@@ -952,6 +977,38 @@ const response = await fetch('/api/v1/chat/completions', {
   })
 });
 
+
+  ## 🧪 Local Testing & Debugging
+
+  1. **Start the Next.js dev server** (from `webapp/`):
+    ```bash
+    npm run dev
+    ```
+
+  2. **Exercise a non-streaming completion**:
+    ```bash
+    curl -X POST http://localhost:3000/api/v1/chat/completions \
+        -H "Content-Type: application/json" \
+        -d '{
+            "messages": [{"role":"user","content":"Hello"}],
+            "stream": false
+          }'
+    ```
+
+  3. **Test the streaming + reconnection path** by first POSTing to `/chat/completions` with `"stream": true`, then opening the returned `stream_url` in a second terminal with `curl -N http://localhost:3000{stream_url}`. Kill the curl process mid-way and re-open the same URL to confirm accumulated content is replayed.
+
+  4. **Validate auth flow** with the magic-link endpoints:
+    ```bash
+    curl -X POST http://localhost:3000/api/auth/request-code \
+        -H "Content-Type: application/json" \
+        -d '{"email":"test@example.com","sessionId":"session_$(date +%s)_demo"}'
+    ```
+
+  5. **Inspect rate-limit headers**: every API response includes `X-RateLimit-*`. When hitting limits intentionally (e.g., `watch -n0.5 curl ...`), confirm `429` payloads match the docs above.
+
+  These ad-hoc checks complement the built-in hook-based markdown cleanup and keep regressions obvious before pushing.
+
+  ---
 const reader = response.body?.getReader();
 const decoder = new TextDecoder();
 
