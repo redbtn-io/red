@@ -2,12 +2,15 @@ import mongoose, { Schema, Model } from 'mongoose';
 
 // Account levels
 export enum AccountLevel {
-  ADMIN = 0,      // Administrator with full access
-  USER = 1,       // Regular user (default)
-  // Future levels can be added here:
-  // PREMIUM = 2,
-  // ENTERPRISE = 3,
+  ADMIN = 0,       // System administrator with full access
+  ENTERPRISE = 1,  // Existing "USER" level - dedicated features
+  PRO = 2,         // Shared instance, complex nodes, priority
+  BASIC = 3,       // Shared instance, custom neurons
+  FREE = 4,        // Shared instance, default neurons only (new user default)
 }
+
+// Backward compatibility alias
+export const USER = AccountLevel.ENTERPRISE;
 
 export interface IUser {
   _id: string;
@@ -17,6 +20,8 @@ export interface IUser {
   agreedToTerms: boolean;
   profileComplete: boolean;
   accountLevel: AccountLevel;
+  defaultNeuronId?: string;        // User's default neuron for chat
+  defaultWorkerNeuronId?: string;  // User's default neuron for workers
   createdAt: Date;
   updatedAt: Date;
 }
@@ -48,9 +53,23 @@ const userSchema = new Schema<IUser>(
     },
     accountLevel: {
       type: Number,
-      default: AccountLevel.USER,
-      enum: [AccountLevel.ADMIN, AccountLevel.USER], // Use actual enum values, not Object.values
+      default: AccountLevel.FREE, // New users default to FREE tier
+      enum: [
+        AccountLevel.ADMIN,
+        AccountLevel.ENTERPRISE,
+        AccountLevel.PRO,
+        AccountLevel.BASIC,
+        AccountLevel.FREE
+      ],
       index: true
+    },
+    defaultNeuronId: {
+      type: String,
+      default: 'red-neuron' // Primary default neuron
+    },
+    defaultWorkerNeuronId: {
+      type: String,
+      default: 'red-neuron' // Same default for workers
     }
   },
   {
@@ -64,7 +83,7 @@ userSchema.methods.isAdmin = function(): boolean {
 };
 
 userSchema.methods.isRegularUser = function(): boolean {
-  return this.accountLevel === AccountLevel.USER;
+  return this.accountLevel === AccountLevel.ENTERPRISE;
 };
 
 // Static method to check if user is admin

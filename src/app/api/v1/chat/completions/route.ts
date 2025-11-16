@@ -9,14 +9,33 @@ import {
 } from '@/lib/api/api-helpers';
 import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
 import { RateLimits } from '@/lib/rate-limit/rate-limit';
+import { verifyAuth } from '@/lib/auth/auth';
 import type { InvokeOptions } from '@redbtn/ai';
 
-type ExtendedInvokeOptions = InvokeOptions & { userMessageId?: string };
+type ExtendedInvokeOptions = InvokeOptions & { 
+  userMessageId?: string;
+  userId?: string;  // Phase 0: Required for per-user model loading
+};
 
 export async function POST(request: NextRequest) {
   // Apply rate limiting (30 requests/minute for chat)
   const rateLimitResult = await rateLimitAPI(request, RateLimits.CHAT);
   if (rateLimitResult) return rateLimitResult;
+
+  // Verify authentication (Phase 0 requirement)
+  const user = await verifyAuth(request);
+  if (!user) {
+    return NextResponse.json(
+      {
+        error: {
+          message: 'Authentication required',
+          type: 'authentication_error',
+          code: 'unauthorized'
+        }
+      },
+      { status: 401 }
+    );
+  }
 
   try {
     const body: ChatCompletionRequest = await request.json();
@@ -80,7 +99,8 @@ export async function POST(request: NextRequest) {
             stream: true,
             conversationId,
             messageId,
-            userMessageId
+            userMessageId,
+            userId: user.userId  // Phase 0: Required for per-user model loading
           };
 
           const responseStream = await red.respond(
@@ -257,7 +277,8 @@ export async function POST(request: NextRequest) {
     const respondOptions: ExtendedInvokeOptions = {
       source: { application: 'redChat' },
       conversationId,
-      userMessageId
+      userMessageId,
+      userId: user.userId  // Phase 0: Required for per-user model loading
     };
 
     const response = await red.respond(
