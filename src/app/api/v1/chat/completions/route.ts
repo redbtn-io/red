@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
           console.log('[Completions] User from JWT:', { userId: user.userId, email: user.email });
           
           const respondOptions: InvokeOptions = {
-            source: 'api',
+            source: { application: 'redChat' },
             stream: true,  // Fixed: use 'stream' not 'streaming'
             conversationId,
             messageId,
