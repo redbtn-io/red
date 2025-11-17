@@ -209,7 +209,7 @@ export function getRateLimitIdentifier(request: Request, userId?: string): strin
  */
 export const RateLimits = {
   /** Very strict - for sensitive operations like login attempts */
-  STRICT: { limit: 5, windowSeconds: 60 } as RateLimitConfig,
+  STRICT: { limit: 25, windowSeconds: 60 } as RateLimitConfig,
   
   /** Standard - for authenticated API endpoints */
   STANDARD: { limit: 100, windowSeconds: 60 } as RateLimitConfig,
@@ -218,7 +218,7 @@ export const RateLimits = {
   RELAXED: { limit: 300, windowSeconds: 60 } as RateLimitConfig,
   
   /** Auth - for authentication endpoints (magic links, login) */
-  AUTH: { limit: 20, windowSeconds: 180 } as RateLimitConfig, // 20 requests per 3 minutes
+  AUTH: { limit: 200, windowSeconds: 180 } as RateLimitConfig, // 20 requests per 3 minutes
   
   /** Chat - for chat completion endpoints */
   CHAT: { limit: 30, windowSeconds: 60 } as RateLimitConfig,

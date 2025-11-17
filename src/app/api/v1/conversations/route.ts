@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch conversations from AI package database (red.memory)
     const db = getDatabase();
-    const conversations = await db.getConversations(limit, offset);
+    const conversations = await db.getConversations(user.userId, limit, offset);
 
     return NextResponse.json({
       conversations: conversations.map(conv => ({

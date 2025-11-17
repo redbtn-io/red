@@ -12,11 +12,6 @@ import { RateLimits } from '@/lib/rate-limit/rate-limit';
 import { verifyAuth } from '@/lib/auth/auth';
 import type { InvokeOptions } from '@redbtn/ai';
 
-type ExtendedInvokeOptions = InvokeOptions & { 
-  userMessageId?: string;
-  userId?: string;  // Phase 0: Required for per-user model loading
-};
-
 export async function POST(request: NextRequest) {
   // Apply rate limiting (30 requests/minute for chat)
   const rateLimitResult = await rateLimitAPI(request, RateLimits.CHAT);
@@ -94,14 +89,18 @@ export async function POST(request: NextRequest) {
           await subscriptionReadyPromise;
           console.log('[Completions] Subscription ready, starting generation for', messageId);
           
-          const respondOptions: ExtendedInvokeOptions = {
-            source: { application: 'redChat' },
-            stream: true,
+          console.log('[Completions] User from JWT:', { userId: user.userId, email: user.email });
+          
+          const respondOptions: InvokeOptions = {
+            source: 'api',
+            stream: true,  // Fixed: use 'stream' not 'streaming'
             conversationId,
             messageId,
             userMessageId,
-            userId: user.userId  // Phase 0: Required for per-user model loading
+            userId: user.userId  // Phase 0: Required for per-user model loading (userId from JWT token)
           };
+          
+          console.log('[Completions] Calling respond() with options:', { conversationId, userId: respondOptions.userId, messageId });
 
           const responseStream = await red.respond(
             { message: userMessage },
@@ -274,7 +273,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const respondOptions: ExtendedInvokeOptions = {
+    const respondOptions: InvokeOptions = {
       source: { application: 'redChat' },
       conversationId,
       userMessageId,

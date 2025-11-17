@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
         email: authCode.email,
         profileComplete: false,
         agreedToTerms: false,
-        accountLevel: AccountLevel.USER,
+        accountLevel: AccountLevel.FREE,
       });
     }
 

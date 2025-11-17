@@ -54,6 +54,11 @@ export async function GET(
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
+    // Verify ownership (only check if userId exists - old conversations may not have it)
+    if (conversation.userId && conversation.userId !== user.userId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // Fetch messages for this conversation
     const allMessages = await db.getMessages(conversationId);
     
@@ -162,6 +167,11 @@ export async function PATCH(
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
+    // Verify ownership (only check if userId exists - old conversations may not have it)
+    if (conversation.userId && conversation.userId !== user.userId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // Update title if provided
     if (title !== undefined) {
       await db.updateConversationTitle(conversationId, title);
@@ -225,8 +235,19 @@ export async function DELETE(
 
     const { id: conversationId } = await context.params;
 
-    // Delete conversation from AI package database
+    // Verify ownership before deletion
     const db = getDatabase();
+    const conversation = await db.getConversation(conversationId);
+    
+    if (!conversation) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+    }
+    
+    // Verify ownership (only check if userId exists - old conversations may not have it)
+    if (conversation.userId && conversation.userId !== user.userId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     await db.deleteConversation(conversationId);
 
     return NextResponse.json({

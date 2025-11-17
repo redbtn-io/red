@@ -22,6 +22,7 @@ export interface IUser {
   accountLevel: AccountLevel;
   defaultNeuronId?: string;        // User's default neuron for chat
   defaultWorkerNeuronId?: string;  // User's default neuron for workers
+  defaultGraphId?: string;         // User's default graph configuration (Phase 1)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -70,6 +71,10 @@ const userSchema = new Schema<IUser>(
     defaultWorkerNeuronId: {
       type: String,
       default: 'red-neuron' // Same default for workers
+    },
+    defaultGraphId: {
+      type: String,
+      default: 'red-graph-default' // Default three-tier graph (Phase 1)
     }
   },
   {
