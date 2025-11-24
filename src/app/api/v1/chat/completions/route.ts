@@ -91,16 +91,20 @@ export async function POST(request: NextRequest) {
           
           console.log('[Completions] User from JWT:', { userId: user.userId, email: user.email });
           
+          // Phase 2: Extract optional graphId from request (defaults to assistant-search in respond.ts)
+          const graphId = typeof body.graphId === 'string' ? body.graphId : undefined;
+          
           const respondOptions: InvokeOptions = {
             source: { application: 'redChat' },
-            stream: true,  // Fixed: use 'stream' not 'streaming'
+            stream: true,  // Always true for streaming endpoint branch
             conversationId,
             messageId,
             userMessageId,
-            userId: user.userId  // Phase 0: Required for per-user model loading (userId from JWT token)
+            userId: user.userId,  // Phase 0: Required for per-user model loading (userId from JWT token)
+            graphId  // Phase 2: Optional graph selection (defaults to assistant-search)
           };
           
-          console.log('[Completions] Calling respond() with options:', { conversationId, userId: respondOptions.userId, messageId });
+          console.log('[Completions] Calling respond() with options:', { conversationId, userId: respondOptions.userId, messageId, graphId });
 
           const responseStream = await red.respond(
             { message: userMessage },
@@ -273,11 +277,15 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Phase 2: Extract optional graphId from request (defaults to assistant-search in respond.ts)
+    const graphId = typeof body.graphId === 'string' ? body.graphId : undefined;
+    
     const respondOptions: InvokeOptions = {
       source: { application: 'redChat' },
       conversationId,
       userMessageId,
-      userId: user.userId  // Phase 0: Required for per-user model loading
+      userId: user.userId,  // Phase 0: Required for per-user model loading
+      graphId  // Phase 2: Optional graph selection (defaults to assistant-search)
     };
 
     const response = await red.respond(
