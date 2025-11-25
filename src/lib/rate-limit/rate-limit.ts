@@ -5,6 +5,8 @@
  */
 
 export interface RateLimitConfig {
+  /** Optional name for the rate limit bucket (to separate limits) */
+  name?: string;
   /** Maximum number of requests allowed in the window */
   limit: number;
   /** Time window in seconds */
@@ -51,12 +53,13 @@ async function checkRateLimitMemory(
 ): Promise<RateLimitResult> {
   const now = Date.now();
   const windowMs = config.windowSeconds * 1000;
+  const key = `${identifier}:${config.name || 'default'}`;
   
-  const existing = memoryStore.get(identifier);
+  const existing = memoryStore.get(key);
   
   if (!existing || existing.resetAt < now) {
     // New window
-    memoryStore.set(identifier, {
+    memoryStore.set(key, {
       count: 1,
       resetAt: now + windowMs,
     });
@@ -84,7 +87,7 @@ async function checkRateLimitMemory(
     };
   }
   
-  memoryStore.set(identifier, {
+  memoryStore.set(key, {
     count: newCount,
     resetAt: existing.resetAt,
   });
@@ -117,7 +120,7 @@ async function checkRateLimitRedis(
   try {
     await redis.connect();
     
-    const key = `ratelimit:${identifier}`;
+    const key = `ratelimit:${identifier}:${config.name || 'default'}`;
     const windowMs = config.windowSeconds * 1000;
     
     // Use Redis transaction for atomic operations
@@ -209,17 +212,17 @@ export function getRateLimitIdentifier(request: Request, userId?: string): strin
  */
 export const RateLimits = {
   /** Very strict - for sensitive operations like login attempts */
-  STRICT: { limit: 25, windowSeconds: 60 } as RateLimitConfig,
+  STRICT: { name: 'strict', limit: 25, windowSeconds: 60 } as RateLimitConfig,
   
   /** Standard - for authenticated API endpoints */
-  STANDARD: { limit: 100, windowSeconds: 60 } as RateLimitConfig,
+  STANDARD: { name: 'standard', limit: 100, windowSeconds: 60 } as RateLimitConfig,
   
   /** Relaxed - for public read-only endpoints */
-  RELAXED: { limit: 300, windowSeconds: 60 } as RateLimitConfig,
+  RELAXED: { name: 'relaxed', limit: 300, windowSeconds: 60 } as RateLimitConfig,
   
   /** Auth - for authentication endpoints (magic links, login) */
-  AUTH: { limit: 200, windowSeconds: 180 } as RateLimitConfig, // 20 requests per 3 minutes
+  AUTH: { name: 'auth', limit: 200, windowSeconds: 180 } as RateLimitConfig, // 20 requests per 3 minutes
   
   /** Chat - for chat completion endpoints */
-  CHAT: { limit: 30, windowSeconds: 60 } as RateLimitConfig,
+  CHAT: { name: 'chat', limit: 30, windowSeconds: 60 } as RateLimitConfig,
 };

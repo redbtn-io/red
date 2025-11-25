@@ -79,9 +79,23 @@ export async function POST(request: NextRequest) {
     // The AI package will create the actual conversation when first message is sent
     const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+    // Create the conversation in the database immediately so it appears in lists
+    const db = getDatabase();
+    const now = new Date();
+    
+    await db.upsertConversation({
+      conversationId,
+      title: title || 'New Conversation',
+      userId: user.userId,
+      metadata: {
+        messageCount: 0,
+      },
+      createdAt: now,
+      updatedAt: now,
+    });
+
     // Return the new conversation ID
     // The actual conversation will be created when the first message is sent to respond()
-    const now = new Date();
     return NextResponse.json({
       conversation: {
         id: conversationId,

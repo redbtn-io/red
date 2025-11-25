@@ -49,6 +49,27 @@ if (!initPromise) {
 export const red = await initPromise;
 
 /**
+ * Graceful shutdown handler
+ * Kills MCP stdio server child processes when Next.js process terminates
+ */
+async function shutdown(signal: string) {
+  console.log(`\n[Red] Received ${signal}, shutting down gracefully...`);
+  if (redInstance) {
+    try {
+      await redInstance.shutdown();
+      console.log('[Red] Shutdown complete');
+    } catch (error) {
+      console.error('[Red] Error during shutdown:', error);
+    }
+  }
+  process.exit(0);
+}
+
+// Register signal handlers for graceful shutdown
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+/**
  * Bearer token for API authentication
  */
 export const BEARER_TOKEN = process.env.BEARER_TOKEN || `red_ai_sk_${Date.now()}`;

@@ -74,7 +74,7 @@ const userSchema = new Schema<IUser>(
     },
     defaultGraphId: {
       type: String,
-      default: 'red-graph-default' // Default three-tier graph (Phase 1)
+      default: 'red-assistant' // Default assistant graph (Phase 2)
     }
   },
   {
