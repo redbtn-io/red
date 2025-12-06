@@ -6,12 +6,14 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { Header } from '@/components/layout/Header';
 import { LogsSidebar } from '@/components/logging/LogsSidebar';
 import { LogViewer } from '@/components/logging/LogViewer';
 import { LogFilters } from '@/components/logging/LogFilters';
 import { LogStats } from '@/components/logging/LogStats';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { pageVariants, staggerItemVariants } from '@/lib/animations';
 
 function LogsPageContent() {
   const searchParams = useSearchParams();
@@ -64,26 +66,40 @@ function LogsPageContent() {
         />
 
         {/* Logs Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <motion.div 
+          className="flex-1 overflow-y-auto p-6"
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          variants={pageVariants}
+        >
           {/* Status Bar */}
-          <div className="mb-6 flex items-center justify-between">
+          <motion.div className="mb-6 flex items-center justify-between" variants={staggerItemVariants}>
             <div>
               <p className="text-[var(--foreground)] text-sm opacity-70">
                 Real-time logs from Red AI generations
               </p>
             </div>
             {isStreaming && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-[var(--red-primary)]/10 border border-[var(--red-primary)]/30 rounded-lg">
+              <motion.div 
+                className="flex items-center gap-2 px-4 py-2 bg-[var(--red-primary)]/10 border border-[var(--red-primary)]/30 rounded-lg"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+              >
                 <div className="w-2 h-2 bg-[var(--red-primary)] rounded-full animate-pulse"></div>
                 <span className="text-[var(--red-primary)] text-sm font-medium">LIVE</span>
-              </div>
+              </motion.div>
             )}
-          </div>
+          </motion.div>
 
           {/* Main Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Filters & Stats Sidebar */}
-            <div className="lg:col-span-1 space-y-6">
+            <motion.div 
+              className="lg:col-span-1 space-y-6"
+              variants={staggerItemVariants}
+            >
               <LogFilters
                 conversationId={conversationId}
                 setConversationId={setConversationId}
@@ -97,10 +113,10 @@ function LogsPageContent() {
                 setShowThoughts={setShowThoughts}
               />
               <LogStats conversationId={conversationId} />
-            </div>
+            </motion.div>
 
             {/* Main Log Viewer */}
-            <div className="lg:col-span-3">
+            <motion.div className="lg:col-span-3" variants={staggerItemVariants}>
               <LogViewer
                 conversationId={conversationId}
                 generationId={generationId}
@@ -109,9 +125,9 @@ function LogsPageContent() {
                 showThoughts={showThoughts}
                 onStreamingChange={setIsStreaming}
               />
-            </div>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

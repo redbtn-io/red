@@ -1,6 +1,7 @@
 import { MessageSquare, Brain, Wrench, Loader2 } from 'lucide-react';
 import { type Message } from '@/lib/storage/conversation';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -193,22 +194,27 @@ export function Messages({
       )}
       
       {/* Messages rendered in reverse (newest at bottom visually, then going up) */}
-      {messages?.slice().reverse().filter(msg => {
-        // Filter out streaming message to prevent duplicate rendering
-        return !(streamingMessage && msg.id === streamingMessage.id);
-      }).map((message, index, array) => {
-        const isLatest = index === array.length - 1;
-        
-        return (
-          <MessageBubble
-            key={message.id}
-            message={message}
-            isStreaming={isStreaming && streamingMessageId === message.id}
-            onOpenModal={() => onOpenModal(message.id)}
-            isLatest={isLatest}
-          />
-        );
-      })}
+      <AnimatePresence initial={true}>
+        {messages?.slice().reverse().filter(msg => {
+          // Filter out streaming message to prevent duplicate rendering
+          return !(streamingMessage && msg.id === streamingMessage.id);
+        }).map((message, index, array) => {
+          const isLatest = index === array.length - 1;
+          // Invert animation index so newest messages (higher index) animate first
+          const animationIndex = array.length - 1 - index;
+          
+          return (
+            <MessageBubble
+              key={message.id}
+              message={message}
+              isStreaming={isStreaming && streamingMessageId === message.id}
+              onOpenModal={() => onOpenModal(message.id)}
+              isLatest={isLatest}
+              animationIndex={animationIndex}
+            />
+          );
+        })}
+      </AnimatePresence>
       
       {/* Empty state */}
       {!messages?.length && !isLoading && (
@@ -353,9 +359,10 @@ interface MessageBubbleProps {
   isStreaming: boolean;
   onOpenModal: () => void;
   isLatest?: boolean;
+  animationIndex?: number;
 }
 
-function MessageBubble({ message, isStreaming, onOpenModal, isLatest = false }: MessageBubbleProps) {
+function MessageBubble({ message, isStreaming, onOpenModal, isLatest = false, animationIndex = 0 }: MessageBubbleProps) {
   // Check if this message has tools or thinking available
   const toolExecutions = conversationState.getToolExecutions(message.id);
   const hasTools = toolExecutions.length > 0;
@@ -369,8 +376,17 @@ function MessageBubble({ message, isStreaming, onOpenModal, isLatest = false }: 
   };
 
   return (
-    <div
+    <motion.div
       className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+      initial={{ opacity: 0, x: message.role === 'user' ? 30 : -30 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: message.role === 'user' ? 30 : -30 }}
+      transition={{ 
+        duration: 0.25, 
+        delay: Math.min(animationIndex * 0.03, 0.3),
+        ease: [0.25, 0.1, 0.25, 1]
+      }}
+      layout
     >
       <div
         className={`max-w-[80%] rounded-xl px-5 py-3.5 shadow-lg cursor-pointer transition-colors relative select-none ${
@@ -440,6 +456,6 @@ function MessageBubble({ message, isStreaming, onOpenModal, isLatest = false }: 
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

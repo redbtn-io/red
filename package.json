@@ -9,7 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@redbtn/ai": "file:../ai/redbtn-ai-0.0.1.tgz",
+    "@tanstack/react-query": "^5.90.11",
+    "@types/dagre": "^0.7.53",
+    "dagre": "^0.8.5",
+    "framer-motion": "^12.23.24",
+    "immer": "^11.0.0",
     "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.544.0",
@@ -18,10 +24,14 @@
     "nodemailer": "^7.0.9",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-hook-form": "^7.66.1",
     "react-markdown": "^10.1.0",
+    "reactflow": "^11.11.4",
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
-    "remark-math": "^6.0.0"
+    "remark-math": "^6.0.0",
+    "zod": "^3.25.76",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import { AccountLevel } from '../database/models/auth/User';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+console.log('[Auth] JWT_SECRET used:', JWT_SECRET);
 const JWT_EXPIRY = '7d'; // 7 days
 
 export interface JWTPayload {
@@ -24,6 +25,7 @@ export function generateToken(payload: JWTPayload): string {
  * Verify and decode a JWT token
  */
 export function verifyToken(token: string): JWTPayload | null {
+  console.log('[Auth] Verifying token with secret:', JWT_SECRET);
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
     return decoded;

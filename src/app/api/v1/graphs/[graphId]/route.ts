@@ -2,8 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/auth';
 import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
 import { RateLimits } from '@/lib/rate-limit/rate-limit';
-import { Graph } from '@redbtn/ai';
+import { Graph} from '@redbtn/ai';
 import connectToDatabase from '@/lib/database/mongodb';
+
+/**
+ * Graph document type for lean queries
+ */
+interface GraphDoc {
+  graphId: string;
+  userId: string;
+  name: string;
+  description?: string;
+  tier: number;
+  isDefault: boolean;
+  nodes: Array<{ id: string; type: string; config?: Record<string, unknown> }>;
+  edges: Array<{ from: string; to?: string; condition?: string }>;
+  version?: string;
+  layout?: Map<string, { x: number; y: number }>;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
 /**
  * GET /api/v1/graphs/:graphId
@@ -30,7 +48,7 @@ export async function GET(
     const { graphId } = await params;
 
     // Load graph
-    const graph = await Graph.findOne({ graphId }).lean();
+    const graph = await Graph.findOne({ graphId }).lean() as GraphDoc | null;
     if (!graph) {
       return NextResponse.json({ error: 'Graph not found' }, { status: 404 });
     }
@@ -172,8 +190,8 @@ export async function PATCH(
     const updates: Partial<{
       name: string;
       description: string;
-      nodes: any[];
-      edges: any[];
+      nodes: Array<{ id: string; type: string; config?: Record<string, unknown> }>;
+      edges: Array<{ from: string; to?: string; condition?: string }>;
       tier: number;
     }> = {};
     if (name !== undefined) updates.name = name;

@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface ModalProps {
   isOpen: boolean;
@@ -8,37 +9,49 @@ interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, title, children }: ModalProps) {
-  if (!isOpen) return null;
-
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black bg-opacity-50 z-50"
-        onClick={onClose}
-      />
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            className="fixed inset-0 bg-black bg-opacity-50 z-50"
+            onClick={onClose}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          />
 
-      {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl max-w-md w-full shadow-2xl">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-[#2a2a2a]">
-            <h2 className="text-lg font-semibold text-gray-100">{title}</h2>
-            <button
-              onClick={onClose}
-              className="p-1 hover:bg-[#2a2a2a] rounded-lg transition-colors text-gray-400 hover:text-gray-200"
+          {/* Modal */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+            <motion.div 
+              className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl max-w-md w-full shadow-2xl pointer-events-auto"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2, type: 'spring', stiffness: 300, damping: 30 }}
             >
-              <X size={20} />
-            </button>
-          </div>
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-[#2a2a2a]">
+                <h2 className="text-lg font-semibold text-gray-100">{title}</h2>
+                <button
+                  onClick={onClose}
+                  className="p-1 hover:bg-[#2a2a2a] rounded-lg transition-colors text-gray-400 hover:text-gray-200"
+                >
+                  <X size={20} />
+                </button>
+              </div>
 
-          {/* Content */}
-          <div className="p-4">
-            {children}
+              {/* Content */}
+              <div className="p-4">
+                {children}
+              </div>
+            </motion.div>
           </div>
-        </div>
-      </div>
-    </>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
 
