@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
     maxInactiveAge: 60 * 1000,
     pagesBufferLength: 5,
   },
+  transpilePackages: ['@chroma-core/default-embed'],
 };
 
 export default nextConfig;

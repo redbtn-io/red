@@ -72,8 +72,23 @@ export async function POST(request: NextRequest) {
       expiresAt,
     });
 
-    // Get base URL from environment or fall back to request URL
-    const baseUrl = process.env.BASE_URL || `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+    // Compute base URL using env var, forwarded headers, or request data
+    function computeBaseUrl(req: NextRequest) {
+      if (process.env.BASE_URL) return process.env.BASE_URL;
+
+      const forwardedProto = req.headers.get('x-forwarded-proto');
+      const forwardedHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
+
+      if (forwardedHost) {
+        const proto = forwardedProto || req.nextUrl.protocol || 'https';
+        return `${proto}://${forwardedHost}`;
+      }
+
+      return `${req.nextUrl.protocol}//${req.nextUrl.host}`;
+    }
+
+    const baseUrl = computeBaseUrl(request);
+    console.log('[Auth] using baseUrl for magic link:', baseUrl);
 
     // Send email with sign in link
     await sendMagicLinkEmail(email, token, baseUrl);
