@@ -183,14 +183,13 @@ ConversationSchema.index({ userId: 1, lastMessageAt: -1 });
 ConversationSchema.index({ userId: 1, isArchived: 1, lastMessageAt: -1 });
 
 // Update lastMessageAt and messageCount before saving
-ConversationSchema.pre('save', function (next) {
+ConversationSchema.pre('save', async function () {
   if (this.messages && this.messages.length > 0) {
     const lastMessage = this.messages[this.messages.length - 1];
     this.lastMessageAt = lastMessage.timestamp;
     if (!this.metadata) this.metadata = {};
     this.metadata.messageCount = this.messages.length;
   }
-  next();
 });
 
 // Virtual for getting conversation preview (first user message or title)
