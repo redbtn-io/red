@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
-    "@redbtn/ai": "file:../ai/redbtn-ai-0.0.1.tgz",
+    "@redbtn/ai": "^0.0.1-alpha",
     "@tanstack/react-query": "^5.90.12",
     "@types/dagre": "^0.7.53",
     "dagre": "^0.8.5",
