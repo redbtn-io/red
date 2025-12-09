@@ -1112,7 +1112,8 @@ function SmartInput({
   // Handle click outside to close suggestions
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      // We force it to use "globalThis.Node" (The HTML one) instead of the React Flow one
+if (containerRef.current && !containerRef.current.contains(event.target as globalThis.Node)) {
         setShowSuggestions(false);
       }
     }
