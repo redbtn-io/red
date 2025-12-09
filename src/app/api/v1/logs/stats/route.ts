@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { red } from '@/lib/red';
+import { getRed } from '@/lib/red';
 import { LogEntry } from '@redbtn/ai';
 
 export async function GET(request: NextRequest) {
@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
     const conversationId = searchParams.get('conversationId');
     
     if (conversationId) {
+      const red = await getRed();
+      
       // Stats for a specific conversation
       const logs = await red.logger.getConversationLogs(conversationId);
       const state = await red.logger.getConversationGenerationState(conversationId);

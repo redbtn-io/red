@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { red } from '@/lib/red';
+import { getRed } from '@/lib/red';
 
 export async function GET(
   request: NextRequest,
@@ -21,6 +21,8 @@ export async function GET(
         { status: 400 }
       );
     }
+
+    const red = await getRed();
     
     // Get all logs for this conversation
     const logs = await red.logger.getConversationLogs(conversationId, limit);

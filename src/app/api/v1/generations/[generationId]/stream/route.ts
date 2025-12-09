@@ -6,7 +6,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { red } from '@/lib/red';
+import { getRed } from '@/lib/red';
 
 export const runtime = 'nodejs';
 
@@ -19,6 +19,8 @@ export async function GET(
   if (!generationId) {
     return new Response('generationId is required', { status: 400 });
   }
+
+  const red = await getRed();
   
   // Create SSE stream
   const encoder = new TextEncoder();

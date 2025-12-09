@@ -13,11 +13,17 @@ const config: RedConfig = {
 
 let redInstance: Red | null = null;
 
+// Check if we're in a build environment (no database needed)
+const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
+
 /**
  * Get or initialize the Red AI instance
  * Singleton pattern to avoid multiple initializations
  */
 export async function getRed(): Promise<Red> {
+  if (isBuildTime) {
+    throw new Error('Red AI not available during build time');
+  }
   if (!redInstance) {
     redInstance = new Red(config);
     await redInstance.load('webapp-api');
@@ -31,22 +37,17 @@ export async function getRed(): Promise<Red> {
  * Use getRed() for guaranteed initialization
  */
 export function getRedSync(): Red {
+  if (isBuildTime) {
+    throw new Error('Red AI not available during build time');
+  }
   if (!redInstance) {
     throw new Error('Red instance not initialized. Call getRed() first.');
   }
   return redInstance;
 }
 
-// Initialize immediately for synchronous access in API routes
-// This allows `import { red }` to work
-let initPromise: Promise<Red> | null = null;
-
-if (!initPromise) {
-  initPromise = getRed();
-}
-
-// Export as named export for convenience
-export const red = await initPromise;
+// Note: Lazy initialization - red instance is created on first getRed() call
+// No top-level await to avoid initialization during build time
 
 /**
  * Graceful shutdown handler
@@ -65,9 +66,11 @@ async function shutdown(signal: string) {
   process.exit(0);
 }
 
-// Register signal handlers for graceful shutdown
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
+// Register signal handlers for graceful shutdown (only at runtime, not during build)
+if (!isBuildTime) {
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+}
 
 /**
  * Bearer token for API authentication

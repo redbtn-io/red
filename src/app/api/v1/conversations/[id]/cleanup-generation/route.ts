@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { red } from '@/lib/red';
+import { getRed } from '@/lib/red';
 
 export async function POST(
   request: NextRequest,
@@ -21,6 +21,8 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    const red = await getRed();
     
     // Get generation state
     const state = await red.logger.getConversationGenerationState(conversationId);
