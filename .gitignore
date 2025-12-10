@@ -16,6 +16,8 @@ dist/
 
 # Ignore packed files
 *.tgz
+# Don't ignore redbtn .tgz files
+!redbtn*.tgz
 
 # User Context
 context/

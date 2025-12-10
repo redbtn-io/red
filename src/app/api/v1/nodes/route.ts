@@ -43,7 +43,7 @@ interface UniversalNodeDocument {
  * GET /api/v1/nodes
  * List all available node types for the Studio palette
  * 
- * Returns universal nodes from MongoDB (universalnodeconfigs collection)
+ * Returns nodes from MongoDB (nodes collection)
  * All nodes are now universal - no more hardcoded built-in nodes.
  * 
  * Query params:
@@ -70,9 +70,9 @@ export async function GET(request: NextRequest) {
 
     const userTier = user.accountLevel || 4;
 
-    // Load universal nodes from MongoDB
-    const UniversalNodeConfig = mongoose.models.UniversalNodeConfig || 
-      mongoose.model('UniversalNodeConfig', new mongoose.Schema({
+    // Load nodes from MongoDB
+    const NodeModel = mongoose.models.Node || 
+      mongoose.model('Node', new mongoose.Schema({
         nodeId: String,
         name: String,
         description: String,
@@ -90,12 +90,12 @@ export async function GET(request: NextRequest) {
       ]
     };
 
-    const universalNodes = await UniversalNodeConfig.find(mongoQuery)
+    const nodes = await NodeModel.find(mongoQuery)
       .select('nodeId name description category isSystem metadata')
       .lean() as unknown as UniversalNodeDocument[];
 
-    // Convert universal nodes to NodeTypeInfo format
-    let allNodes: NodeTypeInfo[] = universalNodes.map((node: UniversalNodeDocument) => ({
+    // Convert nodes to NodeTypeInfo format
+    let allNodes: NodeTypeInfo[] = nodes.map((node: UniversalNodeDocument) => ({
       nodeId: node.nodeId,
       name: node.name,
       description: node.description,
@@ -232,8 +232,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Get or create model
-    const UniversalNodeConfig = mongoose.models.UniversalNodeConfig || 
-      mongoose.model('UniversalNodeConfig', new mongoose.Schema({
+    const NodeModel = mongoose.models.Node || 
+      mongoose.model('Node', new mongoose.Schema({
         nodeId: { type: String, required: true, unique: true },
         name: { type: String, required: true },
         description: String,
@@ -247,7 +247,7 @@ export async function POST(request: NextRequest) {
       }));
 
     // Check if nodeId already exists for this user
-    const existing = await UniversalNodeConfig.findOne({ nodeId });
+    const existing = await NodeModel.findOne({ nodeId });
     if (existing) {
       return NextResponse.json(
         { error: 'A node with this ID already exists' },
@@ -256,7 +256,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the node
-    const newNode = await UniversalNodeConfig.create({
+    const newNode = await NodeModel.create({
       nodeId,
       name,
       description: description || '',

@@ -71,8 +71,3 @@ if (!isBuildTime) {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
 }
-
-/**
- * Bearer token for API authentication
- */
-export const BEARER_TOKEN = process.env.BEARER_TOKEN || `red_ai_sk_${Date.now()}`;

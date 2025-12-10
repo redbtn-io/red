@@ -305,9 +305,9 @@ export async function GET(
 
     const { nodeId } = await params;
 
-    // Check MongoDB first - universal nodes take priority over built-in schemas
-    const UniversalNodeConfig = mongoose.models.UniversalNodeConfig ||
-      mongoose.model('UniversalNodeConfig', new mongoose.Schema({
+    // Check MongoDB for node configurations
+    const NodeModel = mongoose.models.Node ||
+      mongoose.model('Node', new mongoose.Schema({
         nodeId: String,
         name: String,
         description: String,
@@ -318,7 +318,7 @@ export async function GET(
         metadata: mongoose.Schema.Types.Mixed
       }));
 
-    const universalNode = await UniversalNodeConfig.findOne({
+    const node = await NodeModel.findOne({
       nodeId,
       $or: [
         { isSystem: true },
@@ -326,16 +326,16 @@ export async function GET(
       ]
     }).lean();
 
-    if (universalNode) {
+    if (node) {
       // Generate schema from steps
-      interface UniversalNodeDocument {
+      interface NodeDocument {
         nodeId: string;
         name: string;
         description: string;
         category: string;
         steps: UniversalNodeStep[];
       }
-      const typedNode = universalNode as unknown as UniversalNodeDocument;
+      const typedNode = node as unknown as NodeDocument;
       const stepSchemas = typedNode.steps?.map((step: UniversalNodeStep, index: number) => ({
         stepIndex: index,
         type: step.type,
