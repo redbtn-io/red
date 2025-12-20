@@ -4,6 +4,7 @@ import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
 import { RateLimits } from '@/lib/rate-limit/rate-limit';
 import connectToDatabase from '@/lib/database/mongodb';
 import mongoose from 'mongoose';
+import { getArchivedNeuronIds } from '@/lib/database/models/UserNodePreferences';
 
 /**
  * Neuron schema matching the AI package
@@ -11,7 +12,14 @@ import mongoose from 'mongoose';
 const NeuronSchema = new mongoose.Schema({
   neuronId: { type: String, required: true, unique: true, index: true },
   userId: { type: String, required: true, index: true },
+  creatorId: { type: String, index: true },
+  status: { type: String, enum: ['active', 'abandoned', 'deleted'], default: 'active', index: true },
+  abandonedAt: { type: Date, default: null },
+  scheduledDeletionAt: { type: Date, default: null, index: true },
   isDefault: { type: Boolean, default: false },
+  isSystem: { type: Boolean, default: false },
+  isImmutable: { type: Boolean, default: false },
+  parentNeuronId: { type: String, default: null },
   name: { type: String, required: true },
   description: String,
   provider: { type: String, enum: ['ollama', 'openai', 'anthropic', 'google', 'custom'], required: true },
@@ -40,7 +48,12 @@ interface NeuronDocument {
   role: string;
   tier: number;
   isDefault?: boolean;
+  isSystem?: boolean;
+  isImmutable?: boolean;
+  parentNeuronId?: string;
   userId: string;
+  creatorId?: string;
+  status?: string;
 }
 
 /**
@@ -55,6 +68,12 @@ interface NeuronInfo {
   role: string;
   tier: number;
   isSystem: boolean;
+  isImmutable?: boolean;
+  isOwned?: boolean;
+  isArchived?: boolean;
+  status?: string;
+  parentNeuronId?: string;
+  creatorId?: string;
   isDefault: boolean;
 }
 
@@ -88,19 +107,35 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const roleFilter = searchParams.get('role');
     const providerFilter = searchParams.get('provider');
+    const view = searchParams.get('view'); // null (default), 'archived'
 
     const userTier = user.accountLevel || 4;
+
+    // Get archived neuron IDs for this user
+    const archivedNeuronIds = await getArchivedNeuronIds(user.userId);
+    const archivedSet = new Set(archivedNeuronIds);
 
     // Get or create Neuron model
     const Neuron = mongoose.models.Neuron || mongoose.model('Neuron', NeuronSchema);
 
     // Build query
     const query: Record<string, unknown> = {
+      // Only show active neurons (or legacy ones without status)
       $or: [
-        { userId: user.userId },                    // User's custom neurons
-        { userId: 'system', tier: { $gte: userTier } } // System neurons user can access
+        { status: 'active' },
+        { status: { $exists: false } }
       ]
     };
+    
+    // Add visibility filter
+    query.$and = [
+      {
+        $or: [
+          { userId: user.userId },                    // User's custom neurons
+          { userId: 'system', tier: { $gte: userTier } } // System neurons user can access
+        ]
+      }
+    ];
 
     if (roleFilter) {
       query.role = roleFilter;
@@ -111,22 +146,41 @@ export async function GET(request: NextRequest) {
 
     // Fetch neurons (exclude sensitive fields)
     const neurons = await Neuron.find(query)
-      .select('neuronId name description provider model role tier isDefault userId')
+      .select('neuronId name description provider model role tier isDefault isSystem isImmutable parentNeuronId userId creatorId status')
       .sort({ tier: 1, isDefault: -1, name: 1 })
       .lean() as unknown as NeuronDocument[];
 
     // Format response
-    const neuronList: NeuronInfo[] = neurons.map((n: NeuronDocument) => ({
-      neuronId: n.neuronId,
-      name: n.name,
-      description: n.description,
-      provider: n.provider,
-      model: n.model,
-      role: n.role,
-      tier: n.tier,
-      isSystem: n.userId === 'system',
-      isDefault: n.isDefault || false
-    }));
+    let neuronList: NeuronInfo[] = neurons.map((n: NeuronDocument) => {
+      const isSystem = n.userId === 'system' || n.isSystem === true;
+      const isOwned = n.userId === user.userId || n.creatorId === user.userId;
+      return {
+        neuronId: n.neuronId,
+        name: n.name,
+        description: n.description,
+        provider: n.provider,
+        model: n.model,
+        role: n.role,
+        tier: n.tier,
+        isSystem,
+        isImmutable: n.isImmutable,
+        isOwned,
+        isArchived: archivedSet.has(n.neuronId),
+        status: n.status || 'active',
+        parentNeuronId: n.parentNeuronId,
+        creatorId: n.creatorId,
+        isDefault: n.isDefault || false
+      };
+    });
+
+    // Filter based on view
+    if (view === 'archived') {
+      // Only show archived neurons
+      neuronList = neuronList.filter(n => archivedSet.has(n.neuronId));
+    } else {
+      // Default: exclude archived neurons
+      neuronList = neuronList.filter(n => !archivedSet.has(n.neuronId));
+    }
 
     // Group by role
     const grouped: Record<string, NeuronInfo[]> = {

@@ -15,6 +15,9 @@ interface GraphDoc {
   description?: string;
   tier: number;
   isDefault: boolean;
+  isSystem?: boolean;
+  isImmutable?: boolean;
+  parentGraphId?: string;
   nodes: Array<{ id: string; type: string; config?: Record<string, unknown> }>;
   edges: Array<{ from: string; to?: string; condition?: string }>;
   version?: string;
@@ -79,7 +82,10 @@ export async function GET(
         userId: graph.userId,
         tier: graph.tier,
         isDefault: graph.isDefault,
-        isSystem: graph.userId === 'system',
+        isSystem: graph.isSystem || graph.userId === 'system',
+        isImmutable: graph.isImmutable,
+        isOwned: graph.userId === user.userId,
+        parentGraphId: graph.parentGraphId,
         nodes: graph.nodes,
         edges: graph.edges,
         version: graph.version,
@@ -100,7 +106,10 @@ export async function GET(
 
 /**
  * PATCH /api/v1/graphs/:graphId
- * Update an existing custom graph
+ * Update an existing graph
+ * 
+ * If the user doesn't own the graph or it's a system/immutable graph,
+ * a clone will be created instead of modifying the original.
  * 
  * Request body (all optional):
  * {
@@ -109,6 +118,7 @@ export async function GET(
  *   nodes?: Array<{ id: string; type: GraphNodeType; config?: any }>;
  *   edges?: Array<{ from: string; to: string; condition?: string }>;
  *   tier?: number;
+ *   newGraphId?: string;  // Custom ID for clone
  * }
  */
 export async function PATCH(
@@ -130,6 +140,8 @@ export async function PATCH(
     }
 
     const { graphId } = await params;
+    const body = await request.json();
+    const { name, description, nodes, edges, tier, newGraphId } = body;
 
     // Load graph
     const graph = await Graph.findOne({ graphId });
@@ -137,80 +149,107 @@ export async function PATCH(
       return NextResponse.json({ error: 'Graph not found' }, { status: 404 });
     }
 
-    // Check ownership (can't update system graphs)
-    if (graph.userId === 'system') {
-      return NextResponse.json(
-        { error: 'Cannot modify system graphs' },
-        { status: 403 }
-      );
-    }
+    // Check if user can edit directly
+    const isSystem = graph.isSystem || graph.userId === 'system';
+    const canEditDirectly = graph.userId === user.userId && !isSystem && !graph.isImmutable;
 
-    if (graph.userId !== user.userId) {
-      return NextResponse.json(
-        { error: 'Access denied - you can only update your own graphs' },
-        { status: 403 }
-      );
-    }
-
-    // Parse update fields
-    const body = await request.json();
-    const { name, description, nodes, edges, tier } = body;
-
-    // Validate tier if provided
-    if (tier !== undefined) {
-      const userTier = user.accountLevel || 4;
-      if (tier < userTier) {
-        return NextResponse.json(
-          { error: `Tier ${tier} requires account level ${tier} or higher (you have tier ${userTier})` },
-          { status: 403 }
-        );
+    if (canEditDirectly) {
+      // Direct edit - validate and apply updates
+      if (tier !== undefined) {
+        const userTier = user.accountLevel || 4;
+        if (tier < userTier) {
+          return NextResponse.json(
+            { error: `Tier ${tier} requires account level ${tier} or higher` },
+            { status: 403 }
+          );
+        }
       }
-    }
 
-    // Validate nodes/edges if provided
-    if (nodes !== undefined) {
-      if (!Array.isArray(nodes) || nodes.length === 0) {
+      if (nodes !== undefined && (!Array.isArray(nodes) || nodes.length === 0)) {
+        return NextResponse.json({ error: 'nodes must be a non-empty array' }, { status: 400 });
+      }
+
+      if (edges !== undefined && !Array.isArray(edges)) {
+        return NextResponse.json({ error: 'edges must be an array' }, { status: 400 });
+      }
+
+      // Apply updates
+      if (name !== undefined) graph.name = name;
+      if (description !== undefined) graph.description = description;
+      if (nodes !== undefined) graph.nodes = nodes;
+      if (edges !== undefined) graph.edges = edges;
+      if (tier !== undefined) graph.tier = tier;
+
+      await graph.save();
+
+      return NextResponse.json({
+        graphId: graph.graphId,
+        cloned: false,
+        name: graph.name,
+        updatedAt: graph.updatedAt,
+      }, { status: 200 });
+    } else {
+      // Clone the graph for this user
+      const clonedGraphId = newGraphId || `${graphId}-${user.userId.slice(-6)}`;
+
+      // Validate clone ID format
+      if (!/^[a-z0-9-]+$/.test(clonedGraphId)) {
         return NextResponse.json(
-          { error: 'nodes must be a non-empty array' },
+          { error: 'newGraphId must contain only lowercase letters, numbers, and hyphens' },
           { status: 400 }
         );
       }
-    }
 
-    if (edges !== undefined) {
-      if (!Array.isArray(edges)) {
-        return NextResponse.json(
-          { error: 'edges must be an array' },
-          { status: 400 }
-        );
+      // Check if clone already exists
+      const existingClone = await Graph.findOne({ graphId: clonedGraphId, userId: user.userId });
+      
+      if (existingClone) {
+        // Update existing clone
+        if (name !== undefined) existingClone.name = name;
+        if (description !== undefined) existingClone.description = description;
+        if (nodes !== undefined) existingClone.nodes = nodes;
+        if (edges !== undefined) existingClone.edges = edges;
+        if (tier !== undefined) existingClone.tier = tier;
+
+        await existingClone.save();
+
+        return NextResponse.json({
+          graphId: existingClone.graphId,
+          cloned: false,
+          parentGraphId: existingClone.parentGraphId,
+          name: existingClone.name,
+          updatedAt: existingClone.updatedAt,
+        }, { status: 200 });
       }
+
+      // Create new clone
+      const cloneData = {
+        graphId: clonedGraphId,
+        name: name || `${graph.name} (Custom)`,
+        description: description || graph.description,
+        userId: user.userId,
+        tier: tier || graph.tier,
+        isDefault: false,
+        isSystem: false,
+        isImmutable: false,
+        parentGraphId: graphId,
+        nodes: nodes || graph.nodes,
+        edges: edges || graph.edges,
+        version: '1.0.0',
+        config: graph.config,
+        neuronAssignments: graph.neuronAssignments,
+      };
+
+      const newGraph = await Graph.create(cloneData);
+
+      return NextResponse.json({
+        graphId: newGraph.graphId,
+        cloned: true,
+        parentGraphId: graphId,
+        name: newGraph.name,
+        createdAt: newGraph.createdAt,
+      }, { status: 201 });
     }
-
-    // Build update object (only include provided fields)
-    const updates: Partial<{
-      name: string;
-      description: string;
-      nodes: Array<{ id: string; type: string; config?: Record<string, unknown> }>;
-      edges: Array<{ from: string; to?: string; condition?: string }>;
-      tier: number;
-    }> = {};
-    if (name !== undefined) updates.name = name;
-    if (description !== undefined) updates.description = description;
-    if (nodes !== undefined) updates.nodes = nodes;
-    if (edges !== undefined) updates.edges = edges;
-    if (tier !== undefined) updates.tier = tier;
-
-    // Update graph
-    Object.assign(graph, updates);
-    await graph.save();
-
-    return NextResponse.json({
-      graphId: graph.graphId,
-      name: graph.name,
-      description: graph.description,
-      tier: graph.tier,
-      updatedAt: graph.updatedAt,
-    }, { status: 200 });
 
   } catch (error: unknown) {
     console.error('[API] Error updating graph:', error);
@@ -235,7 +274,7 @@ export async function PATCH(
  * DELETE /api/v1/graphs/:graphId
  * Delete a custom graph
  * 
- * Cannot delete system graphs.
+ * Cannot delete system graphs or graphs owned by other users.
  */
 export async function DELETE(
   request: NextRequest,
@@ -263,8 +302,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Graph not found' }, { status: 404 });
     }
 
-    // Check ownership (can't delete system graphs)
-    if (graph.userId === 'system') {
+    // Check if system graph
+    const isSystem = graph.isSystem || graph.userId === 'system';
+    if (isSystem) {
       return NextResponse.json(
         { error: 'Cannot delete system graphs' },
         { status: 403 }
@@ -273,7 +313,7 @@ export async function DELETE(
 
     if (graph.userId !== user.userId) {
       return NextResponse.json(
-        { error: 'Access denied - you can only delete your own graphs' },
+        { error: 'You can only delete your own graphs' },
         { status: 403 }
       );
     }
@@ -281,10 +321,8 @@ export async function DELETE(
     // Delete graph
     await Graph.deleteOne({ graphId });
 
-    // Note: GraphRegistry cache will be invalidated on next access
-    // or we could expose a cache clear method if needed
-
     return NextResponse.json({
+      success: true,
       message: 'Graph deleted successfully',
       graphId,
     }, { status: 200 });

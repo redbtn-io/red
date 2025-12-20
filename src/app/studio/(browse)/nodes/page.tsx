@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { 
   Search, 
   Box, 
@@ -43,6 +44,7 @@ import {
   X,
   Settings,
   Heart,
+  Archive,
 } from 'lucide-react';
 import { pageVariants, staggerContainerVariants, staggerItemVariants, scaleVariants } from '@/lib/animations';
 
@@ -62,6 +64,10 @@ interface NodeTypeInfo {
   isOwned?: boolean;
   isSaved?: boolean;
   isFavorited?: boolean;
+  isArchived?: boolean;
+  isAbandoned?: boolean;
+  status?: 'active' | 'abandoned' | 'deleted';
+  creatorId?: string;
   parentNodeId?: string;
   ownerName?: string;
   tier: number;
@@ -158,7 +164,7 @@ const TIER_LABELS: Record<number, { label: string; color: string }> = {
 };
 
 // View tabs
-type ViewTab = 'explore' | 'saved' | 'favorited' | 'recent' | 'mine';
+type ViewTab = 'explore' | 'saved' | 'favorited' | 'recent' | 'mine' | 'archived';
 
 // Sort options
 const SORT_OPTIONS = [
@@ -178,6 +184,7 @@ export default function NodesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNode, setSelectedNode] = useState<NodeTypeInfo | null>(null);
   const [loadingNodeDetails, setLoadingNodeDetails] = useState(false);
+  const [sheetExpandTrigger, setSheetExpandTrigger] = useState(0);
   
   // Filters
   const [activeTab, setActiveTab] = useState<ViewTab>('explore');
@@ -199,6 +206,7 @@ export default function NodesPage() {
     if (activeTab === 'saved') params.set('view', 'saved');
     if (activeTab === 'favorited') params.set('view', 'favorited');
     if (activeTab === 'recent') params.set('view', 'recent');
+    if (activeTab === 'archived') params.set('view', 'archived');
     params.set('sortBy', sortBy);
     params.set('sortOrder', sortOrder);
     params.set('includeSystem', String(includeSystem));
@@ -233,6 +241,7 @@ export default function NodesPage() {
   // Fetch full node details when selected
   const handleSelectNode = async (node: NodeTypeInfo) => {
     setSelectedNode(node);
+    setSheetExpandTrigger(t => t + 1);
     setLoadingNodeDetails(true);
     try {
       const response = await fetch(`/api/v1/nodes/${node.nodeId}`);
@@ -288,26 +297,6 @@ export default function NodesPage() {
       exit="exit"
       variants={pageVariants}
     >
-      {/* Header */}
-      <motion.div 
-        className="flex flex-col md:flex-row md:items-center justify-between gap-4"
-        variants={staggerItemVariants}
-      >
-        <div>
-          <h2 className="text-2xl font-bold text-white">Explore Nodes</h2>
-          <p className="text-gray-400 text-sm mt-1">
-            Discover and organize AI workflow building blocks
-          </p>
-        </div>
-        <Link
-          href="/studio/create-node"
-          className="flex items-center gap-2 bg-[#ef4444] hover:bg-[#dc2626] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors w-fit"
-        >
-          <Plus className="w-4 h-4" />
-          Create Node
-        </Link>
-      </motion.div>
-
       {/* View Tabs */}
       <motion.div 
         className="flex flex-wrap gap-2 border-b border-[#2a2a2a] pb-4"
@@ -319,6 +308,7 @@ export default function NodesPage() {
           { id: 'favorited' as ViewTab, label: 'Favorites', icon: Star },
           { id: 'recent' as ViewTab, label: 'Recent', icon: Clock },
           { id: 'mine' as ViewTab, label: 'My Nodes', icon: User },
+          { id: 'archived' as ViewTab, label: 'Archived', icon: Archive },
         ].map(tab => (
           <button
             key={tab.id}
@@ -502,11 +492,13 @@ export default function NodesPage() {
                  activeTab === 'favorited' ? 'No favorite nodes' :
                  activeTab === 'recent' ? 'No recent nodes' :
                  activeTab === 'mine' ? 'No nodes created yet' :
+                 activeTab === 'archived' ? 'No archived nodes' :
                  'No nodes found'}
               </h3>
               <p className="text-gray-500 text-sm">
                 {activeTab === 'explore' ? 'Try adjusting your search or filters' :
                  activeTab === 'mine' ? 'Create your first custom node' :
+                 activeTab === 'archived' ? 'Nodes you archive will appear here' :
                  'Explore nodes and save them for quick access'}
               </p>
             </motion.div>
@@ -530,12 +522,12 @@ export default function NodesPage() {
           )}
         </div>
 
-        {/* Node Detail Panel */}
+        {/* Node Detail Panel - Desktop */}
         <AnimatePresence mode="wait">
           {selectedNode && (
             <motion.div 
               key={selectedNode.nodeId}
-              className="lg:w-96"
+              className="hidden lg:block lg:w-96"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
@@ -546,11 +538,119 @@ export default function NodesPage() {
                 onClose={() => setSelectedNode(null)}
                 loading={loadingNodeDetails}
                 onRefresh={fetchNodes}
+                onSelectForked={async (nodeId) => {
+                  // Fetch the forked node directly to avoid stale closure issues
+                  try {
+                    const response = await fetch(`/api/v1/nodes/${nodeId}`);
+                    if (response.ok) {
+                      const data = await response.json();
+                      setSelectedNode({
+                        nodeId: data.nodeId,
+                        name: data.name,
+                        description: data.description,
+                        tags: data.tags || [],
+                        icon: data.icon,
+                        color: data.color,
+                        isSystem: false, // Forked nodes are never system nodes
+                        isOwned: true, // Forked nodes always belong to the user
+                        isImmutable: false, // Forked nodes are editable
+                        isPublic: data.isPublic,
+                        isSaved: data.isSaved,
+                        isFavorited: data.isFavorited,
+                        tier: data.tier || 0,
+                        inputs: data.inputs || [],
+                        outputs: data.outputs || [],
+                        steps: data.fullConfig || [],
+                        stats: data.stats,
+                      });
+                      setSheetExpandTrigger(t => t + 1);
+                    }
+                  } catch (err) {
+                    console.error('Error selecting forked node:', err);
+                  }
+                }}
               />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
+
+      {/* Mobile Bottom Sheet */}
+      <BottomSheet
+        hasContent={!!selectedNode}
+        expandTrigger={sheetExpandTrigger}
+        onDismiss={() => setSelectedNode(null)}
+        peekContent={
+          selectedNode ? (
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: `${selectedNode.color || '#3b82f6'}20` }}
+              >
+                {(() => {
+                  const IconComp = ICON_MAP[selectedNode.icon || 'Box'] || Box;
+                  return <IconComp className="w-4 h-4" style={{ color: selectedNode.color || '#3b82f6' }} />;
+                })()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">{selectedNode.name}</p>
+                <p className="text-xs text-gray-500">Tap to see details</p>
+              </div>
+            </div>
+          ) : (
+            <Link 
+              href="/studio/create-node"
+              className="flex items-center gap-3 text-gray-400 hover:text-white transition-colors"
+            >
+              <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center">
+                <Plus className="w-4 h-4" />
+              </div>
+              <span className="text-sm">Create a new node</span>
+            </Link>
+          )
+        }
+      >
+        {selectedNode && (
+          <NodeDetail 
+            node={selectedNode} 
+            onClose={() => setSelectedNode(null)}
+            loading={loadingNodeDetails}
+            onRefresh={fetchNodes}
+            onSelectForked={async (nodeId) => {
+              // Fetch the forked node directly to avoid stale closure issues
+              try {
+                const response = await fetch(`/api/v1/nodes/${nodeId}`);
+                if (response.ok) {
+                  const data = await response.json();
+                  setSelectedNode({
+                    nodeId: data.nodeId,
+                    name: data.name,
+                    description: data.description,
+                    tags: data.tags || [],
+                    icon: data.icon,
+                    color: data.color,
+                    isSystem: false, // Forked nodes are never system nodes
+                    isOwned: true, // Forked nodes always belong to the user
+                    isImmutable: false, // Forked nodes are editable
+                    isPublic: data.isPublic,
+                    isSaved: data.isSaved,
+                    isFavorited: data.isFavorited,
+                    tier: data.tier || 0,
+                    inputs: data.inputs || [],
+                    outputs: data.outputs || [],
+                    steps: data.fullConfig || [],
+                    stats: data.stats,
+                  });
+                  setSheetExpandTrigger(t => t + 1);
+                }
+              } catch (err) {
+                console.error('Error selecting forked node:', err);
+              }
+            }}
+            compact
+          />
+        )}
+      </BottomSheet>
     </motion.div>
   );
 }
@@ -726,11 +826,11 @@ function NodeCard({
   );
 }
 
-function NodeDetail({ node, onClose, loading, onRefresh }: { node: NodeTypeInfo; onClose: () => void; loading?: boolean; onRefresh?: () => void }) {
+function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact }: { node: NodeTypeInfo; onClose: () => void; loading?: boolean; onRefresh?: () => void; onSelectForked?: (nodeId: string) => void; compact?: boolean }) {
   const IconComponent = ICON_MAP[node.icon || 'Box'] || Box;
   const tierInfo = TIER_LABELS[node.tier] || TIER_LABELS[4];
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
-  const [actionLoading, setActionLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<'fork' | 'archive' | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const nodeColor = getNodeColor(node);
 
@@ -748,19 +848,23 @@ function NodeDetail({ node, onClose, loading, onRefresh }: { node: NodeTypeInfo;
       : { text: 'Shared Node', icon: Lock, color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30', description: 'Owned by another user - fork to customize' };
 
   const handleFork = async () => {
-    setActionLoading(true);
+    setActionLoading('fork');
     setActionMessage(null);
     try {
       const response = await fetch(`/api/v1/nodes/${node.nodeId}/fork`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newNodeId: `${node.nodeId}-custom` })
+        body: JSON.stringify({ newNodeId: crypto.randomUUID() })
       });
       const data = await response.json();
       if (response.ok) {
         setActionMessage({ type: 'success', text: `Forked as "${data.nodeId}"` });
         if (onRefresh) {
-          setTimeout(() => onRefresh(), 500);
+          onRefresh();
+        }
+        // Select the newly forked node after a brief delay for the list to refresh
+        if (onSelectForked && data.nodeId) {
+          setTimeout(() => onSelectForked(data.nodeId), 300);
         }
       } else {
         setActionMessage({ type: 'error', text: data.error || 'Failed to fork' });
@@ -768,7 +872,43 @@ function NodeDetail({ node, onClose, loading, onRefresh }: { node: NodeTypeInfo;
     } catch {
       setActionMessage({ type: 'error', text: 'Network error' });
     } finally {
-      setActionLoading(false);
+      setActionLoading(null);
+    }
+  };
+
+  const handleArchive = async () => {
+    setActionLoading('archive');
+    setActionMessage(null);
+    try {
+      const isArchived = (node as any).isArchived;
+      const method = isArchived ? 'DELETE' : 'POST';
+      const url = isArchived 
+        ? `/api/v1/user/preferences/archive?type=node&id=${node.nodeId}`
+        : '/api/v1/user/preferences/archive';
+      
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        ...(method === 'POST' ? { body: JSON.stringify({ type: 'node', id: node.nodeId }) } : {})
+      });
+      
+      if (response.ok) {
+        setActionMessage({ type: 'success', text: isArchived ? 'Removed from archive' : 'Added to archive' });
+        if (onRefresh) {
+          onRefresh();
+        }
+        // Close detail panel after archiving since node will disappear from current view
+        if (!isArchived) {
+          setTimeout(() => onClose(), 500);
+        }
+      } else {
+        const data = await response.json();
+        setActionMessage({ type: 'error', text: data.error || 'Failed to archive' });
+      }
+    } catch {
+      setActionMessage({ type: 'error', text: 'Network error' });
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -785,21 +925,23 @@ function NodeDetail({ node, onClose, loading, onRefresh }: { node: NodeTypeInfo;
   };
 
   return (
-    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl overflow-hidden sticky top-20">
+    <div className={`bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl overflow-hidden ${compact ? '' : 'sticky top-20'}`}>
       {/* Header */}
       <div 
-        className="p-6 border-b border-[#2a2a2a] relative"
+        className={`${compact ? 'p-4' : 'p-6'} border-b border-[#2a2a2a] relative`}
         style={{ backgroundColor: `${nodeColor}10` }}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-1 text-gray-500 hover:text-white transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {!compact && (
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-1 text-gray-500 hover:text-white transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
         <div className="flex items-start gap-4">
           <div 
-            className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
+            className={`${compact ? 'w-10 h-10 rounded-lg' : 'w-14 h-14 rounded-xl'} flex items-center justify-center flex-shrink-0`}
             style={{ backgroundColor: `${nodeColor}20` }}
           >
             <IconComponent className="w-7 h-7" color={nodeColor} />
@@ -822,8 +964,8 @@ function NodeDetail({ node, onClose, loading, onRefresh }: { node: NodeTypeInfo;
         )}
       </div>
 
-      {/* Content - Scrollable */}
-      <div className="p-6 space-y-6 max-h-[calc(100vh-350px)] overflow-y-auto">
+      {/* Content - Scrollable only on desktop */}
+      <div className={`p-6 space-y-6 ${compact ? '' : 'max-h-[calc(100vh-350px)] overflow-y-auto'}`}>
         {/* Ownership Info */}
         <div className={`p-3 rounded-lg border ${ownershipLabel.color.replace('text-', 'border-').replace('bg-', '')}`}>
           <p className="text-xs text-gray-300">{ownershipLabel.description}</p>
@@ -987,10 +1129,10 @@ function NodeDetail({ node, onClose, loading, onRefresh }: { node: NodeTypeInfo;
           {canFork && (
             <button
               onClick={handleFork}
-              disabled={actionLoading}
+              disabled={actionLoading === 'fork'}
               className="flex items-center justify-center gap-2 w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white py-2.5 rounded-lg text-sm font-medium transition-colors"
             >
-              {actionLoading ? (
+              {actionLoading === 'fork' ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <GitFork className="w-4 h-4" />
@@ -1018,16 +1160,49 @@ function NodeDetail({ node, onClose, loading, onRefresh }: { node: NodeTypeInfo;
             <Play className="w-4 h-4" />
             Use in Studio
           </Link>
+
+          {/* Archive button - available for all non-system nodes */}
+          {!node.isSystem && (
+            <button
+              onClick={handleArchive}
+              disabled={actionLoading === 'archive'}
+              className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                (node as any).isArchived
+                  ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                  : 'bg-[#2a2a2a] hover:bg-[#3a3a3a] text-gray-300 border border-[#3a3a3a]'
+              }`}
+            >
+              {actionLoading === 'archive' ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Archive className="w-4 h-4" />
+              )}
+              {(node as any).isArchived ? 'Unarchive' : 'Archive'}
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
+// Configurable fields per step type (fields that can be edited at runtime)
+const CONFIGURABLE_FIELDS: Record<string, string[]> = {
+  neuron: ['neuronId', 'systemPrompt', 'userPrompt', 'temperature', 'maxTokens', 'stream'],
+  tool: ['toolName', 'parameters'],
+  transform: ['operation', 'inputField', 'outputField', 'value', 'template'],
+  conditional: ['condition', 'setField', 'trueValue', 'falseValue'],
+  loop: ['iteratorField', 'maxIterations', 'outputField'],
+};
+
 // Display step config in a readable format
 function StepConfigDisplay({ type, config }: { type: string; config: Record<string, unknown> }) {
+  const configurableFields = CONFIGURABLE_FIELDS[type] || [];
+  
   const renderField = (key: string, value: unknown) => {
     if (value === undefined || value === null || value === '') return null;
+    
+    const isConfigurable = configurableFields.includes(key);
     
     // Format the value based on type
     let displayValue: React.ReactNode = String(value);
@@ -1047,8 +1222,13 @@ function StepConfigDisplay({ type, config }: { type: string; config: Record<stri
 
     return (
       <div key={key} className="mb-2">
-        <span className="text-[10px] text-gray-500 uppercase tracking-wider">{formatLabel(key)}</span>
-        <div className="text-xs text-gray-300 mt-0.5">{displayValue}</div>
+        <span className="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1">
+          {formatLabel(key)}
+          {isConfigurable && (
+            <span title="Editable parameter"><Pencil className="w-2.5 h-2.5 text-gray-400" /></span>
+          )}
+        </span>
+        <div className={`text-xs mt-0.5 ${isConfigurable ? 'text-gray-200' : 'text-gray-400'}`}>{displayValue}</div>
       </div>
     );
   };

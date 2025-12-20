@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -16,7 +16,10 @@ import {
   Pencil,
   Trash2,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Lock,
+  User,
+  Shield
 } from 'lucide-react';
 import { 
   pageVariants, 
@@ -32,6 +35,9 @@ interface GraphInfo {
   tier: number;
   isDefault: boolean;
   isSystem: boolean;
+  isImmutable?: boolean;
+  isOwned?: boolean;
+  parentGraphId?: string;
   nodeCount: number;
   edgeCount: number;
   version: string;
@@ -58,21 +64,22 @@ export default function GraphsPage() {
   const [filter, setFilter] = useState<'all' | 'mine' | 'system'>('all');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchGraphs() {
-      try {
-        const response = await fetch('/api/v1/graphs');
-        if (!response.ok) throw new Error('Failed to fetch graphs');
-        const data = await response.json();
-        setGraphs(data.graphs || []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load graphs');
-      } finally {
-        setLoading(false);
-      }
+  const fetchGraphs = useCallback(async () => {
+    try {
+      const response = await fetch('/api/v1/graphs');
+      if (!response.ok) throw new Error('Failed to fetch graphs');
+      const data = await response.json();
+      setGraphs(data.graphs || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load graphs');
+    } finally {
+      setLoading(false);
     }
-    fetchGraphs();
   }, []);
+
+  useEffect(() => {
+    fetchGraphs();
+  }, [fetchGraphs]);
 
   // Filter and search
   const filteredGraphs = graphs.filter((g) => {
@@ -119,26 +126,6 @@ export default function GraphsPage() {
       initial="initial"
       animate="animate"
     >
-      {/* Header */}
-      <motion.div 
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-        variants={fadeUpVariants}
-      >
-        <div>
-          <h2 className="text-2xl font-bold text-white">Graphs</h2>
-          <p className="text-gray-400 text-sm mt-1">
-            Visual workflows that define how AI processes your requests
-          </p>
-        </div>
-        <Link
-          href="/studio"
-          className="flex items-center gap-2 px-4 py-2 bg-[#ef4444] text-white rounded-lg hover:bg-[#dc2626] transition-colors font-medium text-sm"
-        >
-          <Plus className="w-4 h-4" />
-          New Graph
-        </Link>
-      </motion.div>
-
       {/* Search & Filter */}
       <motion.div className="flex flex-col sm:flex-row gap-3" variants={fadeUpVariants}>
         <div className="relative flex-1">
@@ -188,6 +175,7 @@ export default function GraphsPage() {
                   graph={graph} 
                   openMenuId={openMenuId}
                   onMenuToggle={setOpenMenuId}
+                  onFork={fetchGraphs}
                 />
               </motion.div>
             ))}
@@ -213,6 +201,7 @@ export default function GraphsPage() {
                   graph={graph}
                   openMenuId={openMenuId}
                   onMenuToggle={setOpenMenuId}
+                  onFork={fetchGraphs}
                 />
               </motion.div>
             ))}
@@ -254,14 +243,44 @@ export default function GraphsPage() {
 function GraphCard({ 
   graph, 
   openMenuId, 
-  onMenuToggle 
+  onMenuToggle,
+  onFork
 }: { 
   graph: GraphInfo;
   openMenuId: string | null;
   onMenuToggle: (id: string | null) => void;
+  onFork?: () => void;
 }) {
   const tierInfo = TIER_LABELS[graph.tier] || TIER_LABELS[4];
   const isMenuOpen = openMenuId === graph.graphId;
+  const [forking, setForking] = useState(false);
+  
+  // Determine ownership status
+  const isEditable = graph.isOwned && !graph.isImmutable && !graph.isSystem;
+  const ownershipLabel = graph.isSystem 
+    ? { text: 'System', icon: Shield, color: 'text-blue-400 bg-blue-500/10 border-blue-500/30' }
+    : graph.isOwned 
+      ? { text: 'Yours', icon: User, color: 'text-green-400 bg-green-500/10 border-green-500/30' }
+      : { text: 'Shared', icon: Lock, color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30' };
+
+  const handleFork = async () => {
+    setForking(true);
+    try {
+      const response = await fetch(`/api/v1/graphs/${graph.graphId}/fork`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newGraphId: crypto.randomUUID() })
+      });
+      if (response.ok) {
+        onMenuToggle(null);
+        if (onFork) onFork();
+      }
+    } catch (err) {
+      console.error('Failed to fork graph:', err);
+    } finally {
+      setForking(false);
+    }
+  };
 
   return (
     <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5 hover:border-[#3a3a3a] transition-colors group relative">
@@ -277,13 +296,23 @@ function GraphCard({
             <h4 className="font-semibold text-white group-hover:text-[#ef4444] transition-colors">
               {graph.name}
             </h4>
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${tierInfo.color}`}>
                 {tierInfo.label}
+              </span>
+              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border flex items-center gap-1 ${ownershipLabel.color}`}>
+                <ownershipLabel.icon className="w-3 h-3" />
+                {ownershipLabel.text}
               </span>
               {graph.isDefault && (
                 <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
                   Default
+                </span>
+              )}
+              {graph.parentGraphId && (
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/30 flex items-center gap-1">
+                  <GitFork className="w-3 h-3" />
+                  Fork
                 </span>
               )}
             </div>
@@ -317,7 +346,25 @@ function GraphCard({
                   <ExternalLink className="w-4 h-4" />
                   Open in Studio
                 </Link>
-                {!graph.isSystem && (
+                
+                {/* Fork option - for system graphs or graphs user doesn't own */}
+                {(!graph.isOwned || graph.isSystem || graph.isImmutable) && (
+                  <button 
+                    onClick={handleFork}
+                    disabled={forking}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-purple-400 hover:bg-purple-500/10 disabled:opacity-50"
+                  >
+                    {forking ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <GitFork className="w-4 h-4" />
+                    )}
+                    Fork to Customize
+                  </button>
+                )}
+                
+                {/* Edit options - only for owned, non-system, non-immutable graphs */}
+                {isEditable && (
                   <>
                     <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-[#2a2a2a] hover:text-white">
                       <Pencil className="w-4 h-4" />
@@ -333,12 +380,6 @@ function GraphCard({
                       Delete
                     </button>
                   </>
-                )}
-                {graph.isSystem && (
-                  <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-[#2a2a2a] hover:text-white">
-                    <GitFork className="w-4 h-4" />
-                    Fork
-                  </button>
                 )}
               </div>
             </>

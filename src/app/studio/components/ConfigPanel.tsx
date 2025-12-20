@@ -344,14 +344,6 @@ export default function ConfigPanel({ isOpen, onClose }: ConfigPanelProps) {
                 {selectedNode.data?.nodeType || 'Unknown'}
               </div>
             </Field>
-
-            {selectedNode.data?.category && (
-              <Field label="Category">
-                <div className="text-sm text-gray-400 bg-[#1a1a1a] rounded-lg px-3 py-2 capitalize">
-                  {selectedNode.data.category}
-                </div>
-              </Field>
-            )}
           </div>
         </Section>
 

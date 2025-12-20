@@ -13,10 +13,9 @@ import {
   Sparkles,
   Clock,
   Loader2,
-  Menu,
-  Workflow
 } from 'lucide-react';
-import { AppSidebar } from '@/components/layout/AppSidebar';
+import { StudioSidebar } from '@/components/layout/StudioSidebar';
+import { StudioHeader } from '@/components/layout/StudioHeader';
 import { 
   pageVariants, 
   staggerContainerVariants, 
@@ -37,12 +36,6 @@ interface Stats {
   nodes: number;
   neurons: number;
 }
-
-const studioNavItems = [
-  { href: '/explore/graphs', label: 'Graphs', icon: GitBranch },
-  { href: '/explore/nodes', label: 'Nodes', icon: Box },
-  { href: '/explore/neurons', label: 'Neurons', icon: Brain },
-];
 
 /**
  * Studio Home Page
@@ -92,7 +85,7 @@ export default function StudioHomePage() {
       description: 'Visual AI workflows connecting nodes into intelligent pipelines',
       icon: GitBranch,
       color: '#ef4444',
-      href: '/explore/graphs',
+      href: '/studio/graphs',
       createHref: '/studio/new',
       count: stats.graphs,
     },
@@ -101,7 +94,7 @@ export default function StudioHomePage() {
       description: 'Building blocks with configurable steps for processing data',
       icon: Box,
       color: '#3b82f6',
-      href: '/explore/nodes',
+      href: '/studio/nodes',
       createHref: '/studio/create-node',
       count: stats.nodes,
     },
@@ -110,8 +103,8 @@ export default function StudioHomePage() {
       description: 'AI model configurations for language understanding and generation',
       icon: Brain,
       color: '#8b5cf6',
-      href: '/explore/neurons',
-      createHref: '/explore/neurons',
+      href: '/studio/neurons',
+      createHref: '/studio/neurons',
       count: stats.neurons,
     },
     {
@@ -119,7 +112,7 @@ export default function StudioHomePage() {
       description: 'MCP integrations for search, scraping, and external APIs',
       icon: Wrench,
       color: '#f59e0b',
-      href: '/explore/tools',
+      href: '/studio/tools',
       count: 0,
       comingSoon: true,
     },
@@ -128,67 +121,19 @@ export default function StudioHomePage() {
   return (
     <div className="flex h-full">
       {/* Sidebar */}
-      <AppSidebar
+      <StudioSidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-      >
-        {/* Studio Navigation */}
-        <div className="p-3">
-          <h2 className="text-sm font-semibold text-gray-300 mb-3 px-2">Studio</h2>
-          <div className="space-y-1">
-            {studioNavItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
-                >
-                  <Icon className="w-4 h-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="p-3 border-t border-[#2a2a2a]">
-          <h2 className="text-sm font-semibold text-gray-300 mb-3 px-2">Create</h2>
-          <div className="space-y-1">
-            <Link
-              href="/studio/new"
-              onClick={() => setSidebarOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
-            >
-              <Workflow className="w-4 h-4" />
-              New Graph
-            </Link>
-            <Link
-              href="/studio/create-node"
-              onClick={() => setSidebarOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
-            >
-              <Box className="w-4 h-4" />
-              Create Node
-            </Link>
-          </div>
-        </div>
-      </AppSidebar>
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Mobile header */}
-        <header className="lg:hidden sticky top-0 z-40 bg-[#0f0f0f] border-b border-[#2a2a2a] px-4 h-14 flex items-center">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 -ml-2 rounded-lg hover:bg-[#1a1a1a] text-gray-400"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <h1 className="text-lg font-semibold text-white ml-2">Studio</h1>
-        </header>
+        <StudioHeader
+          title="Studio"
+          subtitle="Build and manage your AI infrastructure"
+          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+          action={{ label: 'New Graph', href: '/studio/new' }}
+        />
 
         {/* Scrollable Content */}
         <main className="flex-1 overflow-y-auto">
@@ -198,14 +143,6 @@ export default function StudioHomePage() {
             initial="initial"
             animate="animate"
           >
-            {/* Header */}
-            <motion.div className="mb-8" variants={fadeUpVariants}>
-              <h1 className="text-3xl font-bold text-white mb-2">Studio</h1>
-              <p className="text-gray-400">
-                Build and manage your AI infrastructure
-              </p>
-            </motion.div>
-
             {/* Quick Actions */}
             <motion.div className="mb-8" variants={fadeUpVariants}>
               <div className="flex flex-wrap gap-3">
@@ -284,7 +221,7 @@ export default function StudioHomePage() {
                     <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Recent Graphs</h2>
                   </div>
                   <Link 
-                    href="/explore/graphs" 
+                    href="/studio/graphs" 
                     className="text-xs text-[#ef4444] hover:text-[#f87171] transition-colors"
                   >
                     View all →

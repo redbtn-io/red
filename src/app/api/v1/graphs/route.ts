@@ -167,7 +167,7 @@ export async function GET(request: NextRequest) {
       userId: 'system',
       tier: { $gte: userTier },
     })
-      .select('graphId name description tier isDefault nodes edges version createdAt updatedAt')
+      .select('graphId name description tier isDefault isSystem isImmutable parentGraphId nodes edges version createdAt updatedAt')
       .sort({ tier: 1, name: 1 })
       .lean();
 
@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
     const userGraphs = await Graph.find({
       userId: user.userId,
     })
-      .select('graphId name description tier isDefault nodes edges version createdAt updatedAt')
+      .select('graphId name description tier isDefault isSystem isImmutable parentGraphId nodes edges version createdAt updatedAt')
       .sort({ createdAt: -1 })
       .skip(offset)
       .limit(limit)
@@ -189,7 +189,10 @@ export async function GET(request: NextRequest) {
         description: g.description,
         tier: g.tier,
         isDefault: g.isDefault,
-        isSystem: true,
+        isSystem: g.isSystem || true,
+        isImmutable: g.isImmutable,
+        isOwned: false,
+        parentGraphId: g.parentGraphId,
         nodeCount: g.nodes?.length || 0,
         edgeCount: g.edges?.length || 0,
         version: g.version,
@@ -203,6 +206,9 @@ export async function GET(request: NextRequest) {
         tier: g.tier,
         isDefault: g.isDefault,
         isSystem: false,
+        isImmutable: g.isImmutable,
+        isOwned: true,
+        parentGraphId: g.parentGraphId,
         nodeCount: g.nodes?.length || 0,
         edgeCount: g.edges?.length || 0,
         version: g.version,

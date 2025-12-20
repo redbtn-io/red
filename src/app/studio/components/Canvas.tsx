@@ -694,7 +694,6 @@ export default function StudioCanvas({ onNodeAdded, onNodeDoubleClick }: StudioC
         data: {
           label: parsedData.label || parsedData.nodeType || 'Node',
           nodeType: parsedData.nodeType || 'universal',
-          category: parsedData.category || 'utility',
           description: parsedData.description,
           icon: parsedData.icon,
           color: parsedData.color,

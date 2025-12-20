@@ -1,32 +1,47 @@
 # Red AI API Documentation
 
-**Version:** 1.0  
+**Version:** 2.0  
 **Base URL:** `/api`
 
-Complete documentation for the Red AI REST API. This API provides AI chat completions, conversation management, authentication, and logging capabilities.
+Complete documentation for the Red AI REST API. This API provides AI chat completions, conversation management, nodes, neurons, graphs, authentication, OAuth, and logging capabilities.
 
 ---
 
 ## 📋 Table of Contents
 
 1. [Authentication](#authentication)
-2. [Chat & Completions](#chat--completions)
-3. [Conversations](#conversations)
-4. [Messages](#messages)
-5. [Logging & Monitoring](#logging--monitoring)
-6. [Rate Limiting](#rate-limiting)
-7. [Error Handling](#error-handling)
-8. [Streaming Protocol](#streaming-protocol)
+2. [OAuth 2.0](#oauth-20)
+3. [Chat & Completions](#chat--completions)
+4. [Conversations](#conversations)
+5. [Messages](#messages)
+6. [Nodes](#nodes)
+7. [Neurons](#neurons)
+8. [Graphs](#graphs)
+9. [User Preferences](#user-preferences)
+10. [Models](#models)
+11. [Cleanup](#cleanup)
+12. [Logging & Monitoring](#logging--monitoring)
+13. [Rate Limiting](#rate-limiting)
+14. [Error Handling](#error-handling)
+15. [Streaming Protocol](#streaming-protocol)
 
 ## 🗂️ Directory Overview & Local Tooling
 
 The API surface lives inside the Next.js app directory. Key folders:
 
 - `src/app/api/auth/*` – magic-link authentication endpoints (request code, check session, logout)
+- `src/app/api/oauth/*` – OAuth 2.0 authorization server endpoints
 - `src/app/api/v1/chat/completions` – OpenAI-compatible entry point that decouples HTTP from generation
 - `src/app/api/v1/messages/[messageId]/*` – reconnectable SSE stream endpoints
 - `src/app/api/v1/conversations/*` – CRUD + telemetry for stored conversations
+- `src/app/api/v1/nodes/*` – node configuration CRUD, fork, abandon, restore
+- `src/app/api/v1/neurons/*` – neuron (LLM config) CRUD, fork, abandon, restore
+- `src/app/api/v1/graphs/*` – graph workflow CRUD and fork
+- `src/app/api/v1/user/preferences/*` – user preferences and archive management
+- `src/app/api/v1/cleanup/*` – admin cleanup jobs for abandoned resources
+- `src/app/api/v1/models/*` – available model listing
 - `src/app/api/v1/logs/*` and `generations/*` – diagnostics, log tailing, and generation metadata
+- `src/app/api/oauth/*` – OAuth 2.0 authorization server
 - `src/app/api/health` – lightweight readiness probe for load balancers
 
 Because this workspace also contains the `ai/` package, we keep shared automation at the root under `scripts/`. In particular, `scripts/pre-commit-cleanup.sh` moves stray markdown documents into `/explanations` and removes nested `explanations/` or `scripts/` folders from the Next.js project. Run it manually before submitting docs-heavy changes:
@@ -655,6 +670,739 @@ Subscribe to a message stream (similar to reconnect but without requiring prior 
 
 ---
 
+## 🧩 Nodes
+
+Nodes are reusable workflow components that can be composed into graphs. They define steps (neuron calls, tool invocations, transforms, conditionals, loops) that execute in sequence.
+
+### List Nodes
+
+**`GET /api/v1/nodes`**
+
+List and search available nodes for the Studio palette.
+
+**Authentication:** Required  
+**Rate Limit:** 60 requests per 60 seconds (STANDARD tier)
+
+**Query Parameters:**
+- `q` (string): Text search query (searches name, description, tags)
+- `tags` (string): Comma-separated list of tags to filter by
+- `owner` (string): Filter by owner ("me" for current user, "system" for system nodes)
+- `view` (string): Special view ("saved", "favorited", "recent", "archived")
+- `sortBy` (string): Sort field (name, createdAt, updatedAt, usageCount, forkCount)
+- `sortOrder` (string): Sort direction (asc, desc)
+- `limit` (number): Max results (default 50)
+- `offset` (number): Pagination offset (default 0)
+
+**Success Response (200):**
+```json
+{
+  "nodes": [
+    {
+      "nodeId": "planner",
+      "name": "Planner",
+      "description": "Creates execution plans from user requests",
+      "tags": ["core", "planning"],
+      "isSystem": true,
+      "isImmutable": true,
+      "isOwned": false,
+      "status": "active",
+      "tier": 4,
+      "icon": "brain",
+      "color": "#8B5CF6",
+      "inputs": ["state"],
+      "outputs": ["state"],
+      "stats": {
+        "usageCount": 1250,
+        "forkCount": 15
+      }
+    }
+  ],
+  "total": 42,
+  "tags": ["core", "planning", "search", "chat"]
+}
+```
+
+---
+
+### Get Node
+
+**`GET /api/v1/nodes/[nodeId]`**
+
+Get details for a specific node including full configuration.
+
+**Authentication:** Required
+
+**Success Response (200):**
+```json
+{
+  "nodeId": "planner",
+  "type": "universal",
+  "name": "Planner",
+  "description": "Creates execution plans",
+  "tags": ["core", "planning"],
+  "steps": [
+    { "stepIndex": 0, "type": "neuron", "configurable": {...} }
+  ],
+  "fullConfig": [...],
+  "parameters": {},
+  "metadata": { "icon": "brain", "color": "#8B5CF6" },
+  "isSystem": true,
+  "isImmutable": true,
+  "isOwned": false,
+  "status": "active",
+  "creatorId": "system"
+}
+```
+
+---
+
+### Create Node
+
+**`POST /api/v1/nodes`**
+
+Create a new custom node.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "nodeId": "my-custom-node",
+  "name": "My Custom Node",
+  "description": "Does something useful",
+  "tags": ["custom"],
+  "steps": [
+    {
+      "type": "neuron",
+      "config": {
+        "neuronId": "red-neuron",
+        "systemPrompt": "You are a helpful assistant."
+      }
+    }
+  ]
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "nodeId": "my-custom-node",
+  "name": "My Custom Node",
+  "created": true
+}
+```
+
+---
+
+### Update Node
+
+**`PATCH /api/v1/nodes/[nodeId]`**
+
+Update an existing node (must be owned by user and not immutable).
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "name": "Updated Name",
+  "description": "Updated description",
+  "tags": ["custom", "updated"]
+}
+```
+
+---
+
+### Delete Node
+
+**`DELETE /api/v1/nodes/[nodeId]`**
+
+Delete a node owned by the user.
+
+**Authentication:** Required
+
+---
+
+### Fork Node
+
+**`POST /api/v1/nodes/[nodeId]/fork`**
+
+Create a personal copy (fork) of a node.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "newNodeId": "my-forked-planner",
+  "name": "My Planner"
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "nodeId": "my-forked-planner",
+  "parentNodeId": "planner",
+  "name": "My Planner",
+  "stepsCount": 3,
+  "createdAt": "2025-12-20T10:00:00.000Z"
+}
+```
+
+---
+
+### Abandon Node
+
+**`POST /api/v1/nodes/[nodeId]/abandon`**
+
+Abandon a node you own. The node transfers to the 'abandoned' pseudo-user but remains available to users who forked it. After 90 days (if unused), it will be permanently deleted.
+
+**Authentication:** Required
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "nodeId": "my-custom-node",
+  "abandonedAt": "2025-12-20T10:00:00.000Z",
+  "scheduledDeletionAt": "2026-03-20T10:00:00.000Z",
+  "forkCount": 5,
+  "usageCount": 100,
+  "message": "Node abandoned. It has 5 forks and 100 uses. It will remain available to others but removed from your list."
+}
+```
+
+---
+
+### Restore Node
+
+**`POST /api/v1/nodes/[nodeId]/restore`**
+
+Restore a node you previously abandoned (only the original creator can restore).
+
+**Authentication:** Required
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "nodeId": "my-custom-node",
+  "message": "Node restored successfully"
+}
+```
+
+---
+
+### Node Preferences
+
+**`GET /api/v1/nodes/preferences`**
+
+Get user's node preferences (saved, favorited, recent nodes).
+
+**Success Response (200):**
+```json
+{
+  "savedNodes": ["planner", "search"],
+  "favoritedNodes": ["respond"],
+  "recentNodes": ["planner", "router"],
+  "tagPreferences": { "pinnedTags": ["core"], "hiddenTags": [] },
+  "viewPreferences": {
+    "defaultSortBy": "name",
+    "defaultSortOrder": "asc",
+    "showSystemNodes": true,
+    "showPublicNodes": true
+  }
+}
+```
+
+**`POST /api/v1/nodes/preferences`**
+
+Update node preferences (save, favorite, unsave, unfavorite).
+
+**Request Body:**
+```json
+{
+  "action": "save",
+  "nodeId": "planner"
+}
+```
+
+---
+
+## 🧠 Neurons
+
+Neurons are LLM configurations that define which model, provider, and parameters to use. They are referenced by nodes and can be system defaults or user-customized.
+
+### List Neurons
+
+**`GET /api/v1/neurons`**
+
+List all available neurons for the user based on their tier level.
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `role` (string): Filter by role (chat, worker, specialist)
+- `provider` (string): Filter by provider (ollama, openai, anthropic, google, custom)
+
+**Success Response (200):**
+```json
+{
+  "neurons": [
+    {
+      "neuronId": "red-neuron",
+      "name": "Red Neuron",
+      "description": "Default chat neuron",
+      "provider": "ollama",
+      "model": "red",
+      "role": "chat",
+      "tier": 4,
+      "isSystem": true,
+      "isImmutable": true,
+      "isDefault": true
+    }
+  ]
+}
+```
+
+---
+
+### Get Neuron
+
+**`GET /api/v1/neurons/[neuronId]`**
+
+Get details for a specific neuron (API keys are NOT exposed).
+
+**Authentication:** Required
+
+---
+
+### Create Neuron
+
+**`POST /api/v1/neurons`**
+
+Create a custom neuron configuration.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "neuronId": "my-gpt4",
+  "name": "My GPT-4",
+  "provider": "openai",
+  "model": "gpt-4-turbo",
+  "endpoint": "https://api.openai.com",
+  "apiKey": "sk-...",
+  "temperature": 0.7,
+  "maxTokens": 4096,
+  "role": "chat"
+}
+```
+
+---
+
+### Fork Neuron
+
+**`POST /api/v1/neurons/[neuronId]/fork`**
+
+Create a personal copy (fork) of a neuron.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "newNeuronId": "my-red-neuron",
+  "name": "My Red Neuron"
+}
+```
+
+---
+
+### Abandon Neuron
+
+**`POST /api/v1/neurons/[neuronId]/abandon`**
+
+Abandon a neuron you own. Similar lifecycle to nodes.
+
+**Authentication:** Required
+
+---
+
+### Restore Neuron
+
+**`POST /api/v1/neurons/[neuronId]/restore`**
+
+Restore a neuron you previously abandoned.
+
+**Authentication:** Required
+
+---
+
+## 📊 Graphs
+
+Graphs are workflows that connect nodes together with edges and conditions. They define how data flows through a series of processing steps.
+
+### List Graphs
+
+**`GET /api/v1/graphs`**
+
+List available graphs for the user.
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `includeSystem` (boolean): Include system graphs (default true)
+- `limit` (number): Max results
+- `offset` (number): Pagination offset
+
+**Success Response (200):**
+```json
+{
+  "graphs": [
+    {
+      "graphId": "red-chat",
+      "name": "Red Chat",
+      "description": "Default chat graph",
+      "tier": 4,
+      "isDefault": true,
+      "isSystem": true,
+      "nodeCount": 5,
+      "edgeCount": 4
+    }
+  ],
+  "total": 10
+}
+```
+
+---
+
+### Get Graph
+
+**`GET /api/v1/graphs/[graphId]`**
+
+Get full details for a specific graph including nodes and edges.
+
+**Authentication:** Required
+
+**Success Response (200):**
+```json
+{
+  "graph": {
+    "graphId": "red-chat",
+    "name": "Red Chat",
+    "description": "Default chat graph",
+    "tier": 4,
+    "isDefault": true,
+    "isSystem": true,
+    "isOwned": false,
+    "nodes": [
+      { "id": "router", "type": "router", "config": {...} }
+    ],
+    "edges": [
+      { "from": "router", "to": "planner", "condition": "route === 'complex'" }
+    ]
+  }
+}
+```
+
+---
+
+### Create Graph
+
+**`POST /api/v1/graphs`**
+
+Create a new custom graph.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "name": "My Custom Graph",
+  "description": "A custom workflow",
+  "nodes": [
+    { "id": "start", "type": "respond", "config": {} }
+  ],
+  "edges": [],
+  "tier": 4
+}
+```
+
+---
+
+### Update Graph
+
+**`PATCH /api/v1/graphs/[graphId]`**
+
+Update an existing graph (must be owned by user).
+
+**Authentication:** Required
+
+---
+
+### Delete Graph
+
+**`DELETE /api/v1/graphs/[graphId]`**
+
+Delete a graph owned by the user.
+
+**Authentication:** Required
+
+---
+
+### Fork Graph
+
+**`POST /api/v1/graphs/[graphId]/fork`**
+
+Create a personal copy (fork) of a graph.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "newGraphId": "my-red-chat",
+  "name": "My Red Chat"
+}
+```
+
+---
+
+## 👤 User Preferences
+
+### Archive Management
+
+Users can archive nodes and neurons to hide them from their default view without deleting them.
+
+**`GET /api/v1/user/preferences/archive`**
+
+Get user's archived nodes and neurons.
+
+**Success Response (200):**
+```json
+{
+  "archivedNodes": ["old-node-1", "old-node-2"],
+  "archivedNeurons": ["old-neuron-1"]
+}
+```
+
+**`POST /api/v1/user/preferences/archive`**
+
+Archive a node or neuron.
+
+**Request Body:**
+```json
+{
+  "type": "node",
+  "id": "node-to-archive"
+}
+```
+
+**`DELETE /api/v1/user/preferences/archive`**
+
+Unarchive a node or neuron.
+
+**Request Body:**
+```json
+{
+  "type": "node",
+  "id": "node-to-unarchive"
+}
+```
+
+---
+
+## 🤖 Models
+
+### List Models
+
+**`GET /api/v1/models`**
+
+Get list of available AI models.
+
+**Success Response (200):**
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "Red",
+      "object": "model",
+      "created": 1698765432,
+      "owned_by": "redbtn"
+    }
+  ]
+}
+```
+
+---
+
+## 🧹 Cleanup
+
+Admin endpoints for managing abandoned resources.
+
+### Cleanup Abandoned Resources
+
+**`POST /api/v1/cleanup/abandoned`**
+
+Clean up abandoned nodes and neurons past their scheduled deletion date.
+
+**Authentication:** Admin required (account level 1) or cron secret
+
+**Query Parameters:**
+- `dryRun` (boolean): If true, only reports what would be deleted
+- `hardDelete` (boolean): If true, permanently removes. Otherwise marks as 'deleted'
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "dryRun": false,
+  "result": {
+    "nodesDeleted": 5,
+    "neuronsDeleted": 2,
+    "deletedNodeIds": ["old-node-1", "old-node-2"],
+    "deletedNeuronIds": ["old-neuron-1"]
+  }
+}
+```
+
+**`GET /api/v1/cleanup/abandoned`**
+
+Get statistics about abandoned resources pending cleanup.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "statistics": {
+    "readyForDeletion": { "nodes": 5, "neurons": 2 },
+    "totalAbandoned": { "nodes": 15, "neurons": 8 },
+    "pendingDeletion": {
+      "nodes": [
+        { "nodeId": "old-node", "abandonedAt": "2025-09-20", "scheduledDeletionAt": "2025-12-20" }
+      ],
+      "neurons": []
+    }
+  }
+}
+```
+
+---
+
+## 🔐 OAuth 2.0
+
+Red AI supports OAuth 2.0 for third-party application authorization.
+
+### Authorization Endpoint
+
+**`GET /api/oauth/authorize`**
+
+Initiate OAuth authorization flow. Displays consent screen.
+
+**Query Parameters:**
+- `client_id` (string, required): OAuth client ID
+- `redirect_uri` (string, required): Callback URL
+- `response_type` (string, required): Must be "code"
+- `scope` (string): Space-separated scopes
+- `state` (string): CSRF protection state
+
+**`POST /api/oauth/authorize`**
+
+Submit user consent decision.
+
+---
+
+### Token Endpoint
+
+**`POST /api/oauth/token`**
+
+Exchange authorization code for access token.
+
+**Request Body (form-urlencoded):**
+```
+grant_type=authorization_code
+code=AUTH_CODE
+redirect_uri=https://app.example.com/callback
+client_id=CLIENT_ID
+client_secret=CLIENT_SECRET
+```
+
+**Success Response (200):**
+```json
+{
+  "access_token": "eyJhbGc...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "dGhpcyBp...",
+  "scope": "read write"
+}
+```
+
+---
+
+### Token Introspection
+
+**`POST /api/oauth/introspect`**
+
+Validate and get information about an access token.
+
+---
+
+### Token Revocation
+
+**`POST /api/oauth/revoke`**
+
+Revoke an access or refresh token.
+
+---
+
+### UserInfo Endpoint
+
+**`GET /api/oauth/userinfo`**
+
+Get user information using an access token.
+
+**Headers:**
+```
+Authorization: Bearer ACCESS_TOKEN
+```
+
+**Success Response (200):**
+```json
+{
+  "sub": "user_id",
+  "email": "user@example.com",
+  "name": "John Doe",
+  "email_verified": true
+}
+```
+
+---
+
+### Client Management
+
+**`GET /api/oauth/clients`**
+
+List user's OAuth clients.
+
+**`POST /api/oauth/clients`**
+
+Register a new OAuth client.
+
+**`GET /api/oauth/clients/[clientId]`**
+
+Get OAuth client details.
+
+**`DELETE /api/oauth/clients/[clientId]`**
+
+Delete an OAuth client.
+
+---
+
 ## 🔍 Logging & Monitoring
 
 ### Get Conversations with Logs
@@ -1058,7 +1806,18 @@ For questions, issues, or feature requests:
 
 ## 🔄 Changelog
 
-### Version 1.0 (Current)
+### Version 2.0 (December 2025)
+- **Nodes API** - Full CRUD, fork, abandon/restore lifecycle
+- **Neurons API** - LLM configuration management with fork/abandon/restore
+- **Graphs API** - Workflow management with fork capability
+- **Archive System** - User-level hiding of nodes/neurons without deletion
+- **Abandon System** - Soft-delete with 90-day retention and usage protection
+- **Cleanup API** - Admin endpoints for managing abandoned resources
+- **OAuth 2.0** - Full authorization server implementation
+- **Node Preferences** - Save, favorite, recent tracking
+- **Enhanced Node Listing** - Search, filtering, pagination, status tracking
+
+### Version 1.0 (October 2025)
 - Initial API release
 - Chat completions with streaming
 - Conversation management
@@ -1071,4 +1830,4 @@ For questions, issues, or feature requests:
 
 **Built with 🔴 by redbtn**
 
-Last Updated: October 21, 2025
+Last Updated: December 20, 2025

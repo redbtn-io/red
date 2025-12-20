@@ -23,7 +23,6 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { href: '/', label: 'Chat', icon: MessageSquare, match: '/' },
   { href: '/studio', label: 'Studio', icon: Workflow, match: '/studio' },
-  { href: '/explore', label: 'Explore', icon: Compass, match: '/explore' },
   { href: '/logs', label: 'Terminal', icon: Terminal, match: '/logs' },
 ];
 

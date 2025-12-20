@@ -25,7 +25,6 @@ import dagre from 'dagre';
 export interface StudioNodeData {
   label: string;
   nodeType: string;
-  category: string;
   description?: string;
   icon?: string;
   color?: string;
@@ -150,23 +149,6 @@ function generateNodeId(): string {
 
 function generateEdgeId(source: string, target: string): string {
   return `edge-${source}-${target}-${Date.now()}`;
-}
-
-function getCategoryForType(type: string): string {
-  const map: Record<string, string> = {
-    router: 'routing',
-    classifier: 'routing',
-    responder: 'communication',
-    respond: 'communication',
-    context: 'infrastructure',
-    planner: 'execution',
-    executor: 'execution',
-    search: 'tools',
-    scrape: 'tools',
-    summarizer: 'transformation',
-    universal: 'utility'
-  };
-  return map[type] || 'utility';
 }
 
 export const useGraphStore = create<GraphStoreState & GraphStoreActions>()(
@@ -519,7 +501,6 @@ export const useGraphStore = create<GraphStoreState & GraphStoreActions>()(
               data: {
                 label: node.id,
                 nodeType: actualNodeType,
-                category: getCategoryForType(actualNodeType),
                 config: node.config || {},
                 neuronId: node.neuronId
               }
@@ -535,7 +516,7 @@ export const useGraphStore = create<GraphStoreState & GraphStoreActions>()(
               : (layoutPositions['__start__'] || { x: 50, y: 200 }),
             draggable: true,
             selectable: true,
-            data: { label: 'Start', nodeType: 'start', category: 'control' }
+            data: { label: 'Start', nodeType: 'start' }
           });
           
           // Add end node
@@ -547,7 +528,7 @@ export const useGraphStore = create<GraphStoreState & GraphStoreActions>()(
               : (layoutPositions['__end__'] || { x: 800, y: 200 }),
             draggable: true,
             selectable: true,
-            data: { label: 'End', nodeType: 'end', category: 'control' }
+            data: { label: 'End', nodeType: 'end' }
           });
 
           set({
@@ -660,7 +641,7 @@ export const useGraphStore = create<GraphStoreState & GraphStoreActions>()(
               position: { x: 100, y: 200 },
               draggable: true,
               selectable: true,
-              data: { label: 'Start', nodeType: 'start', category: 'control' }
+              data: { label: 'Start', nodeType: 'start' }
             },
             {
               id: '__end__',
@@ -668,7 +649,7 @@ export const useGraphStore = create<GraphStoreState & GraphStoreActions>()(
               position: { x: 500, y: 200 },
               draggable: true,
               selectable: true,
-              data: { label: 'End', nodeType: 'end', category: 'control' }
+              data: { label: 'End', nodeType: 'end' }
             }
           ]
         });

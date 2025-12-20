@@ -26,7 +26,7 @@ interface NodeTypeInfo {
   nodeId: string;
   name: string;
   description: string;
-  category: string;
+  tags?: string[];
   tier: string;
   inputs: string[];
   outputs: string[];
@@ -114,7 +114,6 @@ export default function NodePalette({ isOpen, onClose, onNodeAdded }: NodePalett
       data: {
         label: node.name,
         nodeType: node.nodeId,
-        category: node.category,
         description: node.description,
         config: {},
       } as StudioNodeData,
@@ -161,13 +160,13 @@ export default function NodePalette({ isOpen, onClose, onNodeAdded }: NodePalett
         (node) =>
           node.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           node.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          node.category.toLowerCase().includes(searchQuery.toLowerCase())
+          (node.tags || []).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
       )
     : nodeTypes;
 
-  // Group nodes by category
+  // Group nodes by first tag (or 'default' if no tags)
   const categoryGroups: CategoryGroup[] = filteredNodes.reduce((groups, node) => {
-    const category = node.category || 'default';
+    const category = (node.tags && node.tags[0]) || 'default';
     let group = groups.find((g) => g.name === category);
     if (!group) {
       group = { name: category, nodes: [], expanded: expandedCategories.has(category) };
@@ -210,7 +209,6 @@ export default function NodePalette({ isOpen, onClose, onNodeAdded }: NodePalett
       JSON.stringify({
         nodeType: node.nodeId,
         label: node.name,
-        category: node.category,
         description: node.description,
         inputs: node.inputs,
         outputs: node.outputs,
@@ -290,7 +288,7 @@ export default function NodePalette({ isOpen, onClose, onNodeAdded }: NodePalett
                 nodeId: 'start',
                 name: 'Start',
                 description: 'Entry point',
-                category: 'flow',
+                tags: ['flow'],
                 tier: 'free',
                 inputs: [],
                 outputs: ['flow'],
@@ -300,7 +298,7 @@ export default function NodePalette({ isOpen, onClose, onNodeAdded }: NodePalett
               nodeId: 'start',
               name: 'Start',
               description: 'Entry point',
-              category: 'flow',
+              tags: ['flow'],
               tier: 'free',
               inputs: [],
               outputs: ['flow'],
@@ -322,7 +320,7 @@ export default function NodePalette({ isOpen, onClose, onNodeAdded }: NodePalett
                 nodeId: 'end',
                 name: 'End',
                 description: 'Exit point',
-                category: 'flow',
+                tags: ['flow'],
                 tier: 'free',
                 inputs: ['flow'],
                 outputs: [],
@@ -332,7 +330,7 @@ export default function NodePalette({ isOpen, onClose, onNodeAdded }: NodePalett
               nodeId: 'end',
               name: 'End',
               description: 'Exit point',
-              category: 'flow',
+              tags: ['flow'],
               tier: 'free',
               inputs: ['flow'],
               outputs: [],
@@ -376,7 +374,8 @@ export default function NodePalette({ isOpen, onClose, onNodeAdded }: NodePalett
               {isExpanded && (
                 <div className="ml-2 mt-1 space-y-1">
                   {group.nodes.map((node) => {
-                    const colorClass = CATEGORY_COLORS[node.category] || CATEGORY_COLORS.default;
+                    const firstTag = (node.tags && node.tags[0]) || 'default';
+                    const colorClass = CATEGORY_COLORS[firstTag] || CATEGORY_COLORS.default;
 
                     return (
                       <div

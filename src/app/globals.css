@@ -34,6 +34,11 @@ body {
   text-size-adjust: 100%;
 }
 
+/* All buttons should have pointer cursor */
+button, [role="button"] {
+  cursor: pointer;
+}
+
 /* Prevent iOS auto-zoom on input focus - ensure minimum 16px font size */
 input, textarea, select {
   font-size: 16px !important;

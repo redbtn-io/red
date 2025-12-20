@@ -311,9 +311,14 @@ export async function GET(
         nodeId: String,
         name: String,
         description: String,
-        category: String,
+        tags: [String],
         userId: String,
+        creatorId: String,
+        status: String,
+        abandonedAt: Date,
+        scheduledDeletionAt: Date,
         isSystem: Boolean,
+        isImmutable: Boolean,
         steps: [mongoose.Schema.Types.Mixed],
         metadata: mongoose.Schema.Types.Mixed
       }));
@@ -322,7 +327,8 @@ export async function GET(
       nodeId,
       $or: [
         { isSystem: true },
-        { userId: user.userId }
+        { userId: user.userId },
+        { creatorId: user.userId }  // Include abandoned nodes the user created
       ]
     }).lean();
 
@@ -332,8 +338,19 @@ export async function GET(
         nodeId: string;
         name: string;
         description: string;
-        category: string;
+        tags?: string[];
         steps: UniversalNodeStep[];
+        parameters?: Map<string, any> | Record<string, any>;
+        metadata?: Record<string, any>;
+        userId?: string;
+        creatorId?: string;
+        status?: 'active' | 'abandoned' | 'deleted';
+        abandonedAt?: Date | null;
+        scheduledDeletionAt?: Date | null;
+        isSystem?: boolean;
+        isImmutable?: boolean;
+        inputs?: string[];
+        outputs?: string[];
       }
       const typedNode = node as unknown as NodeDocument;
       const stepSchemas = typedNode.steps?.map((step: UniversalNodeStep, index: number) => ({
@@ -342,15 +359,40 @@ export async function GET(
         configurable: getConfigurableFieldsForStep(step)
       }));
 
+      // Convert parameters Map to plain object if needed
+      let parametersObj: Record<string, any> = {};
+      if (typedNode.parameters) {
+        if (typedNode.parameters instanceof Map) {
+          for (const [key, value] of typedNode.parameters.entries()) {
+            parametersObj[key] = value;
+          }
+        } else if (typeof typedNode.parameters === 'object') {
+          parametersObj = typedNode.parameters as Record<string, any>;
+        }
+      }
+
       return NextResponse.json({
         nodeId,
         type: 'universal',
         name: typedNode.name,
         description: typedNode.description,
-        category: typedNode.category,
+        tags: typedNode.tags || [],
         steps: stepSchemas,
         fullConfig: typedNode.steps,
-        configurable: true
+        parameters: parametersObj,  // Exposed parameter definitions
+        metadata: typedNode.metadata,
+        configurable: true,
+        // Ownership and editability fields
+        isSystem: typedNode.isSystem || false,
+        isImmutable: typedNode.isImmutable || false,
+        isOwned: typedNode.userId === user.userId,
+        // Abandon-related fields
+        status: typedNode.status || 'active',
+        creatorId: typedNode.creatorId,
+        abandonedAt: typedNode.abandonedAt,
+        scheduledDeletionAt: typedNode.scheduledDeletionAt,
+        inputs: typedNode.inputs || [],
+        outputs: typedNode.outputs || [],
       }, { status: 200 });
     }
 
@@ -427,5 +469,281 @@ function getConfigurableFieldsForStep(step: UniversalNodeStep): JSONSchema {
       };
     default:
       return { type: 'object' };
+  }
+}
+
+/**
+ * PATCH /api/v1/nodes/[nodeId]
+ * Update a node configuration
+ * 
+ * Ownership rules:
+ * - If user owns the node (userId matches): Direct edit allowed
+ * - If system node or another user's node: Clone with changes, return new nodeId
+ * 
+ * Request body:
+ * {
+ *   name?: string;
+ *   description?: string;
+ *   steps?: Array<{ type: string; config: object }>;
+ *   metadata?: object;
+ *   newNodeId?: string; // Optional custom ID for clones
+ * }
+ * 
+ * Response:
+ * {
+ *   nodeId: string;
+ *   cloned: boolean; // True if a new node was created
+ *   parentNodeId?: string; // Set if cloned
+ * }
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ nodeId: string }> }
+) {
+  // Rate limiting
+  const rateLimitResult = await rateLimitAPI(request, RateLimits.STANDARD);
+  if (rateLimitResult) return rateLimitResult;
+
+  try {
+    // Ensure database connection
+    await connectToDatabase();
+
+    // Verify authentication
+    const user = await verifyAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { nodeId } = await params;
+    const body = await request.json();
+    const { name, description, tags, steps, metadata, newNodeId } = body;
+
+    // Get or create model
+    const NodeModel = mongoose.models.Node ||
+      mongoose.model('Node', new mongoose.Schema({
+        nodeId: { type: String, required: true, unique: true },
+        name: { type: String, required: true },
+        description: String,
+        tags: [String],
+        userId: { type: String, required: true, index: true },
+        isSystem: { type: Boolean, default: false },
+        isImmutable: { type: Boolean, default: false },
+        parentNodeId: { type: String, default: null },
+        version: { type: Number, default: 1 },
+        steps: [mongoose.Schema.Types.Mixed],
+        metadata: mongoose.Schema.Types.Mixed,
+        createdAt: { type: Date, default: Date.now },
+        updatedAt: { type: Date, default: Date.now }
+      }));
+
+    // Find the node
+    const node = await NodeModel.findOne({ nodeId });
+    
+    if (!node) {
+      return NextResponse.json({ error: 'Node not found' }, { status: 404 });
+    }
+
+    // Check ownership - can user edit directly?
+    const canEditDirectly = node.userId === user.userId && !node.isSystem && !node.isImmutable;
+
+    if (canEditDirectly) {
+      // Direct edit
+      if (name !== undefined) node.name = name;
+      if (description !== undefined) node.description = description;
+      if (tags !== undefined) node.tags = tags;
+      if (steps !== undefined) node.steps = steps;
+      if (metadata !== undefined) {
+        node.metadata = { ...node.metadata, ...metadata };
+      }
+      node.version += 1;
+      node.updatedAt = new Date();
+      
+      await node.save();
+
+      return NextResponse.json({
+        nodeId: node.nodeId,
+        cloned: false,
+        name: node.name,
+        version: node.version,
+        updatedAt: node.updatedAt
+      }, { status: 200 });
+    } else {
+      // Clone the node for this user
+      const clonedNodeId = newNodeId || `${nodeId}-${user.userId.slice(-6)}`;
+      
+      // Validate clonedNodeId format
+      if (!/^[a-z0-9-]+$/.test(clonedNodeId)) {
+        return NextResponse.json(
+          { error: 'newNodeId must contain only lowercase letters, numbers, and hyphens' },
+          { status: 400 }
+        );
+      }
+
+      // Check if clone already exists
+      let existingClone = await NodeModel.findOne({ nodeId: clonedNodeId, userId: user.userId });
+      
+      if (existingClone) {
+        // Update existing clone
+        if (name !== undefined) existingClone.name = name;
+        if (description !== undefined) existingClone.description = description;
+        if (tags !== undefined) existingClone.tags = tags;
+        if (steps !== undefined) existingClone.steps = steps;
+        if (metadata !== undefined) {
+          existingClone.metadata = { ...existingClone.metadata, ...metadata };
+        }
+        existingClone.version += 1;
+        existingClone.updatedAt = new Date();
+        
+        await existingClone.save();
+
+        return NextResponse.json({
+          nodeId: existingClone.nodeId,
+          cloned: false, // Already existed
+          parentNodeId: existingClone.parentNodeId,
+          name: existingClone.name,
+          version: existingClone.version,
+          updatedAt: existingClone.updatedAt
+        }, { status: 200 });
+      }
+
+      // Create new clone
+      const cloneData = {
+        nodeId: clonedNodeId,
+        name: name || `${node.name} (Custom)`,
+        description: description || node.description,
+        tags: tags || node.tags || [],
+        userId: user.userId,
+        isSystem: false,
+        isImmutable: false,
+        parentNodeId: nodeId,
+        version: 1,
+        steps: steps || node.steps,
+        metadata: {
+          ...node.metadata,
+          ...metadata,
+          clonedAt: new Date().toISOString(),
+          clonedFrom: nodeId
+        },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      const newNode = await NodeModel.create(cloneData);
+
+      return NextResponse.json({
+        nodeId: newNode.nodeId,
+        cloned: true,
+        parentNodeId: nodeId,
+        name: newNode.name,
+        version: newNode.version,
+        createdAt: newNode.createdAt
+      }, { status: 201 });
+    }
+
+  } catch (error: unknown) {
+    console.error('[API] Error updating node:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Check for duplicate key error
+    if (errorMessage.includes('duplicate key') || errorMessage.includes('E11000')) {
+      return NextResponse.json(
+        { error: 'A node with this ID already exists' },
+        { status: 409 }
+      );
+    }
+    
+    return NextResponse.json(
+      { error: 'Internal server error', message: errorMessage },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PUT /api/v1/nodes/[nodeId]
+ * Alias for PATCH - Update a node configuration
+ */
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ nodeId: string }> }
+) {
+  return PATCH(request, context);
+}
+
+/**
+ * DELETE /api/v1/nodes/[nodeId]
+ * Delete a node configuration
+ * 
+ * Only allowed if:
+ * - User owns the node (userId matches)
+ * - Node is not a system node
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ nodeId: string }> }
+) {
+  // Rate limiting
+  const rateLimitResult = await rateLimitAPI(request, RateLimits.STANDARD);
+  if (rateLimitResult) return rateLimitResult;
+
+  try {
+    // Ensure database connection
+    await connectToDatabase();
+
+    // Verify authentication
+    const user = await verifyAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { nodeId } = await params;
+
+    // Get or create model
+    const NodeModel = mongoose.models.Node ||
+      mongoose.model('Node', new mongoose.Schema({
+        nodeId: { type: String, required: true, unique: true },
+        name: { type: String, required: true },
+        userId: { type: String, required: true, index: true },
+        isSystem: { type: Boolean, default: false }
+      }));
+
+    // Find the node
+    const node = await NodeModel.findOne({ nodeId });
+    
+    if (!node) {
+      return NextResponse.json({ error: 'Node not found' }, { status: 404 });
+    }
+
+    // Check permissions
+    if (node.isSystem) {
+      return NextResponse.json(
+        { error: 'Cannot delete system nodes' },
+        { status: 403 }
+      );
+    }
+
+    if (node.userId !== user.userId) {
+      return NextResponse.json(
+        { error: 'You can only delete your own nodes' },
+        { status: 403 }
+      );
+    }
+
+    // Delete the node
+    await NodeModel.deleteOne({ nodeId });
+
+    return NextResponse.json({
+      success: true,
+      nodeId,
+      message: 'Node deleted successfully'
+    }, { status: 200 });
+
+  } catch (error: unknown) {
+    console.error('[API] Error deleting node:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json(
+      { error: 'Internal server error', message: errorMessage },
+      { status: 500 }
+    );
   }
 }
