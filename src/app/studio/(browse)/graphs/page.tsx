@@ -19,7 +19,8 @@ import {
   ExternalLink,
   Lock,
   User,
-  Shield
+  Shield,
+  Zap
 } from 'lucide-react';
 import { 
   pageVariants, 
@@ -377,6 +378,14 @@ function GraphCard({
                 >
                   <ExternalLink className="w-4 h-4" />
                   Open in Studio
+                </Link>
+                <Link
+                  href={`/automations/new?graphId=${graph.graphId}`}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-[#ef4444] hover:bg-[#ef4444]/10"
+                  onClick={() => onMenuToggle(null)}
+                >
+                  <Zap className="w-4 h-4" />
+                  Create Automation
                 </Link>
                 
                 {/* Fork option - for system graphs or graphs user doesn't own */}

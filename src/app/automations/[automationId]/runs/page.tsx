@@ -17,21 +17,9 @@ import {
 import { StudioSidebar } from '@/components/layout/StudioSidebar';
 import { StudioHeader } from '@/components/layout/StudioHeader';
 import { pageVariants, fadeUpVariants, staggerContainerVariants, staggerItemVariants } from '@/lib/animations';
+import type { AutomationRun, RunStatus } from '@/types/automation';
 
-interface Run {
-  runId: string;
-  automationId: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'timeout';
-  triggeredBy: string;
-  input?: Record<string, any>;
-  output?: string | Record<string, any>;
-  error?: string;
-  durationMs?: number;
-  startedAt: string;
-  completedAt?: string;
-}
-
-const statusConfig = {
+const statusConfig: Record<RunStatus, { color: string; icon: typeof Clock; label: string }> = {
   pending: { color: '#6b7280', icon: Clock, label: 'Pending' },
   running: { color: '#3b82f6', icon: RefreshCw, label: 'Running' },
   completed: { color: '#22c55e', icon: CheckCircle2, label: 'Completed' },
@@ -45,7 +33,7 @@ export default function AutomationRunsPage() {
   const automationId = params?.automationId as string;
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [runs, setRuns] = useState<Run[]>([]);
+  const [runs, setRuns] = useState<AutomationRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [offset, setOffset] = useState(0);
@@ -167,19 +155,19 @@ export default function AutomationRunsPage() {
                     <motion.div
                       key={run.runId}
                       variants={staggerItemVariants}
-                      className="p-4 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] hover:border-[#3a3a3a] transition-all"
+                      className="p-4 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] hover:border-[#3a3a3a] transition-all overflow-hidden"
                     >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3">
+                        <div className="flex items-start gap-3 min-w-0 flex-1">
                           <Icon 
-                            className={`w-5 h-5 ${run.status === 'running' ? 'animate-spin' : ''}`}
+                            className={`w-5 h-5 flex-shrink-0 ${run.status === 'running' ? 'animate-spin' : ''}`}
                             style={{ color: config.color }}
                           />
-                          <div>
-                            <code className="text-sm font-mono text-white">{run.runId}</code>
-                            <div className="flex items-center gap-2 mt-1">
+                          <div className="min-w-0 flex-1">
+                            <code className="text-sm font-mono text-white block truncate">{run.runId}</code>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
                               <span 
-                                className="text-xs px-2 py-0.5 rounded"
+                                className="text-xs px-2 py-0.5 rounded flex-shrink-0"
                                 style={{ 
                                   backgroundColor: `${config.color}20`,
                                   color: config.color
@@ -194,20 +182,20 @@ export default function AutomationRunsPage() {
                           </div>
                         </div>
                         
-                        <div className="text-right text-sm">
+                        <div className="text-left sm:text-right text-sm flex-shrink-0">
                           {run.durationMs !== undefined && (
                             <div className="text-white">{run.durationMs}ms</div>
                           )}
                           <div className="text-gray-500 text-xs">
-                            {new Date(run.startedAt).toLocaleString()}
+                            {new Date(run.startedAt).toLocaleDateString()} {new Date(run.startedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </div>
                         </div>
                       </div>
                       
                       {/* Input/Output Preview */}
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {run.input && Object.keys(run.input).length > 0 && (
-                          <div>
+                          <div className="overflow-hidden">
                             <div className="text-xs text-gray-500 mb-1">Input</div>
                             <pre className="text-xs text-gray-400 bg-[#0a0a0a] p-2 rounded overflow-x-auto max-h-20">
                               {JSON.stringify(run.input, null, 2)}
@@ -216,7 +204,7 @@ export default function AutomationRunsPage() {
                         )}
                         
                         {run.output && (
-                          <div>
+                          <div className="overflow-hidden">
                             <div className="text-xs text-gray-500 mb-1">Output</div>
                             <pre className="text-xs text-green-400 bg-[#0a0a0a] p-2 rounded overflow-x-auto max-h-20">
                               {typeof run.output === 'string' 
@@ -228,8 +216,8 @@ export default function AutomationRunsPage() {
                       </div>
                       
                       {run.error && (
-                        <div className="mt-3 text-sm text-red-400 bg-red-500/10 p-2 rounded">
-                          {run.error}
+                        <div className="mt-3 text-sm text-red-400 bg-red-500/10 p-2 rounded break-words overflow-hidden">
+                          <p className="line-clamp-4">{run.error}</p>
                         </div>
                       )}
                     </motion.div>

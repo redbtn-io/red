@@ -50,11 +50,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const inputOverride = body.input || {};
 
-    // Find automation
+    // Find automation (use lean() for plain object)
     const automation = await Automation.findOne({
       automationId,
       userId: user.userId
-    });
+    }).lean();
 
     if (!automation) {
       return NextResponse.json({ error: 'Automation not found' }, { status: 404 });
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     
     // Merge input mapping with override
     const input = {
-      ...automation.inputMapping,
+      ...(automation.inputMapping || {}),
       ...inputOverride
     };
 
@@ -207,10 +207,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }, { status: 500 });
     }
 
-  } catch (error) {
-    console.error('[Automations API] Error triggering automation:', error);
+  } catch (error: any) {
+    console.error('[Automations API] Error triggering automation:', error?.message || error);
+    console.error('[Automations API] Stack:', error?.stack);
     return NextResponse.json(
-      { error: 'Failed to trigger automation' },
+      { error: 'Failed to trigger automation', details: error?.message },
       { status: 500 }
     );
   }

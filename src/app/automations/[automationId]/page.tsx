@@ -26,42 +26,9 @@ import {
 import { StudioSidebar } from '@/components/layout/StudioSidebar';
 import { StudioHeader } from '@/components/layout/StudioHeader';
 import { pageVariants, fadeUpVariants, staggerContainerVariants, staggerItemVariants } from '@/lib/animations';
+import type { Automation, AutomationRun, TriggerType } from '@/types/automation';
 
-interface Automation {
-  automationId: string;
-  name: string;
-  description?: string;
-  graphId: string;
-  trigger: {
-    type: 'webhook' | 'schedule' | 'event' | 'manual';
-    config?: Record<string, any>;
-  };
-  inputMapping?: Record<string, any>;
-  outputActions?: any[];
-  status: 'active' | 'paused' | 'disabled' | 'error';
-  isEnabled: boolean;
-  stats: {
-    runCount: number;
-    successCount: number;
-    failureCount: number;
-  };
-  lastRunAt?: string;
-  nextRunAt?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface Run {
-  runId: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'timeout';
-  triggeredBy: string;
-  durationMs?: number;
-  startedAt: string;
-  completedAt?: string;
-  error?: string;
-}
-
-const triggerIcons = {
+const triggerIcons: Record<TriggerType, typeof Webhook> = {
   webhook: Webhook,
   schedule: Calendar,
   event: Radio,
@@ -83,7 +50,7 @@ export default function AutomationDetailPage() {
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [automation, setAutomation] = useState<Automation | null>(null);
-  const [runs, setRuns] = useState<Run[]>([]);
+  const [runs, setRuns] = useState<AutomationRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -293,7 +260,7 @@ export default function AutomationDetailPage() {
                 <div className="text-2xl font-bold text-white">
                   {successRate !== null ? `${successRate}%` : '-'}
                 </div>
-                <div className="text-sm text-gray-400">Success Rate</div>
+                <div className="text-sm text-gray-400">Success</div>
               </div>
             </motion.div>
 
@@ -380,16 +347,16 @@ export default function AutomationDetailPage() {
                     <motion.div
                       key={run.runId}
                       variants={staggerItemVariants}
-                      className="p-4 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] hover:border-[#3a3a3a] transition-all"
+                      className="p-4 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] hover:border-[#3a3a3a] transition-all overflow-hidden"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
                           <div
-                            className="w-2 h-2 rounded-full"
+                            className="w-2 h-2 rounded-full flex-shrink-0"
                             style={{ backgroundColor: statusColors[run.status] }}
                           />
-                          <span className="font-mono text-sm text-gray-400">{run.runId}</span>
-                          <span className={`text-sm px-2 py-0.5 rounded ${
+                          <span className="font-mono text-sm text-gray-400 truncate">{run.runId}</span>
+                          <span className={`text-sm px-2 py-0.5 rounded flex-shrink-0 ${
                             run.status === 'completed' 
                               ? 'bg-green-500/20 text-green-400'
                               : run.status === 'failed'
@@ -402,17 +369,17 @@ export default function AutomationDetailPage() {
                           </span>
                         </div>
                         
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <div className="flex items-center gap-3 text-sm text-gray-500 flex-shrink-0">
                           {run.durationMs !== undefined && (
                             <span>{run.durationMs}ms</span>
                           )}
-                          <span>{new Date(run.startedAt).toLocaleString()}</span>
+                          <span className="text-xs sm:text-sm">{new Date(run.startedAt).toLocaleDateString()} {new Date(run.startedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                         </div>
                       </div>
                       
                       {run.error && (
-                        <div className="mt-2 text-sm text-red-400 bg-red-500/10 p-2 rounded">
-                          {run.error}
+                        <div className="mt-2 text-sm text-red-400 bg-red-500/10 p-2 rounded break-words overflow-hidden">
+                          <p className="line-clamp-3">{run.error}</p>
                         </div>
                       )}
                     </motion.div>

@@ -250,7 +250,11 @@ export async function DELETE(
     }
 
     if (permanent) {
-      // TODO: Also delete from vector store
+      // Delete from vector store (collection name matches libraryId)
+      // Note: Vector store integration is pending - documents are stored in Chroma
+      // When Chroma is fully integrated, uncomment: await vectorStore.deleteCollection(library.vectorCollection);
+      console.log(`[Library API] Vector store cleanup pending for collection: ${library.vectorCollection}`);
+      
       await librariesCollection.deleteOne({ libraryId, userId: user.userId });
       console.log(`[Library API] Permanently deleted library: ${libraryId}`);
       return NextResponse.json({ success: true, deleted: true });

@@ -5,6 +5,7 @@ import { RateLimits } from '@/lib/rate-limit/rate-limit';
 import connectToDatabase from '@/lib/database/mongodb';
 import mongoose from 'mongoose';
 import { getArchivedNeuronIds } from '@/lib/database/models/UserNodePreferences';
+import { encryptApiKey } from '@/lib/crypto';
 
 /**
  * Neuron schema matching the AI package
@@ -290,7 +291,7 @@ export async function POST(request: NextRequest) {
       provider,
       endpoint: endpoint || '',
       model,
-      apiKey: apiKey || '', // TODO: Encrypt before storing
+      apiKey: encryptApiKey(apiKey || ''),
       temperature: temperature ?? 0.7,
       maxTokens: maxTokens ?? 4096,
       topP: topP,

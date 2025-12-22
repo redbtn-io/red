@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Parse request body
     const body = await request.json();
-    const { name, description, nodes, edges, tier } = body;
+    const { name, description, nodes, edges, tier, graphType } = body;
 
     // 3. Validate required fields
     if (!name || !nodes || !edges) {
@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
       userId: user.userId,
       name,
       description: description || '',
+      graphType: graphType || 'agent', // Default to agent if not specified
       nodes,
       edges,
       tier: graphTier,
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
       graphId: graph.graphId,
       name: graph.name,
       description: graph.description,
+      graphType: graph.graphType,
       tier: graph.tier,
       createdAt: graph.createdAt,
     }, { status: 201 });
@@ -157,25 +159,31 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '100');
     const offset = parseInt(searchParams.get('offset') || '0');
+    const graphType = searchParams.get('graphType'); // 'agent' | 'workflow' | null
 
     // 3. Load user's tier
     const userTier = user.accountLevel || 4;
+
+    // Build graphType filter if specified
+    const graphTypeFilter = graphType ? { graphType } : {};
 
     // 4. Get system graphs (accessible by tier)
     // User can access graphs at their tier or higher (lower tier numbers = higher privilege)
     const systemGraphs = await Graph.find({
       userId: 'system',
       tier: { $gte: userTier },
+      ...graphTypeFilter,
     })
-      .select('graphId name description tier isDefault isSystem isImmutable parentGraphId nodes edges version createdAt updatedAt')
+      .select('graphId name description tier graphType isDefault isSystem isImmutable parentGraphId nodes edges version createdAt updatedAt')
       .sort({ tier: 1, name: 1 })
       .lean();
 
     // 5. Get user's custom graphs
     const userGraphs = await Graph.find({
       userId: user.userId,
+      ...graphTypeFilter,
     })
-      .select('graphId name description tier isDefault isSystem isImmutable parentGraphId nodes edges version createdAt updatedAt')
+      .select('graphId name description tier graphType isDefault isSystem isImmutable parentGraphId nodes edges version createdAt updatedAt')
       .sort({ createdAt: -1 })
       .skip(offset)
       .limit(limit)
@@ -188,6 +196,7 @@ export async function GET(request: NextRequest) {
         name: g.name,
         description: g.description,
         tier: g.tier,
+        graphType: g.graphType || 'agent',
         isDefault: g.isDefault,
         isSystem: g.isSystem || true,
         isImmutable: g.isImmutable,
@@ -204,6 +213,7 @@ export async function GET(request: NextRequest) {
         name: g.name,
         description: g.description,
         tier: g.tier,
+        graphType: g.graphType || 'agent',
         isDefault: g.isDefault,
         isSystem: false,
         isImmutable: g.isImmutable,

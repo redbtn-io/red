@@ -275,7 +275,7 @@ export default function DashboardPage() {
                         <div className="text-2xl font-bold text-white">
                           {dashboardData.stats.successRate}%
                         </div>
-                        <div className="text-sm text-gray-400">Success Rate</div>
+                        <div className="text-sm text-gray-400">Success</div>
                       </div>
                     </div>
                   </div>

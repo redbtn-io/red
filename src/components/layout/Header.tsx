@@ -31,28 +31,28 @@ export function Header({ title, onMenuClick, onNewChat, onTitleClick, extra }: H
 
   return (
     <motion.div 
-      className="sticky top-0 z-40 bg-[#0f0f0f] border-b border-[#2a2a2a] px-4 py-3 flex items-center gap-3"
+      className="sticky top-0 z-40 bg-[#0f0f0f] border-b border-[#2a2a2a] px-4 py-3 flex items-center gap-2 sm:gap-3 overflow-hidden"
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
       <button
         onClick={onMenuClick}
-        className="lg:hidden p-2 hover:bg-[#1a1a1a] rounded-lg transition-colors text-gray-300"
+        className="lg:hidden p-2 hover:bg-[#1a1a1a] rounded-lg transition-colors text-gray-300 flex-shrink-0"
       >
         <Menu size={24} />
       </button>
       <h1 
         onClick={onTitleClick}
-        className={`text-lg font-semibold text-gray-100 ${onTitleClick ? 'cursor-pointer hover:text-white transition-colors' : ''}`}
-        title={onTitleClick ? 'Scroll to top' : undefined}
+        className={`text-base sm:text-lg font-semibold text-gray-100 truncate min-w-0 flex-shrink ${onTitleClick ? 'cursor-pointer hover:text-white transition-colors' : ''}`}
+        title={onTitleClick ? 'Scroll to top' : title}
       >
         {title}
       </h1>
-      {extra && <div className="flex-shrink-0">{extra}</div>}
+      {extra && <div className="flex-shrink-0 ml-auto sm:ml-0">{extra}</div>}
       <button
         onClick={onNewChat}
-        className="ml-auto p-2 hover:bg-[#1a1a1a] rounded-lg transition-colors text-gray-300"
+        className={`${extra ? '' : 'ml-auto'} p-2 hover:bg-[#1a1a1a] rounded-lg transition-colors text-gray-300 flex-shrink-0`}
         title="New Chat"
       >
         <Plus size={20} />

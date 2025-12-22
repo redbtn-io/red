@@ -31,52 +31,23 @@ import {
   staggerItemVariants,
   fadeUpVariants,
 } from '@/lib/animations';
+import type { AutomationSummary, AutomationRun, TriggerType, AutomationStatus } from '@/types/automation';
 
-interface AutomationSummary {
-  automationId: string;
-  name: string;
-  description?: string;
-  graphId: string;
-  trigger: {
-    type: 'webhook' | 'schedule' | 'event' | 'manual';
-    config?: Record<string, any>;
-  };
-  status: 'active' | 'paused' | 'disabled' | 'error';
-  isEnabled: boolean;
-  stats: {
-    runCount: number;
-    successCount: number;
-    failureCount: number;
-  };
-  lastRunAt?: string;
-  createdAt: string;
-}
-
-interface AutomationRun {
-  runId: string;
-  automationId: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'timeout';
-  triggeredBy: string;
-  durationMs?: number;
-  startedAt: string;
-  completedAt?: string;
-}
-
-const triggerIcons = {
+const triggerIcons: Record<TriggerType, typeof Webhook> = {
   webhook: Webhook,
   schedule: Calendar,
   event: Radio,
   manual: MousePointer,
 };
 
-const triggerLabels = {
+const triggerLabels: Record<TriggerType, string> = {
   webhook: 'Webhook',
   schedule: 'Scheduled',
   event: 'Event',
   manual: 'Manual',
 };
 
-const statusColors = {
+const statusColors: Record<AutomationStatus, string> = {
   active: '#22c55e',
   paused: '#f59e0b',
   disabled: '#6b7280',
@@ -241,7 +212,7 @@ export default function AutomationsPage() {
                     <div className="text-2xl font-bold text-white">
                       {totalRuns > 0 ? Math.round((totalSuccess / totalRuns) * 100) : 0}%
                     </div>
-                    <div className="text-sm text-gray-400">Success Rate</div>
+                    <div className="text-sm text-gray-400">Success</div>
                   </div>
                 </div>
               </div>

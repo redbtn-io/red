@@ -147,14 +147,13 @@ function ChatPageContent() {
     const fetchAgents = async () => {
       try {
         setAgentsLoading(true);
-        const res = await fetch('/api/v1/graphs?type=agent', {
+        const res = await fetch('/api/v1/graphs?graphType=agent', {
           credentials: 'include',
         });
         if (res.ok) {
           const data = await res.json();
-          // Filter to only agent-type graphs and format
+          // Format agent graphs for selection
           const agents: AgentGraph[] = (data.graphs || [])
-            .filter((g: any) => !g.graphType || g.graphType === 'agent')
             .map((g: any) => ({
               graphId: g.graphId,
               name: g.name,

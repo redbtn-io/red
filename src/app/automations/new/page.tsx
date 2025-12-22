@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
   Zap, 
@@ -21,6 +21,7 @@ import { StudioSidebar } from '@/components/layout/StudioSidebar';
 import { StudioHeader } from '@/components/layout/StudioHeader';
 import { pageVariants, fadeUpVariants } from '@/lib/animations';
 import Link from 'next/link';
+import type { TriggerType } from '@/types/automation';
 
 interface GraphOption {
   graphId: string;
@@ -29,9 +30,7 @@ interface GraphOption {
   graphType?: 'agent' | 'workflow';
 }
 
-type TriggerType = 'manual' | 'webhook' | 'schedule' | 'event';
-
-const triggerOptions: { type: TriggerType; label: string; icon: any; description: string; available: boolean }[] = [
+const triggerOptions: { type: TriggerType; label: string; icon: typeof Webhook; description: string; available: boolean }[] = [
   { 
     type: 'manual', 
     label: 'Manual', 
@@ -64,6 +63,9 @@ const triggerOptions: { type: TriggerType; label: string; icon: any; description
 
 export default function NewAutomationPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preselectedGraphId = searchParams.get('graphId');
+  
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [graphs, setGraphs] = useState<GraphOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +75,7 @@ export default function NewAutomationPage() {
   // Form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedGraphId, setSelectedGraphId] = useState('');
+  const [selectedGraphId, setSelectedGraphId] = useState(preselectedGraphId || '');
   const [triggerType, setTriggerType] = useState<TriggerType>('manual');
   const [inputMapping, setInputMapping] = useState<Record<string, string>>({});
   const [showGraphDropdown, setShowGraphDropdown] = useState(false);
@@ -82,9 +84,24 @@ export default function NewAutomationPage() {
     fetchGraphs();
   }, []);
 
+  // Update selectedGraphId when preselectedGraphId changes or graphs load
+  useEffect(() => {
+    if (preselectedGraphId && graphs.length > 0 && !selectedGraphId) {
+      const matchingGraph = graphs.find(g => g.graphId === preselectedGraphId);
+      if (matchingGraph) {
+        setSelectedGraphId(preselectedGraphId);
+        // Auto-fill name from graph name
+        if (!name) {
+          setName(`${matchingGraph.name} Automation`);
+        }
+      }
+    }
+  }, [preselectedGraphId, graphs]);
+
   async function fetchGraphs() {
     try {
-      const res = await fetch('/api/v1/graphs');
+      // Only fetch workflow graphs for automations
+      const res = await fetch('/api/v1/graphs?graphType=workflow');
       if (res.ok) {
         const data = await res.json();
         setGraphs(data.graphs || []);
@@ -229,6 +246,7 @@ export default function NewAutomationPage() {
                     <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
                   </div>
                 ) : (
+                <>
                   <div className="relative">
                     <button
                       type="button"
@@ -288,6 +306,8 @@ export default function NewAutomationPage() {
                       </div>
                     )}
                   </div>
+
+                </>
                 )}
               </motion.div>
 
