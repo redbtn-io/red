@@ -831,7 +831,7 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
   const IconComponent = ICON_MAP[node.icon || 'Box'] || Box;
   const tierInfo = TIER_LABELS[node.tier] || TIER_LABELS[4];
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
-  const [actionLoading, setActionLoading] = useState<'fork' | 'archive' | null>(null);
+  const [actionLoading, setActionLoading] = useState<'fork' | 'archive' | 'delete' | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const nodeColor = getNodeColor(node);
 

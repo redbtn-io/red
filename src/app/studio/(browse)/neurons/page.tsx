@@ -529,7 +529,7 @@ function NeuronDetail({ neuron, onClose, onRefresh, onSelectForked, compact }: {
   const ProviderIcon = providerInfo.icon;
   const roleInfo = ROLE_INFO[neuron.role] || ROLE_INFO.chat;
   const tierInfo = TIER_LABELS[neuron.tier] || TIER_LABELS[4];
-  const [actionLoading, setActionLoading] = useState<'fork' | 'archive' | null>(null);
+  const [actionLoading, setActionLoading] = useState<'fork' | 'archive' | 'delete' | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   
   // Determine editability
