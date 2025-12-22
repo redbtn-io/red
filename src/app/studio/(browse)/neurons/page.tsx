@@ -564,6 +564,35 @@ function NeuronDetail({ neuron, onClose, onRefresh, onSelectForked, compact }: {
     }
   };
 
+  const handleDelete = async () => {
+    if (!confirm(`Are you sure you want to delete "${neuron.name}"? This cannot be undone.`)) {
+      return;
+    }
+    
+    setActionLoading('delete');
+    setActionMessage(null);
+    try {
+      const response = await fetch(`/api/v1/neurons/${neuron.neuronId}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        setActionMessage({ type: 'success', text: 'Neuron deleted' });
+        if (onRefresh) {
+          onRefresh();
+        }
+        setTimeout(() => onClose(), 500);
+      } else {
+        const data = await response.json();
+        setActionMessage({ type: 'error', text: data.error || 'Failed to delete' });
+      }
+    } catch {
+      setActionMessage({ type: 'error', text: 'Network error' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleArchive = async () => {
     setActionLoading('archive');
     setActionMessage(null);
@@ -728,8 +757,16 @@ function NeuronDetail({ neuron, onClose, onRefresh, onSelectForked, compact }: {
                 <Pencil className="w-4 h-4" />
                 Edit Neuron
               </button>
-              <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors font-medium text-sm border border-red-500/30">
-                <Trash2 className="w-4 h-4" />
+              <button 
+                onClick={handleDelete}
+                disabled={actionLoading === 'delete'}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 disabled:opacity-50 transition-colors font-medium text-sm border border-red-500/30"
+              >
+                {actionLoading === 'delete' ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
                 Delete
               </button>
             </>

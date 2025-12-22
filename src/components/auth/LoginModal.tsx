@@ -154,7 +154,7 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
         {/* Logo/Title */}
         <div className="text-center mb-8">
           <div className="text-4xl mb-2">🔴</div>
-          <h2 className="text-2xl font-bold text-white mb-2">Welcome to Red AI</h2>
+          <h2 className="text-2xl font-bold text-white mb-2">Welcome to redbtn</h2>
           <p className="text-gray-400 text-sm">
             {step === 'email'
               ? 'Enter your email to get started'

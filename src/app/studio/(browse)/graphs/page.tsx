@@ -27,6 +27,7 @@ import {
   staggerItemVariants,
   fadeUpVariants,
 } from '@/lib/animations';
+import { ErrorModal } from '@/components/ui/Modal';
 
 interface GraphInfo {
   graphId: string;
@@ -176,6 +177,7 @@ export default function GraphsPage() {
                   openMenuId={openMenuId}
                   onMenuToggle={setOpenMenuId}
                   onFork={fetchGraphs}
+                  onDelete={fetchGraphs}
                 />
               </motion.div>
             ))}
@@ -202,6 +204,7 @@ export default function GraphsPage() {
                   openMenuId={openMenuId}
                   onMenuToggle={setOpenMenuId}
                   onFork={fetchGraphs}
+                  onDelete={fetchGraphs}
                 />
               </motion.div>
             ))}
@@ -244,16 +247,20 @@ function GraphCard({
   graph, 
   openMenuId, 
   onMenuToggle,
-  onFork
+  onFork,
+  onDelete
 }: { 
   graph: GraphInfo;
   openMenuId: string | null;
   onMenuToggle: (id: string | null) => void;
   onFork?: () => void;
+  onDelete?: () => void;
 }) {
   const tierInfo = TIER_LABELS[graph.tier] || TIER_LABELS[4];
   const isMenuOpen = openMenuId === graph.graphId;
   const [forking, setForking] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   
   // Determine ownership status
   const isEditable = graph.isOwned && !graph.isImmutable && !graph.isSystem;
@@ -279,6 +286,31 @@ function GraphCard({
       console.error('Failed to fork graph:', err);
     } finally {
       setForking(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm(`Are you sure you want to delete "${graph.name}"? This cannot be undone.`)) {
+      return;
+    }
+    
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/v1/graphs/${graph.graphId}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        onMenuToggle(null);
+        if (onDelete) onDelete();
+      } else {
+        const data = await response.json();
+        setDeleteError(data.error || 'Failed to delete graph');
+      }
+    } catch (err) {
+      console.error('Failed to delete graph:', err);
+      setDeleteError('Failed to delete graph');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -375,8 +407,16 @@ function GraphCard({
                       Duplicate
                     </button>
                     <hr className="my-1 border-[#2a2a2a]" />
-                    <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10">
-                      <Trash2 className="w-4 h-4" />
+                    <button 
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+                    >
+                      {deleting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
                       Delete
                     </button>
                   </>
@@ -423,6 +463,12 @@ function GraphCard({
           Open →
         </Link>
       </div>
+
+      <ErrorModal
+        isOpen={!!deleteError}
+        onClose={() => setDeleteError(null)}
+        message={deleteError || ''}
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 /**
- * Logs Page - Virtual Terminal for Red AI
+ * Logs Page - Virtual Terminal for redbtn
  * View real-time logs with filtering and statistics
  */
 'use client';
@@ -77,7 +77,7 @@ function LogsPageContent() {
           <motion.div className="mb-6 flex items-center justify-between" variants={staggerItemVariants}>
             <div>
               <p className="text-[var(--foreground)] text-sm opacity-70">
-                Real-time logs from Red AI generations
+                Real-time logs from redbtn generations
               </p>
             </div>
             {isStreaming && (

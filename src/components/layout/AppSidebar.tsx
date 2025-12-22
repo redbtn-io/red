@@ -10,6 +10,7 @@ import {
   Workflow, 
   Compass, 
   Terminal,
+  Library,
   X
 } from 'lucide-react';
 
@@ -23,6 +24,7 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { href: '/', label: 'Chat', icon: MessageSquare, match: '/' },
   { href: '/studio', label: 'Studio', icon: Workflow, match: '/studio' },
+  { href: '/knowledge', label: 'Knowledge', icon: Library, match: '/knowledge' },
   { href: '/logs', label: 'Terminal', icon: Terminal, match: '/logs' },
 ];
 

@@ -6,7 +6,7 @@ import { generationStorage } from '@/lib/storage/generation-storage';
 import { lastConversationStorage } from '@/lib/storage/last-conversation-storage';
 import { useConversationState } from '@/lib/conversation/use-conversation-state';
 import { conversationState } from '@/lib/conversation/conversation-state';
-import { ConfirmModal } from '@/components/ui/Modal';
+import { ConfirmModal, ErrorModal } from '@/components/ui/Modal';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/chat/Sidebar';
@@ -82,6 +82,7 @@ function ChatPageContent() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [errorModal, setErrorModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
   const [isSwitchingConversation, setIsSwitchingConversation] = useState(false);
   const [isIntentionallyEmpty, setIsIntentionallyEmpty] = useState(false); // Track "new chat" state
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
@@ -567,9 +568,9 @@ function ChatPageContent() {
       setCurrentStatus(null);
     } catch (error) {
       console.error('[Chat] Failed to load conversation:', error);
-      // Don't show alert during reconnection
+      // Don't show error during reconnection
       if (!isReconnecting) {
-        alert('Failed to load conversation');
+        setErrorModal({ isOpen: true, message: 'Failed to load conversation' });
       }
     } finally {
       setIsSwitchingConversation(false);
@@ -612,7 +613,7 @@ function ChatPageContent() {
       setDeleteModalOpen(false);
     } catch (error) {
       console.error('[Chat] Failed to delete conversation:', error);
-      alert('Failed to delete conversation');
+      setErrorModal({ isOpen: true, message: 'Failed to delete conversation' });
     } finally {
       setIsDeleting(false);
     }
@@ -632,7 +633,7 @@ function ChatPageContent() {
         setEditingTitleValue('');
       } catch (error) {
         console.error('[Chat] Failed to update title:', error);
-        alert('Failed to update title');
+        setErrorModal({ isOpen: true, message: 'Failed to update title' });
       }
     }
   };
@@ -1238,7 +1239,7 @@ function ChatPageContent() {
         updateConversationUrl(newConv.id);
       } catch (error) {
         console.error('[Chat] Failed to create conversation:', error);
-        alert('Failed to create conversation');
+        setErrorModal({ isOpen: true, message: 'Failed to create conversation' });
         return;
       }
     }
@@ -1319,7 +1320,7 @@ function ChatPageContent() {
                            errorMessageLower.includes('stream connection failed') ||
                            errorMessageLower.includes('networkerror');
       if (!isNetworkError) {
-        alert(`Failed to send message: ${errorMessage}`);
+        setErrorModal({ isOpen: true, message: `Failed to send message: ${errorMessage}` });
       } else {
         console.warn('[Chat] Network error (not showing alert):', errorMessage);
       }
@@ -1423,6 +1424,12 @@ function ChatPageContent() {
             confirmText="Delete"
             cancelText="Cancel"
             variant="danger"
+          />
+
+          <ErrorModal
+            isOpen={errorModal.isOpen}
+            onClose={() => setErrorModal({ isOpen: false, message: '' })}
+            message={errorModal.message}
           />
           
           {isDeleting && (

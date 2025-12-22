@@ -1,10 +1,14 @@
 # Red AI Web Application
 
-A Next.js web application that provides a chat interface for the Red AI system.
+A Next.js web application that provides a chat interface and Studio UI for the Red AI system.
+
+**Version**: 2.0  
+**Last Updated**: January 2025  
+**Build Status**: ✅ Compiles successfully
 
 ## Overview
 
-This is the web frontend for Red AI, built with Next.js 15, React 19, and Tailwind CSS 4. It provides a modern chat interface with **stream reconnection** support, ensuring messages aren't lost when users switch apps or experience network interruptions.
+This is the web frontend for Red AI, built with Next.js 15, React 19, and Tailwind CSS 4. It provides a modern chat interface with **stream reconnection** support, plus a **Studio UI** for managing AI configurations (nodes, neurons, graphs).
 
 ### Key Features
 
@@ -14,6 +18,8 @@ This is the web frontend for Red AI, built with Next.js 15, React 19, and Tailwi
 - 💾 **MongoDB Persistence**: Complete conversation history stored permanently
 - ⚡ **Server-Sent Events**: Efficient streaming with native browser support
 - 🎨 **Smooth UX**: Character-by-character display with skeleton animation during generation
+- 🛠️ **Studio UI**: Manage nodes, neurons, and graphs through a visual interface
+- 🗄️ **Archive System**: Soft-delete resources with restore capability
 
 ## Workspace Layout & Shared Tooling
 
@@ -144,24 +150,28 @@ webapp/
 │   ├── app/              # Next.js app directory
 │   │   ├── api/          # API routes (serverless functions)
 │   │   │   ├── health/   # Health check endpoint
+│   │   │   ├── auth/     # Authentication endpoints
+│   │   │   │   ├── check-session/
+│   │   │   │   ├── complete-profile/
+│   │   │   │   ├── logout/
+│   │   │   │   └── request-code/
 │   │   │   └── v1/       # OpenAI-compatible API endpoints
-│   │   │       ├── chat/
-│   │   │       │   └── completions/
-│   │   │       │       └── route.ts         # POST: Start generation, return messageId
-│   │   │       ├── conversations/
-│   │   │       │   └── [id]/
-│   │   │       │       ├── messages/
-│   │   │       │       │   └── route.ts     # GET: Message history
-│   │   │       │       ├── status/
-│   │   │       │       │   └── route.ts     # GET: Generating messages status
-│   │   │       │       └── title/
-│   │   │       │           └── route.ts     # GET: Conversation title
-│   │   │       ├── messages/
-│   │   │       │   └── [messageId]/
-│   │   │       │       └── stream/
-│   │   │       │           └── route.ts     # GET: SSE stream (reconnectable)
-│   │   │       └── models/
-│   │   │           └── route.ts         # GET: List models
+│   │   │       ├── chat/completions/          # Chat completions
+│   │   │       ├── conversations/             # Conversation management
+│   │   │       ├── generations/               # Generation tracking
+│   │   │       ├── graphs/                    # Graph templates (NEW)
+│   │   │       ├── messages/                  # Message streaming
+│   │   │       ├── models/                    # Model discovery
+│   │   │       ├── neurons/                   # Neuron configs (NEW)
+│   │   │       ├── nodes/                     # Node configs (NEW)
+│   │   │       ├── oauth/                     # OAuth 2.0 endpoints
+│   │   │       ├── user/                      # User preferences (NEW)
+│   │   │       └── README.md                  # API documentation (v2.0)
+│   │   ├── logs/         # Logging dashboard
+│   │   ├── neurons/      # Neuron management UI (NEW)
+│   │   ├── nodes/        # Node management UI (NEW)
+│   │   ├── graphs/       # Graph management UI (NEW)
+│   │   ├── settings/     # User settings UI
 │   │   ├── page.tsx      # Main chat interface
 │   │   ├── layout.tsx    # Root layout
 │   │   └── globals.css   # Global styles
@@ -175,6 +185,8 @@ webapp/
 │   └── lib/             # Utilities
 │       ├── red.ts        # Red AI initialization
 │       ├── api-helpers.ts
+│       ├── mongodb.ts    # Database connection
+│       ├── mongo-models.ts  # Mongoose schemas (nodes, neurons, graphs)
 │       └── conversation.ts
 ├── public/              # Static assets
 ├── test-simple.js       # Stream reconnection test (simple)
@@ -184,12 +196,19 @@ webapp/
 
 ## API Endpoints
 
-The webapp exposes OpenAI-compatible API endpoints:
+The webapp exposes OpenAI-compatible API endpoints. See `src/app/api/README.md` for complete documentation.
+
+### Authentication
+- `POST /api/auth/request-code` - Request magic link email
+- `GET /api/auth/check-session` - Check session status
+- `POST /api/auth/complete-profile` - Complete user profile
+- `POST /api/auth/logout` - End session
 
 ### Chat Completion (Decoupled Generation)
 - `POST /api/v1/chat/completions` - Start generation, returns `messageId` + `stream_url` immediately
   - Generation continues in background
   - Returns JSON: `{ messageId, stream_url, conversationId }`
+  - Supports `x-execution-mode` header to select graph
 
 ### Stream Reconnection
 - `GET /api/v1/messages/:messageId/stream` - SSE endpoint for reconnectable streaming
@@ -199,16 +218,97 @@ The webapp exposes OpenAI-compatible API endpoints:
   - Events: `{type: 'content'|'complete'|'error', content?, metadata?, error?}`
 
 ### Conversation Management
-- `GET /api/v1/conversations/:id/messages` - Retrieve message history (from MongoDB)
-- `GET /api/v1/conversations/:id/status` - Get generating message status
-- `GET /api/v1/conversations/:id/title` - Get conversation title
+- `GET /api/v1/conversations` - List conversations
+- `POST /api/v1/conversations` - Create conversation
+- `GET /api/v1/conversations/:id` - Get conversation details
+- `PATCH /api/v1/conversations/:id` - Update conversation
+- `DELETE /api/v1/conversations/:id` - Delete conversation
+- `GET /api/v1/conversations/:id/messages` - Get message history
+
+### Studio APIs (NEW)
+
+#### Nodes
+- `GET /api/v1/nodes` - List node configurations
+- `POST /api/v1/nodes` - Create node
+- `GET /api/v1/nodes/:id` - Get node
+- `PATCH /api/v1/nodes/:id` - Update node
+- `DELETE /api/v1/nodes/:id` - Delete node
+- `POST /api/v1/nodes/:id/archive` - Archive node (soft delete)
+- `POST /api/v1/nodes/:id/restore` - Restore archived node
+
+#### Neurons
+- `GET /api/v1/neurons` - List neuron configurations
+- `POST /api/v1/neurons` - Create neuron
+- `GET /api/v1/neurons/:id` - Get neuron
+- `PATCH /api/v1/neurons/:id` - Update neuron
+- `DELETE /api/v1/neurons/:id` - Delete neuron
+- `POST /api/v1/neurons/:id/archive` - Archive neuron
+- `POST /api/v1/neurons/:id/restore` - Restore neuron
+
+#### Graphs
+- `GET /api/v1/graphs` - List graph templates
+- `POST /api/v1/graphs` - Create graph
+- `GET /api/v1/graphs/:id` - Get graph
+- `PATCH /api/v1/graphs/:id` - Update graph
+- `DELETE /api/v1/graphs/:id` - Delete graph
+- `POST /api/v1/graphs/:id/fork` - Fork system graph
+
+#### User Preferences
+- `GET /api/v1/user/preferences` - Get all preferences
+- `POST /api/v1/user/preferences` - Set preference
+- `DELETE /api/v1/user/preferences` - Delete preference(s)
 
 ### Models
 - `GET /api/v1/models` - List available models
 - `GET /api/v1/models/:id` - Get model details
 
+### OAuth 2.0
+- `POST /api/v1/oauth/clients` - Create OAuth client
+- `GET /api/v1/oauth/authorize` - Authorization endpoint
+- `POST /api/v1/oauth/token` - Token exchange
+- `POST /api/v1/oauth/introspect` - Token introspection
+- `POST /api/v1/oauth/revoke` - Revoke token
+
 ### Health
 - `GET /api/health` - Health check
+
+---
+
+## 🛠️ Studio UI
+
+The Studio UI provides a visual interface for managing AI configurations.
+
+### Nodes (`/nodes`)
+Configure processing nodes that make up workflow graphs:
+- **Router**: Routes messages to appropriate processing paths
+- **Planner**: Creates multi-step execution plans
+- **Executor**: Executes planned actions
+- **Search**: Web search and information retrieval
+- **Summarizer**: Content summarization
+- **Context**: Context management
+- **Optimizer**: Response optimization
+- **Error Handler**: Error handling and recovery
+
+### Neurons (`/neurons`)
+Manage AI model configurations:
+- Configure LLM endpoints and models
+- Set temperature, max tokens, and other parameters
+- Tier-based access control (free, pro, enterprise)
+- Archive/restore capability
+
+### Graphs (`/graphs`)
+Create and manage workflow templates:
+- **red-assistant**: Full-featured assistant with tools
+- **red-chat**: Simple chat without tools
+- Fork system graphs to create custom versions
+- Visual node and edge configuration
+
+### Archive System
+All Studio resources support soft-delete:
+- **Archive**: Hides resource from active lists
+- **Restore**: Brings archived resource back
+- **Delete**: Permanently removes resource
+- Archived resources can be viewed with `?includeArchived=true`
 
 ---
 

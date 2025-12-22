@@ -222,7 +222,7 @@ export function Messages({
           <div className="text-center text-gray-500">
             <MessageSquare size={48} className="mx-auto mb-4 opacity-20" />
             <p className="text-lg font-medium">Start a conversation</p>
-            <p className="text-sm mt-2">Send a message to begin chatting with Red AI</p>
+            <p className="text-sm mt-2">Send a message to begin chatting with redbtn</p>
           </div>
         </div>
       )}

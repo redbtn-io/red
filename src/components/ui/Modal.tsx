@@ -108,3 +108,32 @@ export function ConfirmModal({
     </Modal>
   );
 }
+
+interface ErrorModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title?: string;
+  message: string;
+}
+
+export function ErrorModal({
+  isOpen,
+  onClose,
+  title = 'Error',
+  message
+}: ErrorModalProps) {
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={title}>
+      <p className="text-gray-300 mb-6">{message}</p>
+      
+      <div className="flex justify-end">
+        <button
+          onClick={onClose}
+          className="px-4 py-2 bg-[#2a2a2a] hover:bg-[#333] rounded-lg transition-colors text-gray-300"
+        >
+          OK
+        </button>
+      </div>
+    </Modal>
+  );
+}

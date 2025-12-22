@@ -45,6 +45,7 @@ import {
   Settings,
   Heart,
   Archive,
+  Trash2,
 } from 'lucide-react';
 import { pageVariants, staggerContainerVariants, staggerItemVariants, scaleVariants } from '@/lib/animations';
 
@@ -912,6 +913,35 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
     }
   };
 
+  const handleDelete = async () => {
+    if (!confirm(`Are you sure you want to delete "${node.name}"? This cannot be undone.`)) {
+      return;
+    }
+    
+    setActionLoading('delete');
+    setActionMessage(null);
+    try {
+      const response = await fetch(`/api/v1/nodes/${node.nodeId}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        setActionMessage({ type: 'success', text: 'Node deleted' });
+        if (onRefresh) {
+          onRefresh();
+        }
+        setTimeout(() => onClose(), 500);
+      } else {
+        const data = await response.json();
+        setActionMessage({ type: 'error', text: data.error || 'Failed to delete' });
+      }
+    } catch {
+      setActionMessage({ type: 'error', text: 'Network error' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const toggleStep = (index: number) => {
     setExpandedSteps((prev) => {
       const next = new Set(prev);
@@ -1178,6 +1208,22 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
                 <Archive className="w-4 h-4" />
               )}
               {(node as any).isArchived ? 'Unarchive' : 'Archive'}
+            </button>
+          )}
+
+          {/* Delete button - only for owned, non-system nodes */}
+          {isEditable && (
+            <button
+              onClick={handleDelete}
+              disabled={actionLoading === 'delete'}
+              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium transition-colors bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30"
+            >
+              {actionLoading === 'delete' ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+              Delete Node
             </button>
           )}
         </div>

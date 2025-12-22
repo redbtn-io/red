@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
         <!DOCTYPE html>
         <html>
           <head>
-            <title>Invalid Link - Red AI</title>
+            <title>Invalid Link - redbtn</title>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
         <!DOCTYPE html>
         <html>
           <head>
-            <title>Expired Link - Red AI</title>
+            <title>Expired Link - redbtn</title>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
@@ -152,7 +152,7 @@ export async function GET(request: NextRequest) {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Sign In Successful - Red AI</title>
+          <title>Sign In Successful - redbtn</title>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
@@ -214,7 +214,7 @@ export async function GET(request: NextRequest) {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Error - Red AI</title>
+          <title>Error - redbtn</title>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
                           color: white;

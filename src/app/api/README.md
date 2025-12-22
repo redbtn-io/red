@@ -1,9 +1,9 @@
-# Red AI API Documentation
+# redbtn API Documentation
 
 **Version:** 2.0  
 **Base URL:** `/api`
 
-Complete documentation for the Red AI REST API. This API provides AI chat completions, conversation management, nodes, neurons, graphs, authentication, OAuth, and logging capabilities.
+Complete documentation for the redbtn REST API. This API provides AI chat completions, conversation management, nodes, neurons, graphs, authentication, OAuth, and logging capabilities.
 
 ---
 
@@ -1064,7 +1064,7 @@ List available graphs for the user.
   "graphs": [
     {
       "graphId": "red-chat",
-      "name": "Red Chat",
+      "name": "redbtn chat",
       "description": "Default chat graph",
       "tier": 4,
       "isDefault": true,
@@ -1092,7 +1092,7 @@ Get full details for a specific graph including nodes and edges.
 {
   "graph": {
     "graphId": "red-chat",
-    "name": "Red Chat",
+    "name": "redbtn chat",
     "description": "Default chat graph",
     "tier": 4,
     "isDefault": true,
@@ -1165,7 +1165,7 @@ Create a personal copy (fork) of a graph.
 ```json
 {
   "newGraphId": "my-red-chat",
-  "name": "My Red Chat"
+  "name": "My redbtn chat"
 }
 ```
 
@@ -1295,7 +1295,7 @@ Get statistics about abandoned resources pending cleanup.
 
 ## 🔐 OAuth 2.0
 
-Red AI supports OAuth 2.0 for third-party application authorization.
+redbtn supports OAuth 2.0 for third-party application authorization.
 
 ### Authorization Endpoint
 

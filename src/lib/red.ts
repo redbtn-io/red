@@ -1,5 +1,5 @@
 /**
- * Red AI instance initialization for Next.js API routes
+ * redbtn instance initialization for Next.js API routes
  */
 import { Red, RedConfig } from '@redbtn/ai';
 
@@ -17,17 +17,17 @@ let redInstance: Red | null = null;
 const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
 
 /**
- * Get or initialize the Red AI instance
+ * Get or initialize the redbtn instance
  * Singleton pattern to avoid multiple initializations
  */
 export async function getRed(): Promise<Red> {
   if (isBuildTime) {
-    throw new Error('Red AI not available during build time');
+    throw new Error('redbtn not available during build time');
   }
   if (!redInstance) {
     redInstance = new Red(config);
     await redInstance.load('webapp-api');
-    console.log('✅ Red AI initialized successfully');
+    console.log('✅ redbtn initialized successfully');
   }
   return redInstance;
 }
@@ -38,7 +38,7 @@ export async function getRed(): Promise<Red> {
  */
 export function getRedSync(): Red {
   if (isBuildTime) {
-    throw new Error('Red AI not available during build time');
+    throw new Error('redbtn not available during build time');
   }
   if (!redInstance) {
     throw new Error('Red instance not initialized. Call getRed() first.');
