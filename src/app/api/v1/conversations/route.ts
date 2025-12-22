@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Return the new conversation ID
-    // The actual conversation will be created when the first message is sent to respond()
+    // The actual conversation will be created when the first message is sent to run()
     return NextResponse.json({
       conversation: {
         id: conversationId,

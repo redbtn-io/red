@@ -91,24 +91,24 @@ export async function POST(request: NextRequest) {
           
           console.log('[Completions] User from JWT:', { userId: user.userId, email: user.email });
           
-          // Phase 2: Extract optional graphId from request (defaults to assistant-search in respond.ts)
+          // Extract optional graphId from request (defaults to assistant-search in run.ts)
           const graphId = typeof body.graphId === 'string' ? body.graphId : undefined;
           
-          const respondOptions: InvokeOptions = {
+          const runOptions: InvokeOptions = {
             source: { application: 'redChat' },
             stream: true,  // Always true for streaming endpoint branch
             conversationId,
             messageId,
             userMessageId,
-            userId: user.userId,  // Phase 0: Required for per-user model loading (userId from JWT token)
-            graphId  // Phase 2: Optional graph selection (defaults to assistant-search)
+            userId: user.userId,  // Required for per-user model loading (userId from JWT token)
+            graphId  // Optional graph selection (defaults to assistant-search)
           };
           
-          console.log('[Completions] Calling respond() with options:', { conversationId, userId: respondOptions.userId, messageId, graphId });
+          console.log('[Completions] Calling run() with options:', { conversationId, userId: runOptions.userId, messageId, graphId });
 
-          const responseStream = await red.respond(
+          const responseStream = await red.run(
             { message: userMessage },
-            respondOptions
+            runOptions
           );
 
           for await (const chunk of responseStream) {
@@ -280,17 +280,17 @@ export async function POST(request: NextRequest) {
     // Phase 2: Extract optional graphId from request (defaults to assistant-search in respond.ts)
     const graphId = typeof body.graphId === 'string' ? body.graphId : undefined;
     
-    const respondOptions: InvokeOptions = {
+    const runOptions: InvokeOptions = {
       source: { application: 'redChat' },
       conversationId,
       userMessageId,
-      userId: user.userId,  // Phase 0: Required for per-user model loading
-      graphId  // Phase 2: Optional graph selection (defaults to assistant-search)
+      userId: user.userId,  // Required for per-user model loading
+      graphId  // Optional graph selection (defaults to assistant-search)
     };
 
-    const response = await red.respond(
+    const response = await red.run(
       { message: userMessage },
-      respondOptions
+      runOptions
     );
 
     const completion = {

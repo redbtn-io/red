@@ -3,16 +3,18 @@
 import { Menu, Plus, LogOut, User as UserIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState } from 'react';
+import { useState, ReactNode } from 'react';
 
 interface HeaderProps {
   title: string;
   onMenuClick: () => void;
   onNewChat: () => void;
   onTitleClick?: () => void;
+  /** Optional element to render after the title (e.g., agent selector) */
+  extra?: ReactNode;
 }
 
-export function Header({ title, onMenuClick, onNewChat, onTitleClick }: HeaderProps) {
+export function Header({ title, onMenuClick, onNewChat, onTitleClick, extra }: HeaderProps) {
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
@@ -47,6 +49,7 @@ export function Header({ title, onMenuClick, onNewChat, onTitleClick }: HeaderPr
       >
         {title}
       </h1>
+      {extra && <div className="flex-shrink-0">{extra}</div>}
       <button
         onClick={onNewChat}
         className="ml-auto p-2 hover:bg-[#1a1a1a] rounded-lg transition-colors text-gray-300"

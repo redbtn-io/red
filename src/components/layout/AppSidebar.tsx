@@ -11,7 +11,9 @@ import {
   Compass, 
   Terminal,
   Library,
-  X
+  Zap,
+  X,
+  Home
 } from 'lucide-react';
 
 interface NavItem {
@@ -22,8 +24,10 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { href: '/', label: 'Chat', icon: MessageSquare, match: '/' },
+  { href: '/', label: 'Home', icon: Home, match: '/' },
+  { href: '/chat', label: 'Chat', icon: MessageSquare, match: '/chat' },
   { href: '/studio', label: 'Studio', icon: Workflow, match: '/studio' },
+  { href: '/automations', label: 'Automations', icon: Zap, match: '/automations' },
   { href: '/knowledge', label: 'Knowledge', icon: Library, match: '/knowledge' },
   { href: '/logs', label: 'Terminal', icon: Terminal, match: '/logs' },
 ];
@@ -54,8 +58,8 @@ export function AppSidebar({
   // Determine which nav item is active
   const isActive = (item: NavItem) => {
     if (item.match === '/') {
-      // Special case: root path should only match exactly or chat-like routes
-      return pathname === '/' || (pathname.startsWith('/') && !mainNavItems.some(n => n.match !== '/' && pathname.startsWith(n.match!)));
+      // Special case: root path should only match exactly
+      return pathname === '/';
     }
     return pathname.startsWith(item.match!);
   };

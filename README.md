@@ -1,14 +1,14 @@
 # Red AI Web Application
 
-A Next.js web application that provides a chat interface and Studio UI for the Red AI system.
+A Next.js web application that provides a chat interface, Studio UI, and Knowledge Libraries for the Red AI system.
 
 **Version**: 2.0  
-**Last Updated**: January 2025  
+**Last Updated**: December 2025  
 **Build Status**: ✅ Compiles successfully
 
 ## Overview
 
-This is the web frontend for Red AI, built with Next.js 15, React 19, and Tailwind CSS 4. It provides a modern chat interface with **stream reconnection** support, plus a **Studio UI** for managing AI configurations (nodes, neurons, graphs).
+This is the web frontend for Red AI, built with Next.js 15, React 19, and Tailwind CSS 4. It provides a modern chat interface with **stream reconnection** support, a **Studio UI** for managing AI configurations (nodes, neurons, graphs), and **Knowledge Libraries** for RAG-powered document storage and search.
 
 ### Key Features
 
@@ -19,6 +19,7 @@ This is the web frontend for Red AI, built with Next.js 15, React 19, and Tailwi
 - ⚡ **Server-Sent Events**: Efficient streaming with native browser support
 - 🎨 **Smooth UX**: Character-by-character display with skeleton animation during generation
 - 🛠️ **Studio UI**: Manage nodes, neurons, and graphs through a visual interface
+- 📚 **Knowledge Libraries**: Upload, organize, and search documents with RAG integration
 - 🗄️ **Archive System**: Soft-delete resources with restore capability
 
 ## Workspace Layout & Shared Tooling
@@ -312,7 +313,59 @@ All Studio resources support soft-delete:
 
 ---
 
-## 🔄 Stream Reconnection Architecture
+## � Knowledge Libraries
+
+Knowledge Libraries provide a RAG (Retrieval-Augmented Generation) system for document storage, organization, and semantic search.
+
+### Overview (`/knowledge`)
+- Create and manage document libraries
+- Upload files with drag-and-drop support
+- View documents and their processed chunks
+- Search across all libraries
+
+### Supported File Types
+- **Text**: Markdown (`.md`), plain text (`.txt`), JSON, YAML
+- **Documents**: PDF (with text extraction)
+- **Images**: PNG, JPG, JPEG, GIF, WebP (with OCR processing)
+
+### Document Processing Pipeline
+1. **Upload**: Files are stored in MongoDB GridFS
+2. **Text Extraction**: Content extracted based on file type
+3. **OCR** (images): Tesseract.js extracts text from images
+4. **Chunking**: Content split into semantic chunks
+5. **Embedding**: Chunks vectorized and stored in ChromaDB
+6. **Indexing**: Ready for semantic search
+
+### Using Knowledge in AI Responses
+Libraries integrate with the graph system via MCP tools:
+
+```json
+{
+  "type": "tool",
+  "config": {
+    "toolName": "search_library",
+    "parameters": {
+      "libraryId": "lib_abc123",
+      "query": "{{state.data.query.message}}",
+      "userId": "{{state.data.options.userId}}"
+    },
+    "outputField": "data.knowledgeContext"
+  }
+}
+```
+
+### Available MCP Tools
+- `list_libraries` - List accessible libraries for a user
+- `search_library` - Search within a specific library
+- `search_all_libraries` - Search across all user's libraries  
+- `get_library_info` - Get library metadata and document count
+
+### API Endpoints
+See `/api/v1/libraries/*` in the [API documentation](src/app/api/README.md#knowledge-libraries).
+
+---
+
+## �🔄 Stream Reconnection Architecture
 
 ### Problem Solved
 
@@ -338,7 +391,7 @@ Mobile apps lose responses when users switch away because HTTP connections break
 ```
 
 #### 3. **Server starts background generation**
-- Calls `red.respond(...)` in a fire-and-forget async function
+- Calls `red.run(...)` in a fire-and-forget async function
 - Each token/chunk is:
   - Appended to Redis state: `message:generating:msg_456`
   - Published to pub/sub channel: `message:stream:msg_456`

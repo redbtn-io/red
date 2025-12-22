@@ -17,13 +17,14 @@ Complete documentation for the redbtn REST API. This API provides AI chat comple
 6. [Nodes](#nodes)
 7. [Neurons](#neurons)
 8. [Graphs](#graphs)
-9. [User Preferences](#user-preferences)
-10. [Models](#models)
-11. [Cleanup](#cleanup)
-12. [Logging & Monitoring](#logging--monitoring)
-13. [Rate Limiting](#rate-limiting)
-14. [Error Handling](#error-handling)
-15. [Streaming Protocol](#streaming-protocol)
+9. [Knowledge Libraries](#knowledge-libraries)
+10. [User Preferences](#user-preferences)
+11. [Models](#models)
+12. [Cleanup](#cleanup)
+13. [Logging & Monitoring](#logging--monitoring)
+14. [Rate Limiting](#rate-limiting)
+15. [Error Handling](#error-handling)
+16. [Streaming Protocol](#streaming-protocol)
 
 ## 🗂️ Directory Overview & Local Tooling
 
@@ -1171,7 +1172,387 @@ Create a personal copy (fork) of a graph.
 
 ---
 
-## 👤 User Preferences
+## � Knowledge Libraries
+
+Knowledge Libraries provide a RAG (Retrieval-Augmented Generation) system for storing, organizing, and searching documents. Libraries support text files (markdown, plain text), PDFs, and images with OCR processing.
+
+### Core Concepts
+
+- **Libraries**: Collections of documents owned by users, with optional sharing and public access
+- **Documents**: Individual files stored with metadata, automatically chunked for vector search
+- **Vector Search**: Semantic search powered by ChromaDB for finding relevant content
+- **OCR Processing**: Automatic text extraction from images and scanned PDFs
+- **GridFS Storage**: Large file storage using MongoDB GridFS
+
+### List Libraries
+
+**`GET /api/v1/libraries`**
+
+List all libraries accessible to the authenticated user.
+
+**Authentication:** Required
+
+**Query Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `includeShared` | boolean | Include libraries shared with user (default: true) |
+| `includePublic` | boolean | Include public libraries (default: false) |
+
+**Success Response (200):**
+```json
+{
+  "libraries": [
+    {
+      "id": "lib_abc123",
+      "name": "Project Documentation",
+      "description": "Technical docs for the project",
+      "ownerId": "user_123",
+      "isPublic": false,
+      "documentCount": 15,
+      "totalSize": 2458624,
+      "createdAt": "2025-01-15T10:30:00Z",
+      "updatedAt": "2025-01-20T14:22:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### Create Library
+
+**`POST /api/v1/libraries`**
+
+Create a new knowledge library.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "name": "My Knowledge Base",
+  "description": "Documentation and reference materials",
+  "isPublic": false
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "id": "lib_xyz789",
+  "name": "My Knowledge Base",
+  "description": "Documentation and reference materials",
+  "ownerId": "user_123",
+  "isPublic": false,
+  "documentCount": 0,
+  "createdAt": "2025-01-22T09:00:00Z"
+}
+```
+
+---
+
+### Get Library Details
+
+**`GET /api/v1/libraries/[libraryId]`**
+
+Get detailed information about a specific library.
+
+**Authentication:** Required (must be owner, shared user, or library must be public)
+
+**Success Response (200):**
+```json
+{
+  "id": "lib_abc123",
+  "name": "Project Documentation",
+  "description": "Technical docs",
+  "ownerId": "user_123",
+  "isPublic": false,
+  "sharedWith": ["user_456", "user_789"],
+  "documentCount": 15,
+  "totalSize": 2458624,
+  "createdAt": "2025-01-15T10:30:00Z",
+  "updatedAt": "2025-01-20T14:22:00Z"
+}
+```
+
+---
+
+### Update Library
+
+**`PUT /api/v1/libraries/[libraryId]`**
+
+Update library metadata.
+
+**Authentication:** Required (must be owner)
+
+**Request Body:**
+```json
+{
+  "name": "Updated Name",
+  "description": "Updated description",
+  "isPublic": true
+}
+```
+
+---
+
+### Delete Library
+
+**`DELETE /api/v1/libraries/[libraryId]`**
+
+Delete a library and all its documents.
+
+**Authentication:** Required (must be owner)
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Library deleted successfully"
+}
+```
+
+---
+
+### Upload Document
+
+**`POST /api/v1/libraries/[libraryId]/upload`**
+
+Upload a document to a library. Supports multipart/form-data.
+
+**Authentication:** Required (must be owner or have write access)
+
+**Supported File Types:**
+- Text: `.md`, `.txt`, `.json`, `.yaml`, `.yml`
+- Documents: `.pdf`
+- Images: `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp` (with OCR)
+
+**Request:** `multipart/form-data`
+```
+file: <binary>
+title: "Optional Document Title"
+description: "Optional description"
+```
+
+**Success Response (201):**
+```json
+{
+  "id": "doc_abc123",
+  "libraryId": "lib_xyz789",
+  "title": "API Documentation",
+  "filename": "api-docs.md",
+  "mimeType": "text/markdown",
+  "size": 15234,
+  "status": "processing",
+  "createdAt": "2025-01-22T09:15:00Z"
+}
+```
+
+**Notes:**
+- Documents are processed asynchronously after upload
+- Status transitions: `pending` → `processing` → `ready` (or `error`)
+- Large files are stored in GridFS
+- Images trigger OCR processing automatically
+
+---
+
+### List Documents
+
+**`GET /api/v1/libraries/[libraryId]/documents`**
+
+List all documents in a library.
+
+**Authentication:** Required
+
+**Query Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `status` | string | Filter by status: `pending`, `processing`, `ready`, `error` |
+| `limit` | number | Max results (default: 50) |
+| `offset` | number | Pagination offset |
+
+**Success Response (200):**
+```json
+{
+  "documents": [
+    {
+      "id": "doc_abc123",
+      "title": "API Documentation",
+      "filename": "api-docs.md",
+      "mimeType": "text/markdown",
+      "size": 15234,
+      "status": "ready",
+      "chunkCount": 12,
+      "createdAt": "2025-01-22T09:15:00Z"
+    }
+  ],
+  "total": 15,
+  "limit": 50,
+  "offset": 0
+}
+```
+
+---
+
+### Get Document Content
+
+**`GET /api/v1/libraries/[libraryId]/documents/[documentId]/full`**
+
+Get the full content of a document.
+
+**Authentication:** Required
+
+**Success Response (200):**
+```json
+{
+  "id": "doc_abc123",
+  "title": "API Documentation",
+  "content": "# API Documentation\n\nThis document describes...",
+  "metadata": {
+    "wordCount": 1250,
+    "language": "en"
+  }
+}
+```
+
+---
+
+### Get Document File
+
+**`GET /api/v1/libraries/[libraryId]/documents/[documentId]/file`**
+
+Download the original file for a document.
+
+**Authentication:** Required
+
+**Response:** Binary file with appropriate Content-Type header
+
+---
+
+### Get Document Chunks
+
+**`GET /api/v1/libraries/[libraryId]/documents/[documentId]/chunks`**
+
+Get the vector chunks for a document.
+
+**Authentication:** Required
+
+**Success Response (200):**
+```json
+{
+  "chunks": [
+    {
+      "id": "chunk_001",
+      "content": "This is the first chunk of text...",
+      "index": 0,
+      "metadata": {
+        "startOffset": 0,
+        "endOffset": 512
+      }
+    }
+  ],
+  "total": 12
+}
+```
+
+---
+
+### Reprocess Document
+
+**`POST /api/v1/libraries/[libraryId]/documents/[documentId]/process`**
+
+Reprocess a document (re-chunk and re-embed).
+
+**Authentication:** Required (must be owner)
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "status": "processing"
+}
+```
+
+---
+
+### Search Library
+
+**`POST /api/v1/libraries/[libraryId]/search`**
+
+Perform semantic search within a specific library.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "query": "How do I authenticate API requests?",
+  "limit": 5,
+  "threshold": 0.7
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "results": [
+    {
+      "documentId": "doc_abc123",
+      "documentTitle": "API Documentation",
+      "content": "Authentication is handled via JWT tokens stored in httpOnly cookies...",
+      "score": 0.92,
+      "metadata": {
+        "chunkIndex": 3
+      }
+    }
+  ],
+  "query": "How do I authenticate API requests?",
+  "totalResults": 5
+}
+```
+
+---
+
+### Using Knowledge in Graphs
+
+Knowledge Libraries integrate with the graph system through MCP tools. Add a tool step to your node configuration:
+
+```json
+{
+  "steps": [
+    {
+      "id": "search-knowledge",
+      "type": "tool",
+      "config": {
+        "toolName": "search_library",
+        "parameters": {
+          "libraryId": "lib_abc123",
+          "query": "{{state.data.query.message}}",
+          "userId": "{{state.data.options.userId}}"
+        },
+        "outputField": "data.knowledgeContext"
+      }
+    },
+    {
+      "id": "respond",
+      "type": "neuron",
+      "config": {
+        "userPrompt": "Context:\n{{state.data.knowledgeContext}}\n\nQuestion: {{state.data.query.message}}"
+      }
+    }
+  ]
+}
+```
+
+**Available MCP Tools:**
+- `list_libraries` - List user's accessible libraries
+- `search_library` - Search a specific library
+- `search_all_libraries` - Search across all user's libraries
+- `get_library_info` - Get library metadata
+
+---
+
+## �👤 User Preferences
 
 ### Archive Management
 
