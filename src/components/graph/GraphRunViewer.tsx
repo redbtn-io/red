@@ -2,26 +2,26 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  CheckCircle2, 
-  Loader2,
-  AlertCircle,
-  GitBranch,
-  X,
-  Box,
-  MessageSquare,
-  Search,
-  Wrench,
-  Play,
-  Shuffle,
-  Globe,
-  FileText,
-  Zap,
-  Database,
-  Move,
-  FileCode,
-  Terminal,
-  Info,
+import {
+    CheckCircle2,
+    Loader2,
+    AlertCircle,
+    GitBranch,
+    X,
+    Box,
+    MessageSquare,
+    Search,
+    Wrench,
+    Play,
+    Shuffle,
+    Globe,
+    FileText,
+    Zap,
+    Database,
+    Move,
+    FileCode,
+    Terminal,
+    Info,
 } from 'lucide-react';
 
 // ============================================================================
