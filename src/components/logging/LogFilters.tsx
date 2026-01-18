@@ -45,7 +45,7 @@ export function LogFilters({
             setGenerationId(''); // Clear generation when conversation changes
           }}
           placeholder="conv_..."
-          className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border-color)] rounded text-sm text-[var(--foreground)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--red-primary)]"
+          className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border-color)] rounded text-sm text-[var(--foreground)] placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-[var(--red-primary)]"
         />
       </div>
 
@@ -62,7 +62,7 @@ export function LogFilters({
             setConversationId(''); // Clear conversation when generation is set
           }}
           placeholder="gen_..."
-          className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border-color)] rounded text-sm text-[var(--foreground)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--red-primary)]"
+          className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border-color)] rounded text-sm text-[var(--foreground)] placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-[var(--red-primary)]"
         />
       </div>
 

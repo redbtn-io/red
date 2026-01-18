@@ -28,6 +28,7 @@ interface MessagesProps {
   modalState: { isOpen: boolean; messageId: string | null };
   onOpenModal: (messageId: string) => void;
   onCloseModal: () => void;
+  onViewGraph?: (graphRun: unknown) => void; // Callback to view graph run
   pagination: { hasMore: boolean; isLoadingMore: boolean; totalMessages?: number } | null;
   onLoadMore: () => Promise<void>;
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
@@ -50,6 +51,7 @@ export function Messages({
   modalState,
   onOpenModal,
   onCloseModal,
+  onViewGraph,
   pagination,
   onLoadMore,
   scrollContainerRef: externalScrollRef,
@@ -89,21 +91,8 @@ export function Messages({
     const threshold = 100;
     const distanceFromTop = maxScroll - scrolledFromBottom;
     
-    console.log('[Scroll Debug]', {
-      scrollTop,
-      scrollHeight,
-      clientHeight,
-      scrolledFromBottom,
-      maxScroll,
-      distanceFromTop,
-      threshold,
-      hasMore: pagination.hasMore,
-      isLoadingMore: pagination.isLoadingMore
-    });
-    
     // If scrolled very close to top and more messages available, load them
     if (distanceFromTop < threshold && pagination.hasMore && !pagination.isLoadingMore) {
-      console.log('[Pagination] Triggering load more messages');
       isLoadingRef.current = true;
       
       // Save scroll position to restore after prepend (unless prevented by manual scroll)
@@ -123,12 +112,10 @@ export function Messages({
               const heightDiff = newScrollHeight - oldScrollHeight;
               // Adjust scrollTop by the height difference to maintain position
               scrollContainerRef.current.scrollTop = oldScrollTop - heightDiff;
-              console.log('[Pagination] Restored scroll position');
             }
             isLoadingRef.current = false;
           });
         } else {
-          console.log('[Pagination] Skipped scroll restoration (manual scroll)');
           isLoadingRef.current = false;
         }
       }).catch((err) => {
@@ -219,7 +206,7 @@ export function Messages({
       {/* Empty state */}
       {!messages?.length && !isLoading && (
         <div className="flex items-center justify-center h-full">
-          <div className="text-center text-gray-500">
+          <div className="text-center text-text-muted">
             <MessageSquare size={48} className="mx-auto mb-4 opacity-20" />
             <p className="text-lg font-medium">Start a conversation</p>
             <p className="text-sm mt-2">Send a message to begin chatting with redbtn</p>
@@ -231,7 +218,7 @@ export function Messages({
       {pagination?.isLoadingMore ? (
         <div className="flex items-center justify-center py-8 bg-gray-900/50 backdrop-blur-sm rounded-lg border border-gray-800 mb-1">
           <Loader2 className="w-6 h-6 animate-spin text-blue-400 mr-3" />
-          <span className="text-sm font-medium text-gray-300">Loading older messages...</span>
+          <span className="text-sm font-medium text-text-secondary">Loading older messages...</span>
         </div>
       ) : (
         /* Spacer - renders last (visual top due to flex-col-reverse) to prevent oldest messages from touching navbar */
@@ -347,6 +334,7 @@ export function Messages({
             streamingThoughts={modalThinking || undefined}
             conversationId={conversationId || ''}
             toolExecutions={toolExecutions}
+            onViewGraph={onViewGraph}
           />
         );
       })()}
@@ -389,26 +377,24 @@ function MessageBubble({ message, isStreaming, onOpenModal, isLatest = false, an
       layout
     >
       <div
-        className={`max-w-[80%] rounded-xl px-5 py-3.5 shadow-lg cursor-pointer transition-colors relative select-none ${
+        className={`max-w-[80%] rounded-xl px-4 py-2.5 shadow-lg cursor-pointer transition-colors relative select-none ${
           message.role === 'user'
-            ? 'bg-[#1a1a1a] border border-[#2a2a2a] text-gray-100 hover:bg-[#1f1f1f]'
+            ? 'bg-bg-tertiary border border-border-hover text-text-primary hover:bg-bg-active'
             : `bg-red-500 text-white hover:bg-red-600 ${isStreaming ? 'streaming-pulse' : ''}`
         }`}
         onClick={handleMessageClick}
         title={message.role === 'assistant' ? 'Click to view AI thoughts and message details' : 'Click to view message details'}
       >
         {/* Main message content with markdown */}
-        <div className="prose prose-invert max-w-none 
+        <div className={`prose max-w-none 
           prose-p:my-2 prose-p:leading-relaxed
-          prose-pre:bg-black/30 prose-pre:border prose-pre:border-white/20 prose-pre:my-3
-          prose-code:text-white prose-code:bg-black/20 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
-          prose-a:text-white prose-a:underline 
-          prose-strong:text-white prose-strong:font-semibold
-          prose-em:text-white prose-em:italic
-          prose-headings:text-white prose-headings:font-bold prose-headings:mt-4 prose-headings:mb-2
           prose-ul:my-2 prose-ol:my-2 prose-li:my-1
           prose-table:my-3 prose-th:px-3 prose-th:py-2 prose-td:px-3 prose-td:py-2
-          [&_.katex]:text-white [&_.katex-display]:my-3 [&_.katex-display]:overflow-x-auto">
+          [&_.katex-display]:my-3 [&_.katex-display]:overflow-x-auto
+          ${message.role === 'assistant' 
+            ? 'prose-invert prose-pre:bg-black/30 prose-pre:border prose-pre:border-white/20 prose-pre:my-3 prose-code:bg-black/20 prose-code:text-white prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-a:text-white prose-a:underline prose-strong:text-white prose-em:text-white prose-headings:text-white [&_.katex]:text-white'
+            : 'prose-pre:bg-bg-secondary prose-pre:border prose-pre:border-border prose-pre:my-3 prose-code:bg-bg-secondary prose-code:text-text-primary prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-a:text-accent-text prose-a:underline prose-strong:text-text-primary prose-em:text-text-primary prose-headings:text-text-primary prose-p:text-text-primary [&_.katex]:text-text-primary'
+          }`}>
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkMath]}
             rehypePlugins={[rehypeKatex]}
@@ -442,13 +428,13 @@ function MessageBubble({ message, isStreaming, onOpenModal, isLatest = false, an
         {message.role === 'assistant' && hasDetails && (
           <div className="flex items-center gap-2 mt-3 pt-2 border-t border-white/10">
             {hasThinking && (
-              <div className="flex items-center gap-1.5 text-xs text-white/60" title="AI reasoning available">
+              <div className="flex items-center gap-1.5 text-xs text-text-primary/60" title="AI reasoning available">
                 <div className="w-1.5 h-1.5 rounded-full bg-purple-400"></div>
                 {isLatest && <span>Thinking</span>}
               </div>
             )}
             {hasTools && (
-              <div className="flex items-center gap-1.5 text-xs text-white/60" title={`${toolExecutions.length} tool${toolExecutions.length > 1 ? 's' : ''} used`}>
+              <div className="flex items-center gap-1.5 text-xs text-text-primary/60" title={`${toolExecutions.length} tool${toolExecutions.length > 1 ? 's' : ''} used`}>
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
                 {isLatest && <span>{toolExecutions.length} tool{toolExecutions.length > 1 ? 's' : ''}</span>}
               </div>

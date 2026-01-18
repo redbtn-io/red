@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { ConfirmModal } from '@/components/ui/Modal';
 import { 
   Search, 
   Box, 
@@ -161,7 +162,7 @@ const TIER_LABELS: Record<number, { label: string; color: string }> = {
   1: { label: 'Ultimate', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
   2: { label: 'Advanced', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   3: { label: 'Basic', color: 'bg-green-500/20 text-green-400 border-green-500/30' },
-  4: { label: 'Free', color: 'bg-gray-500/20 text-gray-400 border-gray-500/30' },
+  4: { label: 'Free', color: 'bg-gray-500/20 text-text-secondary border-gray-500/30' },
 };
 
 // View tabs
@@ -300,7 +301,7 @@ export default function NodesPage() {
     >
       {/* View Tabs */}
       <motion.div 
-        className="flex flex-wrap gap-2 border-b border-[#2a2a2a] pb-4"
+        className="flex flex-wrap gap-2 border-b border-border pb-4"
         variants={staggerItemVariants}
       >
         {[
@@ -316,8 +317,8 @@ export default function NodesPage() {
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               activeTab === tab.id
-                ? 'bg-[#ef4444] text-white'
-                : 'bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#2a2a2a]'
+                ? 'bg-accent text-white'
+                : 'bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
             }`}
           >
             <tab.icon className="w-4 h-4" />
@@ -333,13 +334,13 @@ export default function NodesPage() {
       >
         {/* Search */}
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
           <input
             type="text"
             placeholder="Search by name, description, or tags..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg pl-10 pr-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#ef4444]"
+            className="w-full bg-bg-secondary border border-border rounded-lg pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
           />
         </div>
 
@@ -348,7 +349,7 @@ export default function NodesPage() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortField)}
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-[#ef4444]"
+            className="bg-bg-secondary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
           >
             {SORT_OPTIONS.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -356,7 +357,7 @@ export default function NodesPage() {
           </select>
           <button
             onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-            className="p-2.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-gray-400 hover:text-white transition-colors"
+            className="p-2.5 bg-bg-secondary border border-border rounded-lg text-text-secondary hover:text-text-primary transition-colors"
             title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
           >
             {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
@@ -368,14 +369,14 @@ export default function NodesPage() {
           onClick={() => setShowFilters(!showFilters)}
           className={`flex items-center gap-2 px-4 py-2.5 border rounded-lg text-sm font-medium transition-colors ${
             showFilters || hasActiveFilters
-              ? 'bg-[#ef4444]/10 border-[#ef4444] text-[#ef4444]'
-              : 'bg-[#1a1a1a] border-[#2a2a2a] text-gray-400 hover:text-white'
+              ? 'bg-accent/10 border-accent text-accent-text'
+              : 'bg-bg-secondary border-border text-text-secondary hover:text-text-primary'
           }`}
         >
           <Filter className="w-4 h-4" />
           Filters
           {hasActiveFilters && (
-            <span className="bg-[#ef4444] text-white text-xs px-1.5 py-0.5 rounded-full">
+            <span className="bg-accent text-white text-xs px-1.5 py-0.5 rounded-full">
               {selectedTags.length + (sortBy !== 'name' ? 1 : 0) + (!includeSystem ? 1 : 0) + (!includePublic ? 1 : 0)}
             </span>
           )}
@@ -389,12 +390,12 @@ export default function NodesPage() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 overflow-hidden"
+            className="bg-bg-secondary border border-border rounded-xl p-4 overflow-hidden"
           >
             <div className="flex flex-col gap-4">
               {/* Tags */}
               <div>
-                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Tags</h4>
+                <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Tags</h4>
                 <div className="flex flex-wrap gap-2">
                   {availableTags.map(tag => (
                     <button
@@ -402,36 +403,36 @@ export default function NodesPage() {
                       onClick={() => toggleTag(tag)}
                       className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                         selectedTags.includes(tag)
-                          ? 'bg-[#ef4444] text-white'
-                          : 'bg-[#2a2a2a] text-gray-400 hover:text-white'
+                          ? 'bg-accent text-white'
+                          : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'
                       }`}
                     >
                       {tag}
                     </button>
                   ))}
                   {availableTags.length === 0 && (
-                    <p className="text-gray-500 text-sm">No tags available</p>
+                    <p className="text-text-muted text-sm">No tags available</p>
                   )}
                 </div>
               </div>
 
               {/* Visibility Options */}
               <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
                   <input
                     type="checkbox"
                     checked={includeSystem}
                     onChange={(e) => setIncludeSystem(e.target.checked)}
-                    className="rounded border-gray-600 bg-transparent text-[#ef4444] focus:ring-[#ef4444]"
+                    className="rounded border-gray-600 bg-transparent text-accent-text focus:ring-accent"
                   />
                   Show System Nodes
                 </label>
-                <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
                   <input
                     type="checkbox"
                     checked={includePublic}
                     onChange={(e) => setIncludePublic(e.target.checked)}
-                    className="rounded border-gray-600 bg-transparent text-[#ef4444] focus:ring-[#ef4444]"
+                    className="rounded border-gray-600 bg-transparent text-accent-text focus:ring-accent"
                   />
                   Show Public Nodes
                 </label>
@@ -441,7 +442,7 @@ export default function NodesPage() {
               {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
-                  className="flex items-center gap-2 text-sm text-[#ef4444] hover:text-[#dc2626] transition-colors w-fit"
+                  className="flex items-center gap-2 text-sm text-accent-text hover:text-accent-hover transition-colors w-fit"
                 >
                   <X className="w-4 h-4" />
                   Clear All Filters
@@ -459,14 +460,14 @@ export default function NodesPage() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <span className="text-xs text-gray-500">Filtering by:</span>
+          <span className="text-xs text-text-muted">Filtering by:</span>
           {selectedTags.map(tag => (
             <span
               key={tag}
-              className="flex items-center gap-1 px-2 py-1 bg-[#ef4444]/10 text-[#ef4444] text-xs rounded-full"
+              className="flex items-center gap-1 px-2 py-1 bg-accent/10 text-accent-text text-xs rounded-full"
             >
               {tag}
-              <button onClick={() => toggleTag(tag)} className="hover:text-white">
+              <button onClick={() => toggleTag(tag)} className="hover:text-text-primary">
                 <X className="w-3 h-3" />
               </button>
             </span>
@@ -480,15 +481,15 @@ export default function NodesPage() {
         <div className="flex-1">
           {loading ? (
             <div className="flex items-center justify-center h-64">
-              <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+              <Loader2 className="w-8 h-8 text-text-secondary animate-spin" />
             </div>
           ) : nodes.length === 0 ? (
             <motion.div 
-              className="flex flex-col items-center justify-center py-16 text-center bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl"
+              className="flex flex-col items-center justify-center py-16 text-center bg-bg-secondary border border-border rounded-xl"
               variants={scaleVariants}
             >
-              <Box className="w-16 h-16 text-gray-600 mb-4" />
-              <h3 className="text-lg font-medium text-gray-300 mb-2">
+              <Box className="w-16 h-16 text-text-disabled mb-4" />
+              <h3 className="text-lg font-medium text-text-secondary mb-2">
                 {activeTab === 'saved' ? 'No saved nodes' :
                  activeTab === 'favorited' ? 'No favorite nodes' :
                  activeTab === 'recent' ? 'No recent nodes' :
@@ -496,7 +497,7 @@ export default function NodesPage() {
                  activeTab === 'archived' ? 'No archived nodes' :
                  'No nodes found'}
               </h3>
-              <p className="text-gray-500 text-sm">
+              <p className="text-text-muted text-sm">
                 {activeTab === 'explore' ? 'Try adjusting your search or filters' :
                  activeTab === 'mine' ? 'Create your first custom node' :
                  activeTab === 'archived' ? 'Nodes you archive will appear here' :
@@ -594,16 +595,16 @@ export default function NodesPage() {
                 })()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">{selectedNode.name}</p>
-                <p className="text-xs text-gray-500">Tap to see details</p>
+                <p className="text-sm font-medium text-text-primary truncate">{selectedNode.name}</p>
+                <p className="text-xs text-text-muted">Tap to see details</p>
               </div>
             </div>
           ) : (
             <Link 
               href="/studio/create-node"
-              className="flex items-center gap-3 text-gray-400 hover:text-white transition-colors"
+              className="flex items-center gap-3 text-text-secondary hover:text-text-primary transition-colors"
             >
-              <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-bg-secondary flex items-center justify-center">
                 <Plus className="w-4 h-4" />
               </div>
               <span className="text-sm">Create a new node</span>
@@ -719,8 +720,8 @@ function NodeCard({
     <motion.div
       variants={staggerItemVariants}
       onClick={onSelect}
-      className={`bg-[#1a1a1a] border rounded-xl p-4 cursor-pointer transition-all hover:border-gray-600 ${
-        isSelected ? 'border-[#ef4444] ring-1 ring-[#ef4444]' : 'border-[#2a2a2a]'
+      className={`bg-bg-secondary border rounded-xl p-4 cursor-pointer transition-all hover:border-gray-600 ${
+        isSelected ? 'border-accent ring-1 ring-accent' : 'border-border'
       }`}
     >
       {/* Header */}
@@ -738,8 +739,8 @@ function NodeCard({
             disabled={actionLoading === 'save'}
             className={`p-1.5 rounded-lg transition-colors ${
               node.isSaved 
-                ? 'text-[#ef4444] hover:bg-[#ef4444]/10' 
-                : 'text-gray-500 hover:text-gray-300 hover:bg-[#2a2a2a]'
+                ? 'text-accent-text hover:bg-accent/10' 
+                : 'text-text-muted hover:text-text-secondary hover:bg-bg-tertiary'
             }`}
             title={node.isSaved ? 'Remove from saved' : 'Save node'}
           >
@@ -756,7 +757,7 @@ function NodeCard({
             className={`p-1.5 rounded-lg transition-colors ${
               node.isFavorited 
                 ? 'text-yellow-400 hover:bg-yellow-400/10' 
-                : 'text-gray-500 hover:text-gray-300 hover:bg-[#2a2a2a]'
+                : 'text-text-muted hover:text-text-secondary hover:bg-bg-tertiary'
             }`}
             title={node.isFavorited ? 'Remove from favorites' : 'Add to favorites'}
           >
@@ -770,8 +771,8 @@ function NodeCard({
       </div>
 
       {/* Name & Description */}
-      <h3 className="font-semibold text-white truncate">{node.name}</h3>
-      <p className="text-xs text-gray-500 mt-1 line-clamp-2">{node.description}</p>
+      <h3 className="font-semibold text-text-primary truncate">{node.name}</h3>
+      <p className="text-xs text-text-muted mt-1 line-clamp-2">{node.description}</p>
 
       {/* Tags */}
       {node.tags && node.tags.length > 0 && (
@@ -779,13 +780,13 @@ function NodeCard({
           {node.tags.slice(0, 3).map(tag => (
             <span 
               key={tag}
-              className="text-[10px] px-2 py-0.5 rounded-full bg-[#2a2a2a] text-gray-400"
+              className="text-[10px] px-2 py-0.5 rounded-full bg-bg-tertiary text-text-secondary"
             >
               {tag}
             </span>
           ))}
           {node.tags.length > 3 && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#2a2a2a] text-gray-500">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-bg-tertiary text-text-muted">
               +{node.tags.length - 3}
             </span>
           )}
@@ -793,7 +794,7 @@ function NodeCard({
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#2a2a2a]">
+      <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
         <div className="flex items-center gap-2">
           <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded flex items-center gap-1 ${ownershipLabel.color}`}>
             <ownershipLabel.icon className="w-3 h-3" />
@@ -807,7 +808,7 @@ function NodeCard({
           )}
         </div>
         {node.stats && (
-          <div className="flex items-center gap-3 text-[10px] text-gray-500">
+          <div className="flex items-center gap-3 text-[10px] text-text-muted">
             {node.stats.usageCount > 0 && (
               <span className="flex items-center gap-1">
                 <Play className="w-3 h-3" />
@@ -833,6 +834,7 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
   const [actionLoading, setActionLoading] = useState<'fork' | 'archive' | 'delete' | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const nodeColor = getNodeColor(node);
 
   // Determine if user can edit directly or needs to fork
@@ -914,10 +916,6 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete "${node.name}"? This cannot be undone.`)) {
-      return;
-    }
-    
     setActionLoading('delete');
     setActionMessage(null);
     try {
@@ -939,6 +937,7 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
       setActionMessage({ type: 'error', text: 'Network error' });
     } finally {
       setActionLoading(null);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -955,16 +954,16 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
   };
 
   return (
-    <div className={`bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl overflow-hidden ${compact ? '' : 'sticky top-20'}`}>
+    <div className={`bg-bg-secondary border border-border rounded-xl overflow-hidden ${compact ? '' : 'sticky top-20'}`}>
       {/* Header */}
       <div 
-        className={`${compact ? 'p-4' : 'p-6'} border-b border-[#2a2a2a] relative`}
+        className={`${compact ? 'p-4' : 'p-6'} border-b border-border relative`}
         style={{ backgroundColor: `${nodeColor}10` }}
       >
         {!compact && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-1 text-gray-500 hover:text-white transition-colors"
+            className="absolute top-4 right-4 p-1 text-text-muted hover:text-text-primary transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -977,7 +976,7 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
             <IconComponent className="w-7 h-7" color={nodeColor} />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="text-xl font-bold text-white truncate">{node.name}</h3>
+            <h3 className="text-xl font-bold text-text-primary truncate">{node.name}</h3>
             <div className="flex items-center gap-2 mt-1">
               <span className={`text-xs font-medium px-2 py-0.5 rounded flex items-center gap-1 ${ownershipLabel.color}`}>
                 <ownershipLabel.icon className="w-3 h-3" />
@@ -998,7 +997,7 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
       <div className={`p-6 space-y-6 ${compact ? '' : 'max-h-[calc(100vh-350px)] overflow-y-auto'}`}>
         {/* Ownership Info */}
         <div className={`p-3 rounded-lg border ${ownershipLabel.color.replace('text-', 'border-').replace('bg-', '')}`}>
-          <p className="text-xs text-gray-300">{ownershipLabel.description}</p>
+          <p className="text-xs text-text-secondary">{ownershipLabel.description}</p>
         </div>
 
         {/* Action Message */}
@@ -1014,23 +1013,23 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
 
         {/* Description */}
         <div>
-          <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+          <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
             Description
           </h4>
-          <p className="text-sm text-gray-300">{node.description || 'No description available'}</p>
+          <p className="text-sm text-text-secondary">{node.description || 'No description available'}</p>
         </div>
 
         {/* Tags */}
         {node.tags && node.tags.length > 0 && (
           <div>
-            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+            <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
               Tags
             </h4>
             <div className="flex flex-wrap gap-2">
               {node.tags.map(tag => (
                 <span 
                   key={tag}
-                  className="text-xs px-2 py-1 rounded-full bg-[#2a2a2a] text-gray-300"
+                  className="text-xs px-2 py-1 rounded-full bg-bg-tertiary text-text-secondary"
                 >
                   {tag}
                 </span>
@@ -1042,23 +1041,23 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
         {/* Stats */}
         {node.stats && (
           <div>
-            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+            <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
               Statistics
             </h4>
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-[#2a2a2a] rounded-lg p-3">
-                <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
+              <div className="bg-bg-tertiary rounded-lg p-3">
+                <div className="flex items-center gap-2 text-text-secondary text-xs mb-1">
                   <Play className="w-3 h-3" />
                   Times Used
                 </div>
-                <p className="text-lg font-semibold text-white">{node.stats.usageCount}</p>
+                <p className="text-lg font-semibold text-text-primary">{node.stats.usageCount}</p>
               </div>
-              <div className="bg-[#2a2a2a] rounded-lg p-3">
-                <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
+              <div className="bg-bg-tertiary rounded-lg p-3">
+                <div className="flex items-center gap-2 text-text-secondary text-xs mb-1">
                   <GitFork className="w-3 h-3" />
                   Forks
                 </div>
-                <p className="text-lg font-semibold text-white">{node.stats.forkCount}</p>
+                <p className="text-lg font-semibold text-text-primary">{node.stats.forkCount}</p>
               </div>
             </div>
           </div>
@@ -1067,11 +1066,11 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
         {/* Steps */}
         {loading ? (
           <div className="flex items-center justify-center py-4">
-            <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+            <Loader2 className="w-5 h-5 text-text-secondary animate-spin" />
           </div>
         ) : node.steps && node.steps.length > 0 && (
           <div>
-            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+            <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">
               Steps ({node.steps.length})
             </h4>
             <div className="space-y-2">
@@ -1086,15 +1085,15 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
                       onClick={() => toggleStep(index)}
                       className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/5 transition-colors"
                     >
-                      <span className="text-xs text-gray-500 font-mono w-4">{index + 1}</span>
+                      <span className="text-xs text-text-muted font-mono w-4">{index + 1}</span>
                       <StepIcon className={`w-4 h-4 ${stepInfo.color}`} />
-                      <span className="text-xs font-medium text-gray-300 flex-1 text-left">
+                      <span className="text-xs font-medium text-text-secondary flex-1 text-left">
                         {stepInfo.label}
                       </span>
                       {isExpanded ? (
-                        <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
+                        <ChevronDown className="w-3.5 h-3.5 text-text-muted" />
                       ) : (
-                        <ChevronRight className="w-3.5 h-3.5 text-gray-500" />
+                        <ChevronRight className="w-3.5 h-3.5 text-text-muted" />
                       )}
                     </button>
                     {isExpanded && step.config && (
@@ -1111,7 +1110,7 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
 
         {/* Inputs */}
         <div>
-          <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+          <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
             Inputs
           </h4>
           <div className="flex flex-wrap gap-2">
@@ -1128,7 +1127,7 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
 
         {/* Outputs */}
         <div>
-          <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+          <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
             Outputs
           </h4>
           <div className="flex flex-wrap gap-2">
@@ -1145,10 +1144,10 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
 
         {/* Node ID */}
         <div>
-          <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+          <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
             Node ID
           </h4>
-          <code className="text-xs bg-[#2a2a2a] text-gray-300 px-2 py-1 rounded font-mono">
+          <code className="text-xs bg-bg-tertiary text-text-secondary px-2 py-1 rounded font-mono">
             {node.nodeId}
           </code>
         </div>
@@ -1160,7 +1159,7 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
             <button
               onClick={handleFork}
               disabled={actionLoading === 'fork'}
-              className="flex items-center justify-center gap-2 w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white py-2.5 rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center justify-center gap-2 w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-text-primary py-2.5 rounded-lg text-sm font-medium transition-colors"
             >
               {actionLoading === 'fork' ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -1175,7 +1174,7 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
           {isEditable && (
             <Link
               href={`/studio/edit-node/${node.nodeId}`}
-              className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-text-primary py-2.5 rounded-lg text-sm font-medium transition-colors"
             >
               <Pencil className="w-4 h-4" />
               Edit Node
@@ -1185,7 +1184,7 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
           {/* Use in Studio button */}
           <Link
             href={`/studio?addNode=${node.nodeId}`}
-            className="flex items-center justify-center gap-2 w-full bg-[#ef4444] hover:bg-[#dc2626] text-white py-2.5 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center justify-center gap-2 w-full bg-accent hover:bg-accent-hover text-white py-2.5 rounded-lg text-sm font-medium transition-colors"
           >
             <Play className="w-4 h-4" />
             Use in Studio
@@ -1198,8 +1197,8 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
               disabled={actionLoading === 'archive'}
               className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 (node as any).isArchived
-                  ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                  : 'bg-[#2a2a2a] hover:bg-[#3a3a3a] text-gray-300 border border-[#3a3a3a]'
+                  ? 'bg-amber-600 hover:bg-amber-700 text-text-primary'
+                  : 'bg-bg-tertiary hover:bg-bg-active text-text-secondary border border-border-hover'
               }`}
             >
               {actionLoading === 'archive' ? (
@@ -1214,7 +1213,7 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
           {/* Delete button - only for owned, non-system nodes */}
           {isEditable && (
             <button
-              onClick={handleDelete}
+              onClick={() => setShowDeleteConfirm(true)}
               disabled={actionLoading === 'delete'}
               className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium transition-colors bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30"
             >
@@ -1228,6 +1227,18 @@ function NodeDetail({ node, onClose, loading, onRefresh, onSelectForked, compact
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="Delete Node"
+        message={`Are you sure you want to delete "${node.name}"? This cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 }
@@ -1256,25 +1267,25 @@ function StepConfigDisplay({ type, config }: { type: string; config: Record<stri
       displayValue = value ? 'Yes' : 'No';
     } else if (typeof value === 'object') {
       displayValue = (
-        <pre className="text-[10px] text-gray-500 whitespace-pre-wrap">
+        <pre className="text-[10px] text-text-muted whitespace-pre-wrap">
           {JSON.stringify(value, null, 2)}
         </pre>
       );
     } else if (typeof value === 'string' && value.length > 50) {
       displayValue = (
-        <span className="text-[10px] text-gray-400 break-words">{value}</span>
+        <span className="text-[10px] text-text-secondary break-words">{value}</span>
       );
     }
 
     return (
       <div key={key} className="mb-2">
-        <span className="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1">
+        <span className="text-[10px] text-text-muted uppercase tracking-wider flex items-center gap-1">
           {formatLabel(key)}
           {isConfigurable && (
-            <span title="Editable parameter"><Pencil className="w-2.5 h-2.5 text-gray-400" /></span>
+            <span title="Editable parameter"><Pencil className="w-2.5 h-2.5 text-text-secondary" /></span>
           )}
         </span>
-        <div className={`text-xs mt-0.5 ${isConfigurable ? 'text-gray-200' : 'text-gray-400'}`}>{displayValue}</div>
+        <div className={`text-xs mt-0.5 ${isConfigurable ? 'text-text-primary' : 'text-text-secondary'}`}>{displayValue}</div>
       </div>
     );
   };

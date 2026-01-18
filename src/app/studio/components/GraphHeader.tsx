@@ -26,14 +26,20 @@ import {
   PanelRight,
   Blocks,
   Plus,
+  MessageSquare,
+  Workflow,
+  Database,
 } from 'lucide-react';
 import { useGraphStore } from '@/lib/stores/graphStore';
+import { ConfirmModal } from '@/components/ui/Modal';
 
 interface GraphHeaderProps {
   onTogglePalette?: () => void;
   onToggleConfig?: () => void;
+  onToggleStateManager?: () => void;
   showPalette?: boolean;
   showConfig?: boolean;
+  showStateManager?: boolean;
 }
 
 /**
@@ -42,7 +48,7 @@ interface GraphHeaderProps {
  * Header toolbar for the graph editor.
  * Contains graph name, save button, undo/redo, validation status, etc.
  */
-export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalette, showConfig }: GraphHeaderProps) {
+export default function GraphHeader({ onTogglePalette, onToggleConfig, onToggleStateManager, showPalette, showConfig, showStateManager }: GraphHeaderProps) {
   const router = useRouter();
   const {
     metadata,
@@ -61,6 +67,8 @@ export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalet
 
   const [showMenu, setShowMenu] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
 
   const handleSave = useCallback(async () => {
     setSaveError(null);
@@ -75,15 +83,20 @@ export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalet
     }
   }, [saveGraph, metadata.graphId, router]);
 
-  const handleNew = useCallback(() => {
+  const handleNewClick = useCallback(() => {
     if (isDirty) {
-      if (!confirm('You have unsaved changes. Create a new graph anyway?')) {
-        return;
-      }
+      setShowUnsavedConfirm(true);
+    } else {
+      newGraph();
+      router.replace('/studio');
     }
+  }, [isDirty, newGraph, router]);
+
+  const handleNewConfirm = useCallback(() => {
     newGraph();
     router.replace('/studio');
-  }, [isDirty, newGraph, router]);
+    setShowUnsavedConfirm(false);
+  }, [newGraph, router]);
 
   const handleExport = useCallback(() => {
     const { nodes, edges, metadata } = useGraphStore.getState();
@@ -109,7 +122,7 @@ export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalet
 
   return (
     <motion.header 
-      className="h-14 bg-[#0f0f0f] border-b border-[#2a2a2a] flex items-center px-3 lg:px-4 gap-2 lg:gap-4"
+      className="h-14 bg-bg-elevated border-b border-border flex items-center px-3 lg:px-4 gap-2 lg:gap-4"
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
@@ -119,7 +132,7 @@ export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalet
         <button
           onClick={onTogglePalette}
           className={`lg:hidden p-2 rounded-lg transition-colors ${
-            showPalette ? 'bg-red-500/20 text-red-400' : 'text-gray-400 hover:bg-[#1a1a1a]'
+            showPalette ? 'bg-red-500/20 text-red-400' : 'text-text-secondary hover:bg-bg-secondary'
           }`}
           title="Toggle nodes palette"
         >
@@ -131,7 +144,7 @@ export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalet
       <div className="hidden lg:flex items-center gap-3">
         <Link 
           href="/"
-          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+          className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
           title="Back to Chat"
         >
           <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
@@ -144,18 +157,59 @@ export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalet
             />
           </div>
         </Link>
-        <div className="w-px h-6 bg-[#2a2a2a]" />
+        <div className="w-px h-6 bg-bg-tertiary" />
       </div>
 
       {/* Graph Name */}
       <div className="flex items-center gap-2 lg:gap-3 flex-1 min-w-0">
-        <input
-          type="text"
-          value={metadata.name}
-          onChange={(e) => updateMetadata({ name: e.target.value })}
-          className="bg-transparent border-none text-base lg:text-lg font-medium text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500/50 rounded px-2 py-1 -ml-2 max-w-[200px] lg:max-w-[300px] w-full"
-          placeholder="Untitled Graph"
-        />
+        {isEditingName ? (
+          <input
+            type="text"
+            value={metadata.name}
+            onChange={(e) => updateMetadata({ name: e.target.value })}
+            onBlur={() => setIsEditingName(false)}
+            onKeyDown={(e) => e.key === 'Enter' && setIsEditingName(false)}
+            autoFocus
+            className="bg-bg-secondary border border-border-hover text-sm lg:text-lg font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-red-500/50 rounded px-2 py-1 max-w-[200px] lg:max-w-[300px] w-full"
+            placeholder="Untitled Graph"
+          />
+        ) : (
+          <button
+            onClick={() => setIsEditingName(true)}
+            className="text-sm lg:text-lg font-medium text-text-primary hover:text-text-primary truncate max-w-[120px] sm:max-w-[160px] lg:max-w-[300px] text-left"
+            title="Click to edit name"
+          >
+            {metadata.name || 'Untitled Graph'}
+          </button>
+        )}
+        
+        {/* Graph Type Toggle */}
+        <div className="flex items-center gap-1 bg-bg-secondary rounded-lg p-0.5 border border-border">
+          <button
+            onClick={() => updateMetadata({ graphType: 'agent' })}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+              metadata.graphType === 'agent'
+                ? 'bg-purple-500/20 text-purple-400'
+                : 'text-text-muted hover:text-text-secondary'
+            }`}
+            title="Agent: Interactive chat graph that requires user input"
+          >
+            <MessageSquare className="w-3 h-3" />
+            <span className="hidden md:inline">Agent</span>
+          </button>
+          <button
+            onClick={() => updateMetadata({ graphType: 'workflow' })}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+              metadata.graphType === 'workflow'
+                ? 'bg-cyan-500/20 text-cyan-400'
+                : 'text-text-muted hover:text-text-secondary'
+            }`}
+            title="Workflow: Automated graph for automations (no input required)"
+          >
+            <Workflow className="w-3 h-3" />
+            <span className="hidden md:inline">Workflow</span>
+          </button>
+        </div>
         
         {/* Status indicators - hide on very small screens */}
         <div className="hidden sm:flex items-center gap-2">
@@ -189,11 +243,11 @@ export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalet
           </button>
           
           {/* Tooltip with errors */}
-          <div className="absolute right-0 top-full mt-2 w-64 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-            <div className="text-xs font-medium text-gray-300 mb-2">Validation Issues:</div>
+          <div className="absolute right-0 top-full mt-2 w-64 bg-bg-secondary border border-border rounded-lg shadow-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+            <div className="text-xs font-medium text-text-secondary mb-2">Validation Issues:</div>
             <ul className="space-y-1">
               {validationErrors.map((error: string, i: number) => (
-                <li key={i} className="text-xs text-gray-400 flex items-start gap-2">
+                <li key={i} className="text-xs text-text-secondary flex items-start gap-2">
                   <span className="text-amber-500 mt-0.5">•</span>
                   {error}
                 </li>
@@ -206,14 +260,14 @@ export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalet
       {/* Action Buttons */}
       <div className="flex items-center gap-1 lg:gap-2">
         {/* Undo/Redo - hidden on small mobile */}
-        <div className="hidden sm:flex items-center border-r border-[#2a2a2a] pr-2 mr-2">
+        <div className="hidden sm:flex items-center border-r border-border pr-2 mr-2">
           <button
             onClick={undo}
             disabled={!canUndo}
             className={`p-2 rounded transition-colors ${
               canUndo
-                ? 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1a1a]'
-                : 'text-gray-600 cursor-not-allowed'
+                ? 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
+                : 'text-text-disabled cursor-not-allowed'
             }`}
             title="Undo (Ctrl+Z)"
           >
@@ -224,8 +278,8 @@ export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalet
             disabled={!canRedo}
             className={`p-2 rounded transition-colors ${
               canRedo
-                ? 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1a1a]'
-                : 'text-gray-600 cursor-not-allowed'
+                ? 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
+                : 'text-text-disabled cursor-not-allowed'
             }`}
             title="Redo (Ctrl+Y)"
           >
@@ -233,24 +287,24 @@ export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalet
           </button>
         </div>
 
-        {/* Visibility Toggle - hidden on mobile */}
-        <button
-          onClick={() => updateMetadata({ isPublic: !metadata.isPublic })}
-          className={`hidden md:block p-2 rounded transition-colors ${
-            metadata.isPublic
-              ? 'text-green-400 hover:text-green-300 hover:bg-green-900/30'
-              : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1a1a]'
-          }`}
-          title={metadata.isPublic ? 'Public (click to make private)' : 'Private (click to make public)'}
-        >
-          {metadata.isPublic ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-        </button>
+        {/* State Manager Toggle */}
+        {onToggleStateManager && (
+          <button
+            onClick={onToggleStateManager}
+            className={`p-2 rounded transition-colors ${
+              showStateManager ? 'bg-cyan-500/20 text-cyan-400' : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
+            }`}
+            title="Toggle State Manager"
+          >
+            <Database className="w-4 h-4" />
+          </button>
+        )}
 
-        {/* More Menu - hidden on mobile */}
-        <div className="relative hidden md:block">
+        {/* More Menu - visible on all screen sizes */}
+        <div className="relative">
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="p-2 rounded text-gray-400 hover:text-gray-200 hover:bg-[#1a1a1a] transition-colors"
+            className="p-2 rounded text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors"
           >
             <MoreHorizontal className="w-4 h-4" />
           </button>
@@ -258,10 +312,40 @@ export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalet
           {showMenu && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-              <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-lg py-1 z-50">
+              <div className="absolute right-0 top-full mt-2 w-56 bg-bg-secondary border border-border rounded-lg shadow-lg py-1 z-50">
+                {/* View Options */}
+                <div className="px-3 py-1.5 text-xs font-medium text-text-muted uppercase tracking-wide">View</div>
                 <button
-                  onClick={() => { handleNew(); setShowMenu(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-[#2a2a2a] transition-colors"
+                  onClick={() => { updateMetadata({ isPublic: !metadata.isPublic }); setShowMenu(false); }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                    metadata.isPublic ? 'text-green-400' : 'text-text-secondary hover:bg-bg-tertiary'
+                  }`}
+                >
+                  {metadata.isPublic ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                  {metadata.isPublic ? 'Public' : 'Private'}
+                </button>
+                
+                <hr className="my-1 border-border" />
+                <div className="px-3 py-1.5 text-xs font-medium text-text-muted uppercase tracking-wide">Actions</div>
+                
+                {/* Test Graph */}
+                <button
+                  onClick={() => setShowMenu(false)}
+                  disabled={!isValid || !metadata.graphId}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                    isValid && metadata.graphId
+                      ? 'text-green-400 hover:bg-bg-tertiary'
+                      : 'text-text-muted cursor-not-allowed'
+                  }`}
+                  title={!metadata.graphId ? 'Save graph first' : !isValid ? 'Fix validation errors first' : 'Test graph'}
+                >
+                  <Play className="w-4 h-4" />
+                  Test Graph
+                </button>
+                
+                <button
+                  onClick={() => { handleNewClick(); setShowMenu(false); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary transition-colors"
                 >
                   <Settings className="w-4 h-4" />
                   New Graph
@@ -269,30 +353,30 @@ export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalet
                 <Link
                   href="/studio/create-node"
                   onClick={() => setShowMenu(false)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-[#2a2a2a] transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary transition-colors"
                 >
                   <Plus className="w-4 h-4" />
                   Create Node
                 </Link>
-                <hr className="my-1 border-[#2a2a2a]" />
+                <hr className="my-1 border-border" />
                 <button
                   onClick={() => { handleExport(); setShowMenu(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-[#2a2a2a] transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary transition-colors"
                 >
                   <Download className="w-4 h-4" />
                   Export JSON
                 </button>
                 <button
                   onClick={() => setShowMenu(false)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-[#2a2a2a] transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary transition-colors"
                 >
                   <Upload className="w-4 h-4" />
                   Import JSON
                 </button>
-                <hr className="my-1 border-[#2a2a2a]" />
+                <hr className="my-1 border-border" />
                 <button
                   onClick={() => setShowMenu(false)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-[#2a2a2a] transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary transition-colors"
                 >
                   <Share2 className="w-4 h-4" />
                   Share
@@ -300,7 +384,7 @@ export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalet
                 {metadata.graphId && (
                   <button
                     onClick={() => setShowMenu(false)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-[#2a2a2a] transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary transition-colors"
                   >
                     <GitFork className="w-4 h-4" />
                     Fork Graph
@@ -308,7 +392,7 @@ export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalet
                 )}
                 {metadata.graphId && (
                   <>
-                    <hr className="my-1 border-[#2a2a2a]" />
+                    <hr className="my-1 border-border" />
                     <button
                       onClick={() => setShowMenu(false)}
                       className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-900/30 transition-colors"
@@ -330,7 +414,7 @@ export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalet
           className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
             isDirty && !isSaving
               ? 'bg-red-500 text-white hover:bg-red-600'
-              : 'bg-[#1a1a1a] text-gray-500 cursor-not-allowed'
+              : 'bg-bg-secondary text-text-muted cursor-not-allowed'
           }`}
         >
           {isSaving ? (
@@ -341,26 +425,12 @@ export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalet
           <span className="hidden sm:inline">Save</span>
         </button>
 
-        {/* Run/Test Button - hidden on mobile */}
-        <button
-          disabled={!isValid || !metadata.graphId}
-          className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-            isValid && metadata.graphId
-              ? 'bg-green-600 text-white hover:bg-green-500'
-              : 'bg-[#1a1a1a] text-gray-500 cursor-not-allowed'
-          }`}
-          title={!metadata.graphId ? 'Save graph first' : !isValid ? 'Fix validation errors first' : 'Test graph'}
-        >
-          <Play className="w-4 h-4" />
-          Test
-        </button>
-
         {/* Mobile: Config panel toggle */}
         {onToggleConfig && (
           <button
             onClick={onToggleConfig}
             className={`lg:hidden p-2 rounded-lg transition-colors ${
-              showConfig ? 'bg-red-500/20 text-red-400' : 'text-gray-400 hover:bg-[#1a1a1a]'
+              showConfig ? 'bg-red-500/20 text-red-400' : 'text-text-secondary hover:bg-bg-secondary'
             }`}
             title="Toggle config panel"
           >
@@ -376,12 +446,24 @@ export default function GraphHeader({ onTogglePalette, onToggleConfig, showPalet
           <span>{saveError}</span>
           <button
             onClick={() => setSaveError(null)}
-            className="text-red-300 hover:text-white"
+            className="text-red-300 hover:text-text-primary"
           >
             ×
           </button>
         </div>
       )}
+
+      {/* Unsaved Changes Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showUnsavedConfirm}
+        onClose={() => setShowUnsavedConfirm(false)}
+        onConfirm={handleNewConfirm}
+        title="Unsaved Changes"
+        message="You have unsaved changes. Create a new graph anyway?"
+        confirmText="Create New"
+        cancelText="Cancel"
+        variant="warning"
+      />
     </motion.header>
   );
 }

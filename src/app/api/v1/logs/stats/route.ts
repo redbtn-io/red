@@ -6,15 +6,29 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getRed } from '@/lib/red';
+import { getRed, getDatabase } from '@/lib/red';
 import { LogEntry } from '@redbtn/ai';
+import { verifyAuth } from '@/lib/auth/auth';
 
 export async function GET(request: NextRequest) {
   try {
+    // Verify authentication
+    const user = await verifyAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const conversationId = searchParams.get('conversationId');
     
     if (conversationId) {
+      // Verify ownership
+      const db = getDatabase();
+      const conversation = await db.getConversation(conversationId);
+      if (conversation?.userId && conversation.userId !== user.userId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+
       const red = await getRed();
       
       // Stats for a specific conversation

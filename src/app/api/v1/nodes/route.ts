@@ -5,7 +5,7 @@ import { RateLimits } from '@/lib/rate-limit/rate-limit';
 import connectToDatabase from '@/lib/database/mongodb';
 import mongoose from 'mongoose';
 import { searchNodes, getAllTags } from '@redbtn/ai';
-import { getUserNodePreferences, getArchivedNodeIds } from '@/lib/database/models/UserNodePreferences';
+import { getUserNodePreferences } from '@/lib/database/models/UserNodePreferences';
 
 /**
  * Helper to safely convert date to ISO string
@@ -365,6 +365,7 @@ function getColorForTags(tags: string[]): string {
  *   description?: string;
  *   steps: Array<{ type: string; config: object }>;
  *   metadata?: { icon?: string; color?: string; inputs?: string[]; outputs?: string[]; tags?: string[] };
+ *   isPublic?: boolean; // Default true. Private nodes require PRO tier or better.
  * }
  */
 export async function POST(request: NextRequest) {
@@ -383,7 +384,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { nodeId, name, description, steps, metadata } = body;
+    const { nodeId, name, description, steps, metadata, isPublic, parameters } = body;
     // Tags can be at top level or in metadata for backward compatibility
     const tags: string[] = body.tags || metadata?.tags || [];
 
@@ -419,6 +420,7 @@ export async function POST(request: NextRequest) {
         tags: [String],
         userId: { type: String, required: true, index: true },
         isSystem: { type: Boolean, default: false },
+        isPublic: { type: Boolean, default: true },
         steps: [mongoose.Schema.Types.Mixed],
         metadata: mongoose.Schema.Types.Mixed,
         createdAt: { type: Date, default: Date.now },
@@ -434,6 +436,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Determine node visibility
+    // Private nodes are a paid feature (PRO tier = 2 or better)
+    const userTier = user.accountLevel || 4; // Default to FREE tier
+    const canCreatePrivateNodes = userTier <= 2; // ADMIN, ENTERPRISE, or PRO
+    
+    let nodeIsPublic = isPublic !== undefined ? isPublic : true; // Default to public
+    
+    // If user requested private but doesn't have the tier, force public
+    if (!nodeIsPublic && !canCreatePrivateNodes) {
+      // Silently default to public (could also return an error here)
+      nodeIsPublic = true;
+    }
+
     // Create the node
     const newNode = await NodeModel.create({
       nodeId,
@@ -441,7 +456,9 @@ export async function POST(request: NextRequest) {
       description: description || '',
       userId: user.userId,
       isSystem: false,
+      isPublic: nodeIsPublic,
       steps,
+      parameters: parameters || undefined,
       tags,
       metadata: {
         icon: metadata?.icon || getIconForTags(tags),

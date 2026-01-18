@@ -5,6 +5,72 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
+import dns from 'dns';
+import { promisify } from 'util';
+
+const dnsLookup = promisify(dns.lookup);
+
+/**
+ * SECURITY: Check if hostname resolves to a private/internal IP
+ * Prevents SSRF attacks against internal services
+ */
+async function isPrivateOrInternalUrl(url: URL): Promise<boolean> {
+  const hostname = url.hostname.toLowerCase();
+  
+  // Block localhost variations
+  const blockedHosts = [
+    'localhost',
+    '127.0.0.1',
+    '0.0.0.0',
+    '::1',
+    '[::1]',
+  ];
+  
+  if (blockedHosts.includes(hostname)) {
+    return true;
+  }
+  
+  // Block internal domain patterns
+  if (hostname.endsWith('.local') || hostname.endsWith('.internal') || hostname.endsWith('.localhost')) {
+    return true;
+  }
+  
+  // Private IP ranges regex patterns
+  const privateIPPatterns = [
+    /^10\./, // 10.0.0.0/8
+    /^172\.(1[6-9]|2[0-9]|3[01])\./, // 172.16.0.0/12
+    /^192\.168\./, // 192.168.0.0/16
+    /^169\.254\./, // Link-local / AWS metadata
+    /^127\./, // Loopback
+    /^0\./, // Current network
+    /^fc00:/i, // IPv6 unique local
+    /^fe80:/i, // IPv6 link-local
+    /^::1$/, // IPv6 loopback
+    /^::ffff:127\./i, // IPv4-mapped IPv6 loopback
+    /^::ffff:10\./i, // IPv4-mapped IPv6 private
+    /^::ffff:192\.168\./i, // IPv4-mapped IPv6 private
+    /^::ffff:172\.(1[6-9]|2[0-9]|3[01])\./i, // IPv4-mapped IPv6 private
+  ];
+  
+  // Check if hostname is already an IP
+  if (privateIPPatterns.some(pattern => pattern.test(hostname))) {
+    return true;
+  }
+  
+  // DNS lookup to check resolved IP
+  try {
+    const { address } = await dnsLookup(hostname);
+    if (privateIPPatterns.some(pattern => pattern.test(address))) {
+      console.warn(`[Fetch URL] SSRF blocked: ${hostname} resolved to private IP ${address}`);
+      return true;
+    }
+  } catch {
+    // DNS lookup failed - could be invalid hostname
+    // Let the fetch fail naturally
+  }
+  
+  return false;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,6 +95,14 @@ export async function POST(request: NextRequest) {
       }
     } catch {
       return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });
+    }
+
+    // SECURITY: Check for SSRF - block internal/private IPs
+    if (await isPrivateOrInternalUrl(parsedUrl)) {
+      return NextResponse.json(
+        { error: 'URL not allowed: internal or private addresses are blocked' },
+        { status: 400 }
+      );
     }
 
     // Fetch the URL

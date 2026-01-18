@@ -18,7 +18,7 @@ const NodeSchema = new mongoose.Schema({
   scheduledDeletionAt: { type: Date, default: null },
   isSystem: { type: Boolean, default: false },
   isImmutable: { type: Boolean, default: false },
-  isPublic: { type: Boolean, default: false },
+  isPublic: { type: Boolean, default: true },
   parentNodeId: String,
   version: { type: Number, default: 1 },
   steps: [mongoose.Schema.Types.Mixed],

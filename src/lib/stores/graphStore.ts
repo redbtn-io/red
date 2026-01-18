@@ -8,14 +8,14 @@
 import { create } from 'zustand';
 import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import {
-  Node,
-  Edge,
-  NodeChange,
-  EdgeChange,
-  Connection,
-  applyNodeChanges,
-  applyEdgeChanges,
-  addEdge as rfAddEdge,
+    Node,
+    Edge,
+    NodeChange,
+    EdgeChange,
+    Connection,
+    applyNodeChanges,
+    applyEdgeChanges,
+    addEdge as rfAddEdge,
 } from 'reactflow';
 import dagre from 'dagre';
 
@@ -37,6 +37,8 @@ export interface StudioNodeData {
     type: 'neuron' | 'tool' | 'transform' | 'conditional' | 'loop';
     config: Record<string, unknown>;
   }>;
+  /** Per-graph parameter overrides for this node instance */
+  parameters?: Record<string, unknown>;
 }
 
 /**
@@ -61,6 +63,7 @@ export interface GraphMetadata {
   graphId?: string;
   name: string;
   description: string;
+  graphType: 'agent' | 'workflow';
   tier: number;
   isPublic: boolean;
   tags: string[];
@@ -129,6 +132,7 @@ const initialState: GraphStoreState = {
   metadata: {
     name: 'Untitled Graph',
     description: '',
+    graphType: 'agent',
     tier: 4,
     isPublic: false,
     tags: [],
@@ -321,9 +325,26 @@ export const useGraphStore = create<GraphStoreState & GraphStoreActions>()(
       loadGraph: async (graphId) => {
         set({ isLoading: true });
         try {
-          const response = await fetch(`/api/v1/graphs/${graphId}`);
-          if (!response.ok) throw new Error('Failed to load graph');
-          const { graph } = await response.json();
+          // Fetch graph and node definitions in parallel
+          const [graphResponse, nodesResponse] = await Promise.all([
+            fetch(`/api/v1/graphs/${graphId}`),
+            fetch('/api/v1/nodes')
+          ]);
+          
+          if (!graphResponse.ok) throw new Error('Failed to load graph');
+          const { graph } = await graphResponse.json();
+          
+          // Build node name lookup map
+          const nodeNameMap: Record<string, string> = {};
+          if (nodesResponse.ok) {
+            const nodesData = await nodesResponse.json();
+            const nodesList = nodesData.nodes || [];
+            for (const node of nodesList) {
+              if (node.nodeId && node.name) {
+                nodeNameMap[node.nodeId] = node.name;
+              }
+            }
+          }
           
           interface GraphNodeData {
             id: string;
@@ -488,7 +509,10 @@ export const useGraphStore = create<GraphStoreState & GraphStoreActions>()(
           
           // The actual node type is stored in config.nodeId for universal nodes
           const nodes: StudioNode[] = graph.nodes.map((node: GraphNodeData) => {
-            const actualNodeType = node.config?.nodeId || node.id;
+            const actualNodeType = node.config?.nodeId || node.type || node.id;
+            // Resolve node name: use lookup map, fall back to formatted node type
+            const nodeName = nodeNameMap[actualNodeType] || 
+              actualNodeType.split('-')[0].replace(/([A-Z])/g, ' $1').trim().replace(/^./, (s: string) => s.toUpperCase());
             const position = hasLayout 
               ? (graph.layout[node.id] || layoutPositions[node.id] || { x: 200, y: 200 })
               : (layoutPositions[node.id] || { x: 200, y: 200 });
@@ -499,10 +523,14 @@ export const useGraphStore = create<GraphStoreState & GraphStoreActions>()(
               draggable: true,
               selectable: true,
               data: {
-                label: node.id,
+                label: nodeName,
                 nodeType: actualNodeType,
                 config: node.config || {},
-                neuronId: node.neuronId
+                neuronId: node.neuronId,
+                // Extract parameters from graph's node config for per-graph overrides
+                parameters: (node.config?.parameters as Record<string, unknown>) || {},
+                // Extract steps from graph's node config for per-graph step overrides
+                steps: (node.config?.steps as Array<{ type: string; config: Record<string, unknown> }>) || undefined
               }
             };
           });
@@ -538,6 +566,7 @@ export const useGraphStore = create<GraphStoreState & GraphStoreActions>()(
               graphId: graph.graphId,
               name: graph.name,
               description: graph.description || '',
+              graphType: graph.graphType || 'agent',
               tier: graph.tier,
               isPublic: graph.isPublic || false,
               tags: graph.tags || [],
@@ -565,12 +594,33 @@ export const useGraphStore = create<GraphStoreState & GraphStoreActions>()(
         try {
           const graphNodes = state.nodes
             .filter((n) => !['__start__', '__end__'].includes(n.id))
-            .map((n) => ({
-              id: n.id,
-              type: n.data.nodeType,
-              neuronId: n.data.neuronId || null,
-              config: n.data.config || {}
-            }));
+            .map((n) => {
+              // Determine if this is a built-in node type or a custom universal node
+              const builtInTypes = ['precheck', 'fastpath', 'context', 'classifier', 'router', 'planner', 'executor', 'responder', 'search', 'scrape', 'command', 'universal'];
+              const isBuiltInType = builtInTypes.includes(n.data.nodeType);
+              
+              // Build config with nodeId and parameters
+              const config: Record<string, unknown> = isBuiltInType 
+                ? { ...(n.data.config || {}) } 
+                : { ...(n.data.config || {}), nodeId: n.data.nodeType };
+              
+              // Include parameters for per-graph overrides if they exist
+              if (n.data.parameters && Object.keys(n.data.parameters).length > 0) {
+                config.parameters = n.data.parameters;
+              }
+              
+              // Include steps for per-graph step overrides if they exist
+              if (n.data.steps && n.data.steps.length > 0) {
+                config.steps = n.data.steps;
+              }
+              
+              return {
+                id: n.id,
+                type: isBuiltInType ? n.data.nodeType : 'universal',
+                neuronId: n.data.neuronId || null,
+                config
+              };
+            });
 
           const graphEdges = state.edges.map((e) => ({
             from: e.source,
@@ -588,6 +638,7 @@ export const useGraphStore = create<GraphStoreState & GraphStoreActions>()(
           const payload = {
             name: state.metadata.name,
             description: state.metadata.description,
+            graphType: state.metadata.graphType,
             tier: state.metadata.tier,
             isPublic: state.metadata.isPublic,
             tags: state.metadata.tags,

@@ -4,66 +4,64 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { AvailableToolsBrowser } from '@/components/tools/AvailableToolsBrowser';
+import SmartInput from '../components/SmartInput';
 import {
-  ArrowLeft,
-  Plus,
-  Trash2,
-  GripVertical,
-  Save,
-  Loader2,
-  Brain,
-  Wrench,
-  Shuffle,
-  GitBranch,
-  Repeat,
-  ChevronDown,
-  ChevronRight,
-  ChevronUp,
-  Info,
-  AlertCircle,
-  Check,
-  X,
-  Sparkles,
-  MessageSquare,
-  Search,
-  Zap,
-  Box,
-  Code,
-  Database,
-  Globe,
-  Settings,
-  Terminal,
-  FileText,
-  Image,
-  Music,
-  Video,
-  Mail,
-  Bell,
-  Calendar,
-  Clock,
-  Cloud,
-  Heart,
-  Star,
-  Bookmark,
-  Tag,
-  Lock,
-  Unlock,
-  Eye,
-  EyeOff,
-  Link as LinkIcon,
-  Cpu,
-  Activity,
-  BarChart,
-  PieChart,
-  TrendingUp,
-  Filter,
-  Layers,
-  Grid,
-  List,
-  MoreHorizontal,
+    ArrowLeft,
+    Plus,
+    Trash2,
+    GripVertical,
+    Save,
+    Loader2,
+    Brain,
+    Wrench,
+    Shuffle,
+    GitBranch,
+    Repeat,
+    ChevronDown,
+    ChevronRight, Info,
+    AlertCircle,
+    Check,
+    X,
+    Sparkles,
+    MessageSquare,
+    Search,
+    Zap,
+    Box,
+    Code,
+    Database,
+    Globe,
+    Settings,
+    Terminal,
+    FileText,
+    Image,
+    Music,
+    Video,
+    Mail,
+    Bell,
+    Calendar,
+    Clock,
+    Cloud,
+    Heart,
+    Star,
+    Bookmark,
+    Tag,
+    Lock,
+    Unlock,
+    Eye, Link as LinkIcon,
+    Cpu,
+    Activity,
+    BarChart,
+    PieChart,
+    TrendingUp,
+    Filter,
+    Layers,
+    Grid,
+    List,
+    MoreHorizontal
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { pageVariants, staggerItemVariants, staggerContainerVariants } from '@/lib/animations';
+import { pageVariants, staggerItemVariants } from '@/lib/animations';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 
 interface StepConfig {
@@ -79,6 +77,24 @@ interface NeuronInfo {
   model: string;
   role: string;
 }
+
+// Parameter definition for exposed knobs
+interface ParameterDefinition {
+  type: 'string' | 'number' | 'boolean' | 'select' | 'json';
+  default: unknown;
+  description?: string;
+  min?: number | null;
+  max?: number | null;
+  enum?: unknown[] | null;
+}
+
+const PARAMETER_TYPES = [
+  { type: 'string', label: 'String', description: 'Text value' },
+  { type: 'number', label: 'Number', description: 'Numeric value with optional min/max' },
+  { type: 'boolean', label: 'Boolean', description: 'True/false toggle' },
+  { type: 'select', label: 'Select', description: 'Choose from predefined options' },
+  { type: 'json', label: 'JSON', description: 'Complex object or array' },
+] as const;
 
 const STEP_TYPES = [
   { type: 'neuron', label: 'Neuron', description: 'Call an LLM', icon: Brain, color: 'text-purple-400', bgColor: 'bg-purple-500/20 border-purple-500/30' },
@@ -197,6 +213,12 @@ export default function CreateNodePage() {
   const [steps, setSteps] = useState<StepConfig[]>([]);
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set([0]));
   const [showAddStep, setShowAddStep] = useState(false);
+  
+  // Parameters
+  const [parameters, setParameters] = useState<Record<string, ParameterDefinition>>({});
+  const [showAddParameter, setShowAddParameter] = useState(false);
+  const [newParamName, setNewParamName] = useState('');
+  const [expandedParams, setExpandedParams] = useState<Set<string>>(new Set());
   const [showAllIcons, setShowAllIcons] = useState(false);
   const [visibleIconCount, setVisibleIconCount] = useState(8);
   const iconPickerRef = useRef<HTMLDivElement>(null);
@@ -270,6 +292,63 @@ export default function CreateNodePage() {
 
   const removeOutput = (output: string) => {
     if (output !== 'state') setOutputs(outputs.filter((o) => o !== output));
+  };
+
+  // Parameter management
+  const addParameter = () => {
+    const key = newParamName.trim().replace(/\s+/g, '_').toLowerCase();
+    if (!key || parameters[key]) return;
+    
+    setParameters({
+      ...parameters,
+      [key]: {
+        type: 'string',
+        default: '',
+        description: '',
+      },
+    });
+    setExpandedParams((prev) => new Set([...prev, key]));
+    setNewParamName('');
+    setShowAddParameter(false);
+  };
+
+  const removeParameter = (key: string) => {
+    const { [key]: _, ...rest } = parameters;
+    setParameters(rest);
+    setExpandedParams((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  };
+
+  const updateParameter = (key: string, updates: Partial<ParameterDefinition>) => {
+    setParameters((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], ...updates },
+    }));
+  };
+
+  const toggleParam = (key: string) => {
+    setExpandedParams((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const getDefaultForType = (type: ParameterDefinition['type']): unknown => {
+    switch (type) {
+      case 'string': return '';
+      case 'number': return 0;
+      case 'boolean': return false;
+      case 'select': return '';
+      case 'json': return {};
+    }
   };
 
   const toggleStep = (index: number) => {
@@ -363,6 +442,7 @@ export default function CreateNodePage() {
           description: description.trim(),
           tags,
           steps,
+          parameters: Object.keys(parameters).length > 0 ? parameters : undefined,
           metadata: {
             icon,
             color,
@@ -389,10 +469,10 @@ export default function CreateNodePage() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[#0a0a0a]">
+    <div className="h-screen flex flex-col bg-bg-primary">
       {/* Header */}
       <motion.div 
-        className="flex-shrink-0 sticky top-0 z-10 bg-[#0f0f0f] border-b border-[#2a2a2a]"
+        className="flex-shrink-0 sticky top-0 z-10 bg-bg-elevated border-b border-border"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
@@ -401,19 +481,19 @@ export default function CreateNodePage() {
           <div className="flex items-center gap-4">
             <Link
               href="/studio/nodes"
-              className="p-2 rounded-lg hover:bg-[#1a1a1a] text-gray-400 hover:text-white transition-colors"
+              className="p-2 rounded-lg hover:bg-bg-secondary text-text-secondary hover:text-text-primary transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-white">Create Node</h1>
-              <p className="text-sm text-gray-500">Build a custom node for your workflows</p>
+              <h1 className="text-xl font-bold text-text-primary">Create Node</h1>
+              <p className="text-sm text-text-muted">Build a custom node for your workflows</p>
             </div>
           </div>
           <button
             onClick={handleSave}
             disabled={saving || success}
-            className="flex items-center gap-2 bg-[#ef4444] hover:bg-[#dc2626] disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-2 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             {saving ? (
               <>
@@ -460,14 +540,14 @@ export default function CreateNodePage() {
 
         {/* Basic Info */}
         <motion.section 
-          className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-6 space-y-4"
+          className="bg-bg-secondary border border-border rounded-xl p-6 space-y-4"
           variants={staggerItemVariants}
         >
-          <h2 className="text-lg font-semibold text-white">Basic Information</h2>
+          <h2 className="text-lg font-semibold text-text-primary">Basic Information</h2>
           
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1.5">
+              <label className="block text-sm font-medium text-text-secondary mb-1.5">
                 Node Name <span className="text-red-400">*</span>
               </label>
               <input
@@ -475,22 +555,22 @@ export default function CreateNodePage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Smart Responder"
-                className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-[#ef4444]"
+                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1.5">
+              <label className="block text-sm font-medium text-text-secondary mb-1.5">
                 Node ID
               </label>
-              <div className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-gray-500 font-mono truncate">
+              <div className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2.5 text-sm text-text-muted font-mono truncate">
                 {nodeId}
               </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1.5">
+            <label className="block text-sm font-medium text-text-secondary mb-1.5">
               Description
             </label>
             <textarea
@@ -498,26 +578,26 @@ export default function CreateNodePage() {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe what this node does..."
               rows={2}
-              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-[#ef4444] resize-none"
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent resize-none"
             />
           </div>
 
           {/* Icon & Color */}
           <div className="flex gap-4">
             <div className="flex-1 min-w-0">
-              <label className="block text-sm font-medium text-gray-400 mb-1.5">
+              <label className="block text-sm font-medium text-text-secondary mb-1.5">
                 Icon
               </label>
               <div className="relative" ref={iconPickerRef}>
-                <div ref={iconContainerRef} className="flex flex-wrap gap-1 p-1.5 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg">
+                <div ref={iconContainerRef} className="flex flex-wrap gap-1 p-1.5 bg-bg-primary border border-border rounded-lg">
                   {ICON_OPTIONS.slice(0, visibleIconCount).map(({ icon: IconComponent, name: iconName }) => (
                     <button
                       key={iconName}
                       onClick={() => setIcon(iconName)}
                       className={`p-1.5 rounded transition-colors ${
                         icon === iconName
-                          ? 'bg-[#ef4444] text-white'
-                          : 'bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#2a2a2a]'
+                          ? 'bg-accent text-white'
+                          : 'bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
                       }`}
                     >
                       <IconComponent className="w-3.5 h-3.5" />
@@ -528,8 +608,8 @@ export default function CreateNodePage() {
                       onClick={() => setShowAllIcons(!showAllIcons)}
                       className={`p-1.5 rounded transition-colors ${
                         showAllIcons
-                          ? 'bg-[#ef4444] text-white'
-                          : 'bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#2a2a2a]'
+                          ? 'bg-accent text-white'
+                          : 'bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
                       }`}
                       title="Show more icons"
                     >
@@ -546,13 +626,13 @@ export default function CreateNodePage() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute z-50 top-full left-0 mt-1 w-64 p-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl"
+                      className="absolute z-50 top-full left-0 mt-1 w-64 p-2 bg-bg-secondary border border-border rounded-lg shadow-xl"
                     >
                       <div className="flex items-center justify-between mb-2 px-1">
-                        <span className="text-xs text-gray-400">All Icons</span>
+                        <span className="text-xs text-text-secondary">All Icons</span>
                         <button
                           onClick={() => setShowAllIcons(false)}
-                          className="text-gray-500 hover:text-white"
+                          className="text-text-muted hover:text-text-primary"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -567,8 +647,8 @@ export default function CreateNodePage() {
                             }}
                             className={`p-1.5 rounded transition-colors ${
                               icon === iconName
-                                ? 'bg-[#ef4444] text-white'
-                                : 'bg-[#0a0a0a] text-gray-400 hover:text-white hover:bg-[#2a2a2a]'
+                                ? 'bg-accent text-white'
+                                : 'bg-bg-primary text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
                             }`}
                             title={iconName}
                           >
@@ -583,7 +663,7 @@ export default function CreateNodePage() {
             </div>
             
             <div className="flex-shrink-0">
-              <label className="block text-sm font-medium text-gray-400 mb-1.5 text-center">
+              <label className="block text-sm font-medium text-text-secondary mb-1.5 text-center">
                 Color
               </label>
               <div className="flex justify-center">
@@ -594,17 +674,17 @@ export default function CreateNodePage() {
 
           {/* Tags */}
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1.5">
+            <label className="block text-sm font-medium text-text-secondary mb-1.5">
               Tags
             </label>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {tags.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center gap-1 bg-[#2a2a2a] text-gray-300 px-2 py-1 rounded text-xs"
+                  className="inline-flex items-center gap-1 bg-bg-tertiary text-text-secondary px-2 py-1 rounded text-xs"
                 >
                   {tag}
-                  <button onClick={() => removeTag(tag)} className="text-gray-500 hover:text-white">
+                  <button onClick={() => removeTag(tag)} className="text-text-muted hover:text-text-primary">
                     <X className="w-3 h-3" />
                   </button>
                 </span>
@@ -621,7 +701,7 @@ export default function CreateNodePage() {
                 }
               }}
               placeholder="Add tag and press Enter..."
-              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-[#ef4444]"
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
             />
             {tags.length === 0 && (
               <div className="flex flex-wrap gap-1 mt-1.5">
@@ -629,7 +709,7 @@ export default function CreateNodePage() {
                   <button
                     key={tag}
                     onClick={() => addTag(tag)}
-                    className="text-xs px-1.5 py-0.5 text-gray-600 hover:text-gray-400"
+                    className="text-xs px-1.5 py-0.5 text-text-disabled hover:text-text-secondary"
                   >
                     +{tag}
                   </button>
@@ -641,7 +721,7 @@ export default function CreateNodePage() {
           {/* Inputs & Outputs */}
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1.5">
+              <label className="block text-sm font-medium text-text-secondary mb-1.5">
                 Inputs
               </label>
               <div className="flex flex-wrap gap-1.5 mb-2">
@@ -674,12 +754,12 @@ export default function CreateNodePage() {
                     }
                   }}
                   placeholder="Add input..."
-                  className="flex-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
+                  className="flex-1 bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:border-blue-500"
                 />
                 <button
                   onClick={addInput}
                   disabled={!inputValue.trim()}
-                  className="px-2 py-1.5 bg-[#2a2a2a] hover:bg-[#3a3a3a] disabled:opacity-50 rounded-lg text-xs text-gray-300"
+                  className="px-2 py-1.5 bg-bg-tertiary hover:bg-bg-active disabled:opacity-50 rounded-lg text-xs text-text-secondary"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -687,7 +767,7 @@ export default function CreateNodePage() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1.5">
+              <label className="block text-sm font-medium text-text-secondary mb-1.5">
                 Outputs
               </label>
               <div className="flex flex-wrap gap-1.5 mb-2">
@@ -720,12 +800,12 @@ export default function CreateNodePage() {
                     }
                   }}
                   placeholder="Add output..."
-                  className="flex-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-green-500"
+                  className="flex-1 bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:border-green-500"
                 />
                 <button
                   onClick={addOutput}
                   disabled={!outputValue.trim()}
-                  className="px-2 py-1.5 bg-[#2a2a2a] hover:bg-[#3a3a3a] disabled:opacity-50 rounded-lg text-xs text-gray-300"
+                  className="px-2 py-1.5 bg-bg-tertiary hover:bg-bg-active disabled:opacity-50 rounded-lg text-xs text-text-secondary"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -735,18 +815,268 @@ export default function CreateNodePage() {
 
         </motion.section>
 
-        {/* Steps */}
+        {/* Parameters */}
         <motion.section 
-          className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-6 space-y-4"
+          className="bg-bg-secondary border border-border rounded-xl p-6 space-y-4"
           variants={staggerItemVariants}
         >
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">
-              Steps {steps.length > 0 && <span className="text-gray-500">({steps.length})</span>}
+            <div>
+              <h2 className="text-lg font-semibold text-text-primary">
+                Parameters {Object.keys(parameters).length > 0 && <span className="text-text-muted">({Object.keys(parameters).length})</span>}
+              </h2>
+              <p className="text-xs text-text-muted mt-0.5">
+                Expose configurable knobs that can be customized per-graph
+              </p>
+            </div>
+            <button
+              onClick={() => setShowAddParameter(!showAddParameter)}
+              className="flex items-center gap-1.5 text-sm text-accent-text hover:text-accent-hover transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Parameter
+            </button>
+          </div>
+
+          {/* Add Parameter Form */}
+          {showAddParameter && (
+            <div className="p-4 bg-bg-primary rounded-lg border border-border space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-text-muted mb-1.5">Parameter Name</label>
+                <input
+                  type="text"
+                  value={newParamName}
+                  onChange={(e) => setNewParamName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addParameter();
+                    }
+                  }}
+                  placeholder="e.g., temperature, maxTokens, model"
+                  className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+                />
+                <p className="text-xs text-text-disabled mt-1">
+                  Use in step configs as <code className="bg-bg-tertiary px-1 rounded">{'{{parameters.name}}'}</code>
+                </p>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setShowAddParameter(false)}
+                  className="px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addParameter}
+                  disabled={!newParamName.trim() || !!parameters[newParamName.trim().replace(/\s+/g, '_').toLowerCase()]}
+                  className="px-3 py-1.5 text-sm bg-accent hover:bg-accent-hover disabled:opacity-50 text-white rounded-lg"
+                >
+                  Add Parameter
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Parameters List */}
+          {Object.keys(parameters).length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Settings className="w-10 h-10 text-text-disabled mb-3" />
+              <p className="text-text-secondary text-sm">No parameters yet</p>
+              <p className="text-text-disabled text-xs mt-1">
+                Parameters let users customize your node without editing step configs
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {Object.entries(parameters).map(([key, param]) => (
+                <div key={key} className="border border-border rounded-lg overflow-hidden bg-bg-elevated">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-bg-primary border-b border-border">
+                    <button
+                      onClick={() => toggleParam(key)}
+                      className="flex-1 flex items-center gap-2 text-left"
+                    >
+                      <span className="text-sm font-medium text-text-primary font-mono">{key}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-bg-tertiary text-text-muted">{param.type}</span>
+                    </button>
+                    <button
+                      onClick={() => removeParameter(key)}
+                      className="p-1 text-text-disabled hover:text-red-400 transition-colors"
+                      title="Remove parameter"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => toggleParam(key)} className="p-1 text-text-muted">
+                      {expandedParams.has(key) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </button>
+                  </div>
+
+                  {expandedParams.has(key) && (
+                    <div className="p-4 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-text-muted mb-1.5">Type</label>
+                          <select
+                            value={param.type}
+                            onChange={(e) => {
+                              const newType = e.target.value as ParameterDefinition['type'];
+                              updateParameter(key, {
+                                type: newType,
+                                default: getDefaultForType(newType),
+                                enum: newType === 'select' ? [] : null,
+                                min: newType === 'number' ? null : undefined,
+                                max: newType === 'number' ? null : undefined,
+                              });
+                            }}
+                            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+                          >
+                            {PARAMETER_TYPES.map((t) => (
+                              <option key={t.type} value={t.type}>{t.label} - {t.description}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-text-muted mb-1.5">Default Value</label>
+                          {param.type === 'boolean' ? (
+                            <button
+                              type="button"
+                              onClick={() => updateParameter(key, { default: !param.default })}
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                param.default ? 'bg-accent' : 'bg-gray-700'
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                  param.default ? 'translate-x-6' : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                          ) : param.type === 'select' && param.enum && param.enum.length > 0 ? (
+                            <select
+                              value={String(param.default || '')}
+                              onChange={(e) => updateParameter(key, { default: e.target.value })}
+                              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+                            >
+                              <option value="">Select default...</option>
+                              {param.enum.map((opt, i) => (
+                                <option key={i} value={String(opt)}>{String(opt)}</option>
+                              ))}
+                            </select>
+                          ) : param.type === 'number' ? (
+                            <input
+                              type="number"
+                              value={param.default !== undefined ? Number(param.default) : 0}
+                              onChange={(e) => updateParameter(key, { default: parseFloat(e.target.value) || 0 })}
+                              min={param.min ?? undefined}
+                              max={param.max ?? undefined}
+                              step="any"
+                              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+                            />
+                          ) : param.type === 'json' ? (
+                            <textarea
+                              value={typeof param.default === 'string' ? param.default : JSON.stringify(param.default, null, 2)}
+                              onChange={(e) => {
+                                try {
+                                  const parsed = JSON.parse(e.target.value);
+                                  updateParameter(key, { default: parsed });
+                                } catch {
+                                  updateParameter(key, { default: e.target.value });
+                                }
+                              }}
+                              rows={2}
+                              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent font-mono text-xs resize-none"
+                              placeholder="{}"
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              value={String(param.default || '')}
+                              onChange={(e) => updateParameter(key, { default: e.target.value })}
+                              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+                              placeholder="Default value"
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      {param.type === 'number' && (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-text-muted mb-1.5">Min (optional)</label>
+                            <input
+                              type="number"
+                              value={param.min ?? ''}
+                              onChange={(e) => updateParameter(key, { min: e.target.value ? parseFloat(e.target.value) : null })}
+                              step="any"
+                              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+                              placeholder="No minimum"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-text-muted mb-1.5">Max (optional)</label>
+                            <input
+                              type="number"
+                              value={param.max ?? ''}
+                              onChange={(e) => updateParameter(key, { max: e.target.value ? parseFloat(e.target.value) : null })}
+                              step="any"
+                              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+                              placeholder="No maximum"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {param.type === 'select' && (
+                        <div>
+                          <label className="block text-xs font-medium text-text-muted mb-1.5">Options (one per line)</label>
+                          <textarea
+                            value={(param.enum || []).join('\n')}
+                            onChange={(e) => {
+                              const options = e.target.value.split('\n').filter(Boolean);
+                              updateParameter(key, { enum: options });
+                            }}
+                            rows={3}
+                            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent resize-none"
+                            placeholder="option1&#10;option2&#10;option3"
+                          />
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-xs font-medium text-text-muted mb-1.5">Description</label>
+                        <input
+                          type="text"
+                          value={param.description || ''}
+                          onChange={(e) => updateParameter(key, { description: e.target.value })}
+                          className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+                          placeholder="What does this parameter do?"
+                        />
+                      </div>
+
+                      <div className="bg-bg-tertiary rounded-lg p-3 text-xs text-text-muted">
+                        <p className="font-medium mb-1">Usage in step configs:</p>
+                        <code className="text-accent">{'{{parameters.' + key + '}}'}</code>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.section>
+
+        {/* Steps */}
+        <motion.section 
+          className="bg-bg-secondary border border-border rounded-xl p-6 space-y-4"
+          variants={staggerItemVariants}
+        >
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-text-primary">
+              Steps {steps.length > 0 && <span className="text-text-muted">({steps.length})</span>}
             </h2>
             <button
               onClick={() => setShowAddStep(!showAddStep)}
-              className="flex items-center gap-1.5 text-sm text-[#ef4444] hover:text-[#ff6b6b] transition-colors"
+              className="flex items-center gap-1.5 text-sm text-accent-text hover:text-accent-hover transition-colors"
             >
               <Plus className="w-4 h-4" />
               Add Step
@@ -755,7 +1085,7 @@ export default function CreateNodePage() {
 
           {/* Add Step Panel */}
           {showAddStep && (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 p-4 bg-[#0a0a0a] rounded-lg border border-[#2a2a2a]">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 p-4 bg-bg-primary rounded-lg border border-border">
               {STEP_TYPES.map((stepType) => {
                 const Icon = stepType.icon;
                 return (
@@ -765,7 +1095,7 @@ export default function CreateNodePage() {
                     className={`flex flex-col items-center gap-2 p-3 rounded-lg border ${stepType.bgColor} hover:bg-opacity-50 transition-colors`}
                   >
                     <Icon className={`w-5 h-5 ${stepType.color}`} />
-                    <span className="text-xs font-medium text-gray-300">{stepType.label}</span>
+                    <span className="text-xs font-medium text-text-secondary">{stepType.label}</span>
                   </button>
                 );
               })}
@@ -775,9 +1105,9 @@ export default function CreateNodePage() {
           {/* Steps List */}
           {steps.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Info className="w-12 h-12 text-gray-600 mb-3" />
-              <p className="text-gray-400 text-sm">No steps yet</p>
-              <p className="text-gray-600 text-xs mt-1">Click &quot;Add Step&quot; to begin building your node</p>
+              <Info className="w-12 h-12 text-text-disabled mb-3" />
+              <p className="text-text-secondary text-sm">No steps yet</p>
+              <p className="text-text-disabled text-xs mt-1">Click &quot;Add Step&quot; to begin building your node</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -804,11 +1134,11 @@ export default function CreateNodePage() {
           className="flex items-center justify-center gap-4 text-sm pb-24 md:pb-12"
           variants={staggerItemVariants}
         >
-          <Link href="/studio/nodes" className="text-gray-500 hover:text-gray-300 transition-colors">
+          <Link href="/studio/nodes" className="text-text-muted hover:text-text-secondary transition-colors">
             Browse Existing Nodes
           </Link>
           <span className="text-gray-700">•</span>
-          <Link href="/studio" className="text-gray-500 hover:text-gray-300 transition-colors">
+          <Link href="/studio" className="text-text-muted hover:text-text-secondary transition-colors">
             Back to Studio
           </Link>
         </motion.div>
@@ -845,15 +1175,15 @@ function StepEditor({
   const config = step.config;
 
   return (
-    <div className="border border-[#2a2a2a] rounded-lg overflow-hidden bg-[#0f0f0f]">
-      <div className="flex items-center gap-2 px-3 py-2 bg-[#0a0a0a] border-b border-[#2a2a2a]">
+    <div className="border border-border rounded-lg overflow-hidden bg-bg-elevated">
+      <div className="flex items-center gap-2 px-3 py-2 bg-bg-primary border-b border-border">
         <button
-          className="p-1 text-gray-600 hover:text-gray-400 cursor-grab"
+          className="p-1 text-text-disabled hover:text-text-secondary cursor-grab"
           title="Drag to reorder"
         >
           <GripVertical className="w-4 h-4" />
         </button>
-        <span className="text-xs text-gray-500 font-mono w-5">{index + 1}</span>
+        <span className="text-xs text-text-muted font-mono w-5">{index + 1}</span>
         <div className={`p-1.5 rounded ${stepInfo.bgColor}`}>
           <Icon className={`w-4 h-4 ${stepInfo.color}`} />
         </div>
@@ -861,14 +1191,14 @@ function StepEditor({
           onClick={onToggle}
           className="flex-1 flex items-center gap-2 text-left"
         >
-          <span className="text-sm font-medium text-gray-300">{stepInfo.label}</span>
-          <span className="text-xs text-gray-600">{stepInfo.description}</span>
+          <span className="text-sm font-medium text-text-secondary">{stepInfo.label}</span>
+          <span className="text-xs text-text-disabled">{stepInfo.description}</span>
         </button>
         <div className="flex items-center gap-1">
           <button
             onClick={() => onMove('up')}
             disabled={index === 0}
-            className="p-1 text-gray-600 hover:text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="p-1 text-text-disabled hover:text-text-secondary disabled:opacity-30 disabled:cursor-not-allowed"
             title="Move up"
           >
             <ChevronDown className="w-4 h-4 rotate-180" />
@@ -876,19 +1206,19 @@ function StepEditor({
           <button
             onClick={() => onMove('down')}
             disabled={index === total - 1}
-            className="p-1 text-gray-600 hover:text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="p-1 text-text-disabled hover:text-text-secondary disabled:opacity-30 disabled:cursor-not-allowed"
             title="Move down"
           >
             <ChevronDown className="w-4 h-4" />
           </button>
           <button
             onClick={onRemove}
-            className="p-1 text-gray-600 hover:text-red-400 transition-colors"
+            className="p-1 text-text-disabled hover:text-red-400 transition-colors"
             title="Remove step"
           >
             <Trash2 className="w-4 h-4" />
           </button>
-          <button onClick={onToggle} className="p-1 text-gray-500">
+          <button onClick={onToggle} className="p-1 text-text-muted">
             {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </button>
         </div>
@@ -902,7 +1232,7 @@ function StepEditor({
                 <select
                   value={String(config.neuronId || '')}
                   onChange={(e) => onUpdate('neuronId', e.target.value)}
-                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-purple-500"
+                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-purple-500"
                 >
                   <option value="">Select a neuron...</option>
                   {neurons.map((n) => (
@@ -913,21 +1243,21 @@ function StepEditor({
                 </select>
               </Field>
               <Field label="System Prompt">
-                <textarea
+                <SmartInput
                   value={String(config.systemPrompt || '')}
-                  onChange={(e) => onUpdate('systemPrompt', e.target.value)}
+                  onChange={(val) => onUpdate('systemPrompt', val)}
                   rows={3}
-                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-purple-500 resize-none"
+                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-purple-500 resize-none"
                   placeholder="Instructions for the AI..."
                 />
               </Field>
               <Field label="User Prompt">
-                <textarea
+                <SmartInput
                   value={String(config.userPrompt || '')}
-                  onChange={(e) => onUpdate('userPrompt', e.target.value)}
+                  onChange={(val) => onUpdate('userPrompt', val)}
                   rows={2}
-                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-purple-500 resize-none"
-                  placeholder="{{state.messages}}"
+                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-purple-500 resize-none"
+                  placeholder="{{state.data.query.message}}"
                 />
               </Field>
               <div className="grid grid-cols-2 gap-4">
@@ -939,7 +1269,7 @@ function StepEditor({
                     min={0}
                     max={1}
                     step={0.1}
-                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-purple-500"
+                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-purple-500"
                   />
                 </Field>
                 <Field label="Max Tokens">
@@ -949,7 +1279,7 @@ function StepEditor({
                     onChange={(e) => onUpdate('maxTokens', parseInt(e.target.value))}
                     min={100}
                     max={32000}
-                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-purple-500"
+                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-purple-500"
                   />
                 </Field>
               </div>
@@ -959,7 +1289,7 @@ function StepEditor({
                     type="text"
                     value={String(config.outputField || '')}
                     onChange={(e) => onUpdate('outputField', e.target.value)}
-                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-purple-500"
+                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-purple-500"
                     placeholder="response"
                   />
                 </Field>
@@ -986,33 +1316,10 @@ function StepEditor({
 
           {step.type === 'tool' && (
             <>
-              <Field label="Tool Name">
-                <input
-                  type="text"
-                  value={String(config.toolName || '')}
-                  onChange={(e) => onUpdate('toolName', e.target.value)}
-                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
-                  placeholder="mcp-tool-name"
-                />
-              </Field>
-              <Field label="Input Mapping">
-                <input
-                  type="text"
-                  value={String(config.inputMapping || '')}
-                  onChange={(e) => onUpdate('inputMapping', e.target.value)}
-                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
-                  placeholder="{{state.searchQuery}}"
-                />
-              </Field>
-              <Field label="Output Field">
-                <input
-                  type="text"
-                  value={String(config.outputField || '')}
-                  onChange={(e) => onUpdate('outputField', e.target.value)}
-                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
-                  placeholder="toolResult"
-                />
-              </Field>
+              <ToolStepEditor
+                config={config}
+                onUpdate={onUpdate}
+              />
             </>
           )}
 
@@ -1022,7 +1329,7 @@ function StepEditor({
                 <select
                   value={String(config.operation || 'set')}
                   onChange={(e) => onUpdate('operation', e.target.value)}
-                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-amber-500"
+                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500"
                 >
                   {['set', 'map', 'filter', 'select', 'parse-json', 'append', 'concat'].map((op) => (
                     <option key={op} value={op}>{op}</option>
@@ -1031,31 +1338,32 @@ function StepEditor({
               </Field>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Input Field">
-                  <input
-                    type="text"
+                  <SmartInput
                     value={String(config.inputField || '')}
-                    onChange={(e) => onUpdate('inputField', e.target.value)}
-                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-amber-500"
-                    placeholder="state.data"
+                    onChange={(val) => onUpdate('inputField', val)}
+                    singleLine
+                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500"
+                    placeholder="{{state.data.field}}"
                   />
                 </Field>
                 <Field label="Output Field">
-                  <input
-                    type="text"
+                  <SmartInput
                     value={String(config.outputField || '')}
-                    onChange={(e) => onUpdate('outputField', e.target.value)}
-                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-amber-500"
-                    placeholder="transformedData"
+                    onChange={(val) => onUpdate('outputField', val)}
+                    singleLine
+                    isOutput
+                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500"
+                    placeholder="data.result or globalState.namespace.key"
                   />
                 </Field>
               </div>
               {config.operation === 'set' && (
                 <Field label="Value">
-                  <input
-                    type="text"
+                  <SmartInput
                     value={String(config.value || '')}
-                    onChange={(e) => onUpdate('value', e.target.value)}
-                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-amber-500"
+                    onChange={(val) => onUpdate('value', val)}
+                    singleLine
+                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500"
                     placeholder="{{state.variable}}"
                   />
                 </Field>
@@ -1066,38 +1374,39 @@ function StepEditor({
           {step.type === 'conditional' && (
             <>
               <Field label="Condition">
-                <input
-                  type="text"
+                <SmartInput
                   value={String(config.condition || '')}
-                  onChange={(e) => onUpdate('condition', e.target.value)}
-                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-green-500"
+                  onChange={(val) => onUpdate('condition', val)}
+                  singleLine
+                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-green-500"
                   placeholder="state.value > 0"
                 />
               </Field>
               <Field label="Set Field">
-                <input
-                  type="text"
+                <SmartInput
                   value={String(config.setField || '')}
-                  onChange={(e) => onUpdate('setField', e.target.value)}
-                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-green-500"
+                  onChange={(val) => onUpdate('setField', val)}
+                  singleLine
+                  isOutput
+                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-green-500"
                   placeholder="result"
                 />
               </Field>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="True Value">
-                  <input
-                    type="text"
+                  <SmartInput
                     value={String(config.trueValue || '')}
-                    onChange={(e) => onUpdate('trueValue', e.target.value)}
-                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-green-500"
+                    onChange={(val) => onUpdate('trueValue', val)}
+                    singleLine
+                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-green-500"
                   />
                 </Field>
                 <Field label="False Value">
-                  <input
-                    type="text"
+                  <SmartInput
                     value={String(config.falseValue || '')}
-                    onChange={(e) => onUpdate('falseValue', e.target.value)}
-                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-green-500"
+                    onChange={(val) => onUpdate('falseValue', val)}
+                    singleLine
+                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-green-500"
                   />
                 </Field>
               </div>
@@ -1107,12 +1416,12 @@ function StepEditor({
           {step.type === 'loop' && (
             <>
               <Field label="Iterator Field">
-                <input
-                  type="text"
+                <SmartInput
                   value={String(config.iteratorField || '')}
-                  onChange={(e) => onUpdate('iteratorField', e.target.value)}
-                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-cyan-500"
-                  placeholder="state.items"
+                  onChange={(val) => onUpdate('iteratorField', val)}
+                  singleLine
+                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-cyan-500"
+                  placeholder="{{state.items}}"
                 />
               </Field>
               <div className="grid grid-cols-2 gap-4">
@@ -1123,24 +1432,211 @@ function StepEditor({
                     onChange={(e) => onUpdate('maxIterations', parseInt(e.target.value))}
                     min={1}
                     max={100}
-                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-cyan-500"
+                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-cyan-500"
                   />
                 </Field>
                 <Field label="Output Field">
-                  <input
-                    type="text"
+                  <SmartInput
                     value={String(config.outputField || '')}
-                    onChange={(e) => onUpdate('outputField', e.target.value)}
-                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-cyan-500"
+                    onChange={(val) => onUpdate('outputField', val)}
+                    singleLine
+                    isOutput
+                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-cyan-500"
                     placeholder="loopResults"
                   />
                 </Field>
               </div>
             </>
           )}
+
+          {/* Parameter Hint */}
+          <div className="mt-4 pt-4 border-t border-border">
+            <div className="flex items-start gap-2 text-xs text-text-muted">
+              <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-text-secondary mb-1">Use parameters in your config</p>
+                <p>Reference defined parameters with <code className="bg-bg-tertiary px-1 rounded text-accent">{'{{parameters.name}}'}</code></p>
+                <p className="mt-1">Access state with <code className="bg-bg-tertiary px-1 rounded text-accent">{'{{state.field}}'}</code></p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
+  );
+}
+
+// Tool Step Editor Component
+function ToolStepEditor({
+  config,
+  onUpdate,
+}: {
+  config: Record<string, unknown>;
+  onUpdate: (field: string, value: unknown) => void;
+}) {
+  const [showBrowser, setShowBrowser] = useState(false);
+  const [selectedToolSchema, setSelectedToolSchema] = useState<{
+    properties: Record<string, { type?: string; description?: string; enum?: string[] }>;
+    required?: string[];
+  } | null>(null);
+
+  // Parse existing parameters or inputMapping (for migration)
+  const getInputMappings = (): Record<string, string> => {
+    const mapping = config.parameters || config.inputMapping;
+    if (typeof mapping === 'object' && mapping !== null) {
+      return mapping as Record<string, string>;
+    }
+    if (typeof mapping === 'string' && mapping.trim()) {
+      // Legacy single string format - try to preserve it
+      return { _legacy: mapping };
+    }
+    return {};
+  };
+
+  const [inputMappings, setInputMappings] = useState<Record<string, string>>(getInputMappings());
+
+  const handleSelectTool = (toolName: string, toolInfo: any) => {
+    onUpdate('toolName', toolName);
+    if (toolInfo?.inputSchema) {
+      setSelectedToolSchema(toolInfo.inputSchema);
+      // Initialize empty mappings for each property
+      const newMappings: Record<string, string> = {};
+      Object.keys(toolInfo.inputSchema.properties || {}).forEach(key => {
+        newMappings[key] = inputMappings[key] || '';
+      });
+      setInputMappings(newMappings);
+      onUpdate('parameters', newMappings);
+    }
+    setShowBrowser(false);
+  };
+
+  const updateMapping = (param: string, value: string) => {
+    const newMappings = { ...inputMappings, [param]: value };
+    setInputMappings(newMappings);
+    onUpdate('parameters', newMappings);
+  };
+
+  const schemaProperties = selectedToolSchema?.properties || {};
+  const requiredParams = selectedToolSchema?.required || [];
+  const hasSchema = Object.keys(schemaProperties).length > 0;
+
+  return (
+    <>
+      <div className="space-y-4">
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-medium text-text-muted">Tool Name</label>
+            <button
+              type="button"
+              onClick={() => setShowBrowser(!showBrowser)}
+              className="text-xs text-accent hover:text-accent-hover transition-colors"
+            >
+              {showBrowser ? '← Collapse' : 'Browse Available →'}
+            </button>
+          </div>
+          <input
+            type="text"
+            value={String(config.toolName || '')}
+            onChange={(e) => onUpdate('toolName', e.target.value)}
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-blue-500"
+            placeholder="mcp-tool-name"
+          />
+        </div>
+
+        {/* Available Tools Browser */}
+        {showBrowser && (
+          <div className="p-4 bg-bg-primary border border-border rounded-lg">
+            <AvailableToolsBrowser
+              onSelectTool={handleSelectTool}
+              compact={true}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Tool Parameters - show schema-based inputs when available */}
+      {hasSchema ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-medium text-text-muted">Tool Parameters</label>
+            <span className="text-xs text-text-disabled">
+              {requiredParams.length > 0 ? `${requiredParams.length} required` : 'All optional'}
+            </span>
+          </div>
+          <div className="space-y-2 p-3 bg-bg-primary border border-border rounded-lg">
+            {Object.entries(schemaProperties).map(([param, schema]) => {
+              const isRequired = requiredParams.includes(param);
+              const paramSchema = schema as { type?: string; description?: string; enum?: string[] };
+              return (
+                <div key={param} className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-mono text-accent-text">
+                      {param}
+                      {isRequired && <span className="text-red-400 ml-0.5">*</span>}
+                    </label>
+                    {paramSchema.type && (
+                      <span className="text-xs text-text-disabled px-1.5 py-0.5 bg-bg-secondary rounded">
+                        {Array.isArray(paramSchema.type) ? paramSchema.type.join(' | ') : paramSchema.type}
+                      </span>
+                    )}
+                  </div>
+                  {paramSchema.description && (
+                    <p className="text-xs text-text-muted leading-relaxed">{paramSchema.description}</p>
+                  )}
+                  {paramSchema.enum ? (
+                    <select
+                      value={inputMappings[param] || ''}
+                      onChange={(e) => updateMapping(param, e.target.value)}
+                      className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent"
+                    >
+                      <option value="">Select or use template...</option>
+                      {paramSchema.enum.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={inputMappings[param] || ''}
+                      onChange={(e) => updateMapping(param, e.target.value)}
+                      placeholder={`{{state.${param}}} or literal value`}
+                      className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary placeholder-text-disabled focus:outline-none focus:border-accent"
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-text-disabled">
+            Use <code className="px-1 py-0.5 bg-bg-secondary rounded">{'{{state.field}}'}</code> to reference state, 
+            or <code className="px-1 py-0.5 bg-bg-secondary rounded">{'{{parameters.name}}'}</code> for node parameters.
+          </p>
+        </div>
+      ) : (
+        <Field label="Input Mapping">
+          <input
+            type="text"
+            value={typeof config.inputMapping === 'string' ? config.inputMapping : JSON.stringify(config.inputMapping || '')}
+            onChange={(e) => onUpdate('inputMapping', e.target.value)}
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-blue-500"
+            placeholder="{{state.searchQuery}}"
+          />
+          <p className="mt-1 text-xs text-text-disabled">
+            Select a tool above to see its parameters
+          </p>
+        </Field>
+      )}
+
+      <Field label="Output Field">
+        <input
+          type="text"
+          value={String(config.outputField || '')}
+          onChange={(e) => onUpdate('outputField', e.target.value)}
+          className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-blue-500"
+          placeholder="toolResult"
+        />
+      </Field>
+    </>
   );
 }
 
@@ -1148,7 +1644,7 @@ function StepEditor({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-500 mb-1.5">{label}</label>
+      <label className="block text-xs font-medium text-text-muted mb-1.5">{label}</label>
       {children}
     </div>
   );

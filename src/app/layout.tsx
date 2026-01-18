@@ -4,6 +4,7 @@ import "./globals.css";
 import SetVh from '@/components/layout/SetVh';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ConversationProvider } from '@/contexts/ConversationContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import PreventZoom from '@/components/layout/PreventZoom';
 import ServiceWorkerRegister from '@/components/layout/ServiceWorkerRegister';
 import InstallPrompt from '@/components/pwa/InstallPrompt';
@@ -50,7 +51,10 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
-  themeColor: '#ef4444',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
+  ],
 };
 
 export default function RootLayout({
@@ -59,7 +63,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
@@ -67,11 +71,13 @@ export default function RootLayout({
         <PreventZoom />
         <ServiceWorkerRegister />
         <InstallPrompt />
-        <AuthProvider>
-          <ConversationProvider>
-            {children}
-          </ConversationProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <ConversationProvider>
+              {children}
+            </ConversationProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

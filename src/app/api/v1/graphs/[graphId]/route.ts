@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/auth';
 import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
 import { RateLimits } from '@/lib/rate-limit/rate-limit';
-import { Graph} from '@redbtn/ai';
+import { Graph } from '@redbtn/ai';
 import connectToDatabase from '@/lib/database/mongodb';
+import { Automation } from '@/lib/database/models/automation/Automation';
 
 /**
  * Graph document type for lean queries
@@ -56,8 +57,36 @@ export async function GET(
       return NextResponse.json({ error: 'Graph not found' }, { status: 404 });
     }
 
-    // Check access (system graphs OR user's own graphs)
-    if (graph.userId !== 'system' && graph.userId !== user.userId) {
+    // Check access (system graphs OR user's own graphs OR graphs used by user's automations)
+    let hasAccess = graph.userId === 'system' || graph.userId === user.userId;
+    
+    // Also allow access if user has an automation that uses this graph
+    if (!hasAccess) {
+      const userAutomation = await Automation.findOne({ 
+        userId: user.userId, 
+        graphId: graphId
+      }).lean();
+      if (userAutomation) {
+        hasAccess = true;
+      }
+    }
+    
+    // For now, allow authenticated users to view any graph used in the system
+    // This is needed because automations may reference graphs from other users
+    if (!hasAccess) {
+      // Check if this graph is used by any automation at all
+      const anyAutomation = await Automation.findOne({ graphId: graphId }).lean();
+      if (anyAutomation) {
+        hasAccess = true;
+      }
+    }
+    
+    // Also allow access to any agent-type graph (they're designed to be shared)
+    if (!hasAccess && (graph as any).graphType === 'agent') {
+      hasAccess = true;
+    }
+    
+    if (!hasAccess) {
       return NextResponse.json(
         { error: 'Access denied - you can only view your own graphs or system graphs' },
         { status: 403 }
@@ -65,8 +94,10 @@ export async function GET(
     }
 
     // Check tier restriction
+    // Lower tier number = higher access level (tier 1 is highest, tier 4 is lowest/free)
+    // User can access graphs at their tier level or higher (higher number = lower tier)
     const userTier = user.accountLevel || 4;
-    if (graph.tier < userTier) {
+    if (userTier > graph.tier) {
       return NextResponse.json(
         { error: `This graph requires tier ${graph.tier} or higher (you have tier ${userTier})` },
         { status: 403 }
@@ -74,20 +105,40 @@ export async function GET(
     }
 
     // Return full graph details
+    // Convert Map to plain object for layout
+    const layoutObj: Record<string, { x: number; y: number }> = {};
+    if (graph.layout) {
+      // Handle both Map and plain object formats
+      if (graph.layout instanceof Map) {
+        graph.layout.forEach((pos: { x: number; y: number }, key: string) => {
+          layoutObj[key] = pos;
+        });
+      } else if (typeof graph.layout === 'object') {
+        Object.entries(graph.layout).forEach(([key, pos]) => {
+          layoutObj[key] = pos as { x: number; y: number };
+        });
+      }
+    }
+
     return NextResponse.json({
       graph: {
         graphId: graph.graphId,
         name: graph.name,
         description: graph.description,
+        graphType: (graph as any).graphType || 'agent',
         userId: graph.userId,
         tier: graph.tier,
         isDefault: graph.isDefault,
         isSystem: graph.isSystem || graph.userId === 'system',
         isImmutable: graph.isImmutable,
         isOwned: graph.userId === user.userId,
+        isPublic: (graph as any).isPublic || false,
+        tags: (graph as any).tags || [],
         parentGraphId: graph.parentGraphId,
+        forkedFrom: (graph as any).forkedFrom,
         nodes: graph.nodes,
         edges: graph.edges,
+        layout: layoutObj,
         version: graph.version,
         createdAt: graph.createdAt,
         updatedAt: graph.updatedAt,
@@ -141,7 +192,7 @@ export async function PATCH(
 
     const { graphId } = await params;
     const body = await request.json();
-    const { name, description, nodes, edges, tier, newGraphId } = body;
+    const { name, description, nodes, edges, tier, newGraphId, layout, graphType, isPublic, tags } = body;
 
     // Load graph
     const graph = await Graph.findOne({ graphId });
@@ -179,6 +230,10 @@ export async function PATCH(
       if (nodes !== undefined) graph.nodes = nodes;
       if (edges !== undefined) graph.edges = edges;
       if (tier !== undefined) graph.tier = tier;
+      if (layout !== undefined) (graph as any).layout = layout;
+      if (graphType !== undefined) (graph as any).graphType = graphType;
+      if (isPublic !== undefined) (graph as any).isPublic = isPublic;
+      if (tags !== undefined) (graph as any).tags = tags;
 
       await graph.save();
 
@@ -210,6 +265,10 @@ export async function PATCH(
         if (nodes !== undefined) existingClone.nodes = nodes;
         if (edges !== undefined) existingClone.edges = edges;
         if (tier !== undefined) existingClone.tier = tier;
+        if (layout !== undefined) (existingClone as any).layout = layout;
+        if (graphType !== undefined) (existingClone as any).graphType = graphType;
+        if (isPublic !== undefined) (existingClone as any).isPublic = isPublic;
+        if (tags !== undefined) (existingClone as any).tags = tags;
 
         await existingClone.save();
 
@@ -227,14 +286,18 @@ export async function PATCH(
         graphId: clonedGraphId,
         name: name || `${graph.name} (Custom)`,
         description: description || graph.description,
+        graphType: graphType || (graph as any).graphType || 'agent',
         userId: user.userId,
         tier: tier || graph.tier,
         isDefault: false,
         isSystem: false,
         isImmutable: false,
+        isPublic: isPublic ?? (graph as any).isPublic ?? false,
+        tags: tags || (graph as any).tags || [],
         parentGraphId: graphId,
         nodes: nodes || graph.nodes,
         edges: edges || graph.edges,
+        layout: layout || (graph as any).layout || {},
         version: '1.0.0',
         config: graph.config,
         neuronAssignments: graph.neuronAssignments,

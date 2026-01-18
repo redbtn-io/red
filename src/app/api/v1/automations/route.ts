@@ -62,6 +62,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Graph not found' }, { status: 404 });
     }
 
+    // Automations can only use workflow graphs, not agent graphs
+    if (graph.graphType !== 'workflow') {
+      return NextResponse.json(
+        { error: 'Automations can only use workflow graphs. Agent graphs are designed for interactive chat and cannot be used in automations.' },
+        { status: 400 }
+      );
+    }
+
     // Check graph ownership or if it's a public/default graph
     if (graph.userId && graph.userId !== user.userId && !graph.isDefault) {
       return NextResponse.json(

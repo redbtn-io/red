@@ -688,7 +688,7 @@ export default function LibraryDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-full bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-full bg-bg-primary flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-red-500" />
       </div>
     );
@@ -696,10 +696,10 @@ export default function LibraryDetailPage() {
 
   if (error || !library) {
     return (
-      <div className="min-h-full bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-full bg-bg-primary flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">
+          <h2 className="text-xl font-bold text-text-primary mb-2">
             {error || 'Library not found'}
           </h2>
           <Link
@@ -717,14 +717,14 @@ export default function LibraryDetailPage() {
 
   return (
     <motion.div
-      className="min-h-full bg-[#0a0a0a] text-white"
+      className="min-h-full bg-bg-primary text-text-primary"
       variants={pageVariants}
       initial="initial"
       animate="animate"
       exit="exit"
     >
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-[#1a1a1a]">
+      <div className="sticky top-0 z-10 bg-bg-primary/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-7xl mx-auto px-4 py-4">
           {/* Top row: Back button, library info, action buttons */}
           <div className="flex flex-col gap-3 mb-4">
@@ -732,7 +732,7 @@ export default function LibraryDetailPage() {
             <div className="flex items-center gap-3 min-w-0">
               <Link
                 href="/knowledge"
-                className="p-2 hover:bg-[#1a1a1a] rounded-lg transition-colors shrink-0"
+                className="p-2 hover:bg-bg-secondary rounded-lg transition-colors shrink-0"
               >
                 <ArrowLeft size={20} />
               </Link>
@@ -741,11 +741,11 @@ export default function LibraryDetailPage() {
                   className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
                   style={{ backgroundColor: library.color || '#ef4444' }}
                 >
-                  <FolderOpen size={20} className="text-white" />
+                  <FolderOpen size={20} className="text-text-primary" />
                 </div>
                 <div className="min-w-0">
                   <h1 className="text-xl font-bold truncate">{library.name}</h1>
-                  <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-400 flex-wrap">
+                  <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-text-secondary flex-wrap">
                     <AccessIcon size={14} className="shrink-0" />
                     <span className="capitalize">{library.access}</span>
                     <span className="hidden md:inline">•</span>
@@ -762,28 +762,28 @@ export default function LibraryDetailPage() {
                 <div className="hidden md:flex items-center gap-2 shrink-0">
                   <button
                     onClick={handleExportLibrary}
-                    className="p-2 hover:bg-[#1a1a1a] rounded-lg transition-colors text-gray-400 hover:text-white"
+                    className="p-2 hover:bg-bg-secondary rounded-lg transition-colors text-text-secondary hover:text-text-primary"
                     title="Export Library"
                   >
                     <Download size={18} />
                   </button>
                   <button
                     onClick={openSettings}
-                    className="p-2 hover:bg-[#1a1a1a] rounded-lg transition-colors text-gray-400 hover:text-white"
+                    className="p-2 hover:bg-bg-secondary rounded-lg transition-colors text-text-secondary hover:text-text-primary"
                     title="Library Settings"
                   >
                     <Settings size={18} />
                   </button>
                   <button
                     onClick={() => setShowDeleteLibrary(true)}
-                    className="p-2 hover:bg-[#1a1a1a] rounded-lg transition-colors text-gray-400 hover:text-red-500"
+                    className="p-2 hover:bg-bg-secondary rounded-lg transition-colors text-text-secondary hover:text-red-500"
                     title="Delete Library"
                   >
                     <Trash2 size={18} />
                   </button>
                   <button
                     onClick={() => setShowAddDocument(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
                   >
                     <Plus size={18} />
                     Add Document
@@ -796,28 +796,28 @@ export default function LibraryDetailPage() {
               <div className="flex md:hidden items-center gap-2">
                 <button
                   onClick={handleExportLibrary}
-                  className="p-2 hover:bg-[#1a1a1a] rounded-lg transition-colors text-gray-400 hover:text-white"
+                  className="p-2 hover:bg-bg-secondary rounded-lg transition-colors text-text-secondary hover:text-text-primary"
                   title="Export Library"
                 >
                   <Download size={18} />
                 </button>
                 <button
                   onClick={openSettings}
-                  className="p-2 hover:bg-[#1a1a1a] rounded-lg transition-colors text-gray-400 hover:text-white"
+                  className="p-2 hover:bg-bg-secondary rounded-lg transition-colors text-text-secondary hover:text-text-primary"
                   title="Library Settings"
                 >
                   <Settings size={18} />
                 </button>
                 <button
                   onClick={() => setShowDeleteLibrary(true)}
-                  className="p-2 hover:bg-[#1a1a1a] rounded-lg transition-colors text-gray-400 hover:text-red-500"
+                  className="p-2 hover:bg-bg-secondary rounded-lg transition-colors text-text-secondary hover:text-red-500"
                   title="Delete Library"
                 >
                   <Trash2 size={18} />
                 </button>
                 <button
                   onClick={() => setShowAddDocument(true)}
-                  className="flex items-center gap-2 px-3 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors ml-auto"
+                  className="flex items-center gap-2 px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors ml-auto"
                 >
                   <Plus size={18} />
                   <span>Add</span>
@@ -829,20 +829,20 @@ export default function LibraryDetailPage() {
           {/* Search Bar */}
           <div className="flex gap-2 md:gap-3">
             <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder="Search..."
-                className="w-full pl-10 pr-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-red-500/50 text-sm md:text-base"
+                className="w-full pl-10 pr-4 py-2 bg-bg-secondary border border-border rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:border-red-500/50 text-sm md:text-base"
               />
             </div>
             <button
               onClick={handleSearch}
               disabled={searching || !searchQuery.trim()}
-              className="px-3 md:px-4 py-2 bg-[#1a1a1a] hover:bg-[#2a2a2a] disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2 shrink-0"
+              className="px-3 md:px-4 py-2 bg-bg-secondary hover:bg-bg-tertiary disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2 shrink-0"
             >
               {searching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
               <span className="hidden md:inline">Search</span>
@@ -863,12 +863,12 @@ export default function LibraryDetailPage() {
               className="mb-6"
             >
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-400">
+                <h3 className="text-sm font-medium text-text-secondary">
                   {searchResults.length} results {searchTime && `(${searchTime}ms)`}
                 </h3>
                 <button
                   onClick={() => { setSearchResults([]); setSearchQuery(''); }}
-                  className="text-xs text-gray-500 hover:text-white"
+                  className="text-xs text-text-muted hover:text-text-primary"
                 >
                   Clear
                 </button>
@@ -877,7 +877,7 @@ export default function LibraryDetailPage() {
                 {searchResults.map((result, idx) => (
                   <div
                     key={`${result.id}-${idx}`}
-                    className="p-4 bg-[#111] border border-[#2a2a2a] rounded-lg hover:border-[#3a3a3a] transition-colors cursor-pointer"
+                    className="p-4 bg-bg-elevated border border-border rounded-lg hover:border-border-hover transition-colors cursor-pointer"
                     onClick={() => {
                       // Find and view the source document
                       const doc = library.documents.find(d => d.documentId === result.metadata?.documentId);
@@ -890,16 +890,16 @@ export default function LibraryDetailPage() {
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{result.metadata?.title || 'Unknown Document'}</span>
                         {result.metadata?.chunkIndex !== undefined && result.metadata?.totalChunks && (
-                          <span className="text-xs text-gray-600">
+                          <span className="text-xs text-text-disabled">
                             (chunk {result.metadata.chunkIndex + 1}/{result.metadata.totalChunks})
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-text-muted">
                         {(result.score * 100).toFixed(1)}% match
                       </span>
                     </div>
-                    <p className="text-sm text-gray-400 line-clamp-3">{result.text}</p>
+                    <p className="text-sm text-text-secondary line-clamp-3">{result.text}</p>
                   </div>
                 ))}
               </div>
@@ -909,22 +909,22 @@ export default function LibraryDetailPage() {
 
         {/* Documents Grid */}
         <div className="mb-4">
-          <h3 className="text-sm font-medium text-gray-400 mb-3">
+          <h3 className="text-sm font-medium text-text-secondary mb-3">
             Documents ({library.documents.length})
           </h3>
         </div>
 
         {library.documents.length === 0 ? (
           <div className="text-center py-12">
-            <FileText className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-400 mb-2">No documents yet</h3>
-            <p className="text-gray-500 text-sm mb-4">
+            <FileText className="w-12 h-12 text-text-disabled mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-text-secondary mb-2">No documents yet</h3>
+            <p className="text-text-muted text-sm mb-4">
               Add documents to start building your knowledge base
             </p>
             {library.canWrite && (
               <button
                 onClick={() => setShowAddDocument(true)}
-                className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
               >
                 Add Your First Document
               </button>
@@ -943,7 +943,7 @@ export default function LibraryDetailPage() {
                 return (
                   <motion.div
                     key={doc.documentId}
-                    className="p-3 md:p-4 bg-[#111] border border-[#2a2a2a] rounded-lg hover:border-red-500/50 transition-colors group cursor-pointer"
+                    className="p-3 md:p-4 bg-bg-elevated border border-border rounded-lg hover:border-red-500/50 transition-colors group cursor-pointer"
                     variants={staggerItemVariants}
                     onClick={() => fetchDocumentChunks(doc)}
                   >
@@ -954,19 +954,19 @@ export default function LibraryDetailPage() {
                             ? 'bg-amber-500/10'
                             : doc.processingStatus === 'failed'
                             ? 'bg-red-500/10'
-                            : 'bg-[#1a1a1a] group-hover:bg-red-500/10'
+                            : 'bg-bg-secondary group-hover:bg-red-500/10'
                         }`}>
                           {doc.processingStatus === 'pending' || doc.processingStatus === 'processing' ? (
                             <Loader2 size={16} className="text-amber-400 animate-spin" />
                           ) : doc.processingStatus === 'failed' ? (
                             <AlertCircle size={16} className="text-red-400" />
                           ) : (
-                            <SourceIcon size={16} className="text-gray-400 group-hover:text-red-400 transition-colors" />
+                            <SourceIcon size={16} className="text-text-secondary group-hover:text-red-400 transition-colors" />
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
                           <h4 className="font-medium text-sm md:text-base truncate group-hover:text-red-400 transition-colors">{doc.title}</h4>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-text-muted">
                             {doc.processingStatus === 'pending' || doc.processingStatus === 'processing' ? (
                               <span className="text-amber-400">Processing OCR...</span>
                             ) : doc.processingStatus === 'failed' ? (
@@ -981,14 +981,14 @@ export default function LibraryDetailPage() {
                         <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                           <button
                             onClick={(e) => { e.stopPropagation(); handleExportDocument(doc); }}
-                            className="p-1.5 hover:bg-[#2a2a2a] rounded transition-all text-gray-400 hover:text-blue-400"
+                            className="p-1.5 hover:bg-bg-tertiary rounded transition-all text-text-secondary hover:text-blue-400"
                             title="Export Document"
                           >
                             <Download size={14} />
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); openCloneModal(doc); }}
-                            className="p-1.5 hover:bg-[#2a2a2a] rounded transition-all text-gray-400 hover:text-green-400"
+                            className="p-1.5 hover:bg-bg-tertiary rounded transition-all text-text-secondary hover:text-green-400"
                             title="Clone to Library"
                           >
                             <Copy size={14} />
@@ -996,7 +996,7 @@ export default function LibraryDetailPage() {
                           <button
                             onClick={(e) => { e.stopPropagation(); setDeleteConfirmDoc(doc); }}
                             disabled={deletingDocId === doc.documentId}
-                            className="p-1.5 hover:bg-[#2a2a2a] rounded transition-all text-gray-400 hover:text-red-500"
+                            className="p-1.5 hover:bg-bg-tertiary rounded transition-all text-text-secondary hover:text-red-500"
                             title="Delete Document"
                           >
                             {deletingDocId === doc.documentId ? (
@@ -1008,7 +1008,7 @@ export default function LibraryDetailPage() {
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 md:gap-4 text-xs text-gray-500">
+                    <div className="flex items-center gap-3 md:gap-4 text-xs text-text-muted">
                       {doc.processingStatus === 'pending' || doc.processingStatus === 'processing' ? (
                         <span className="text-amber-400/70">Extracting text from image...</span>
                       ) : (
@@ -1020,7 +1020,7 @@ export default function LibraryDetailPage() {
                       )}
                     </div>
                     {doc.source && (
-                      <p className="mt-1 md:mt-2 text-xs text-gray-600 truncate">{doc.source}</p>
+                      <p className="mt-1 md:mt-2 text-xs text-text-disabled truncate">{doc.source}</p>
                     )}
                   </motion.div>
                 );
@@ -1033,7 +1033,7 @@ export default function LibraryDetailPage() {
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="p-2 hover:bg-[#1a1a1a] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2 hover:bg-bg-secondary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ChevronLeft size={18} />
                 </button>
@@ -1045,7 +1045,7 @@ export default function LibraryDetailPage() {
                       className={`w-8 h-8 rounded-lg transition-colors ${
                         currentPage === page
                           ? 'bg-red-500 text-white'
-                          : 'hover:bg-[#1a1a1a] text-gray-400'
+                          : 'hover:bg-bg-secondary text-text-secondary'
                       }`}
                     >
                       {page}
@@ -1055,7 +1055,7 @@ export default function LibraryDetailPage() {
                 <button
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="p-2 hover:bg-[#1a1a1a] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2 hover:bg-bg-secondary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ChevronRight size={18} />
                 </button>
@@ -1070,24 +1070,24 @@ export default function LibraryDetailPage() {
         {showAddDocument && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <motion.div
-              className="bg-[#111] border border-[#2a2a2a] rounded-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col"
+              className="bg-bg-elevated border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
             >
               {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-[#2a2a2a]">
+              <div className="flex items-center justify-between p-6 border-b border-border">
                 <h2 className="text-xl font-bold">Add Document</h2>
                 <button
                   onClick={() => { setShowAddDocument(false); setAddError(null); }}
-                  className="p-2 hover:bg-[#2a2a2a] rounded-lg transition-colors"
+                  className="p-2 hover:bg-bg-tertiary rounded-lg transition-colors"
                 >
                   <X size={20} />
                 </button>
               </div>
 
               {/* Mode Tabs */}
-              <div className="flex border-b border-[#2a2a2a]">
+              <div className="flex border-b border-border">
                 {[
                   { mode: 'text' as const, label: 'Text', icon: Type },
                   { mode: 'url' as const, label: 'URL', icon: Globe },
@@ -1099,7 +1099,7 @@ export default function LibraryDetailPage() {
                     className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm transition-colors ${
                       addMode === mode
                         ? 'text-red-500 border-b-2 border-red-500'
-                        : 'text-gray-400 hover:text-white'
+                        : 'text-text-secondary hover:text-text-primary'
                     }`}
                   >
                     <Icon size={16} />
@@ -1120,7 +1120,7 @@ export default function LibraryDetailPage() {
                 {/* Title (for text and url modes) */}
                 {addMode !== 'file' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-text-secondary mb-2">
                       Document Title <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -1128,7 +1128,7 @@ export default function LibraryDetailPage() {
                       value={addForm.title}
                       onChange={(e) => setAddForm(f => ({ ...f, title: e.target.value }))}
                       placeholder="Enter document title"
-                      className="w-full px-4 py-3 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-red-500/50"
+                      className="w-full px-4 py-3 bg-bg-primary border border-border rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:border-red-500/50"
                     />
                   </div>
                 )}
@@ -1136,7 +1136,7 @@ export default function LibraryDetailPage() {
                 {/* Text Mode */}
                 {addMode === 'text' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-text-secondary mb-2">
                       Content <span className="text-red-500">*</span>
                     </label>
                     <textarea
@@ -1144,9 +1144,9 @@ export default function LibraryDetailPage() {
                       onChange={(e) => setAddForm(f => ({ ...f, content: e.target.value }))}
                       placeholder="Paste or type your content here..."
                       rows={10}
-                      className="w-full px-4 py-3 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-red-500/50 resize-none font-mono text-sm"
+                      className="w-full px-4 py-3 bg-bg-primary border border-border rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:border-red-500/50 resize-none font-mono text-sm"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-text-muted mt-1">
                       {addForm.content.length.toLocaleString()} characters
                     </p>
                   </div>
@@ -1155,7 +1155,7 @@ export default function LibraryDetailPage() {
                 {/* URL Mode */}
                 {addMode === 'url' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-text-secondary mb-2">
                       URL <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -1163,9 +1163,9 @@ export default function LibraryDetailPage() {
                       value={addForm.url}
                       onChange={(e) => setAddForm(f => ({ ...f, url: e.target.value }))}
                       placeholder="https://example.com/article"
-                      className="w-full px-4 py-3 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-red-500/50"
+                      className="w-full px-4 py-3 bg-bg-primary border border-border rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:border-red-500/50"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-text-muted mt-1">
                       We&apos;ll fetch and extract text content from this URL
                     </p>
                   </div>
@@ -1193,28 +1193,28 @@ export default function LibraryDetailPage() {
                       <button
                         onClick={() => fileInputRef.current?.click()}
                         disabled={adding}
-                        className="w-full p-8 border-2 border-dashed border-[#2a2a2a] rounded-lg hover:border-red-500/50 transition-colors flex flex-col items-center gap-3"
+                        className="w-full p-8 border-2 border-dashed border-border rounded-lg hover:border-red-500/50 transition-colors flex flex-col items-center gap-3"
                       >
                         {adding ? (
                           <>
-                            <Loader2 size={32} className="text-gray-400 animate-spin" />
-                            <span className="text-gray-400">Processing {uploadingFile?.name}...</span>
+                            <Loader2 size={32} className="text-text-secondary animate-spin" />
+                            <span className="text-text-secondary">Processing {uploadingFile?.name}...</span>
                           </>
                         ) : (
                           <>
-                            <Upload size={32} className="text-gray-400" />
-                            <span className="text-gray-400">Click to select a file</span>
-                            <span className="text-xs text-gray-600">
+                            <Upload size={32} className="text-text-secondary" />
+                            <span className="text-text-secondary">Click to select a file</span>
+                            <span className="text-xs text-text-disabled">
                               Supports TXT, MD, PDF, DOC, DOCX, JPG, PNG
                             </span>
                           </>
                         )}
                       </button>
-                      <div className="text-center text-sm text-gray-500">or</div>
+                      <div className="text-center text-sm text-text-muted">or</div>
                       <button
                         onClick={() => document.getElementById('bulk-file-input')?.click()}
                         disabled={adding}
-                        className="w-full p-4 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg hover:border-green-500/50 hover:bg-green-500/5 transition-colors flex items-center justify-center gap-2 text-gray-400 hover:text-green-400"
+                        className="w-full p-4 bg-bg-secondary border border-border rounded-lg hover:border-green-500/50 hover:bg-green-500/5 transition-colors flex items-center justify-center gap-2 text-text-secondary hover:text-green-400"
                       >
                         <Plus size={18} />
                         Bulk Upload Multiple Files
@@ -1226,10 +1226,10 @@ export default function LibraryDetailPage() {
 
               {/* Footer */}
               {addMode !== 'file' && (
-                <div className="p-6 border-t border-[#2a2a2a] flex gap-3">
+                <div className="p-6 border-t border-border flex gap-3">
                   <button
                     onClick={() => { setShowAddDocument(false); setAddError(null); }}
-                    className="flex-1 py-3 bg-[#1a1a1a] hover:bg-[#2a2a2a] rounded-lg transition-colors"
+                    className="flex-1 py-3 bg-bg-secondary hover:bg-bg-tertiary rounded-lg transition-colors"
                     disabled={adding}
                   >
                     Cancel
@@ -1237,7 +1237,7 @@ export default function LibraryDetailPage() {
                   <button
                     onClick={handleAddDocument}
                     disabled={adding}
-                    className="flex-1 py-3 bg-red-500 hover:bg-red-600 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
                     {adding ? (
                       <>
@@ -1273,7 +1273,7 @@ export default function LibraryDetailPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col"
+              className="relative bg-bg-primary border border-border rounded-xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col"
             >
               {/* Preview Badge */}
               <div className="px-6 pt-4">
@@ -1293,19 +1293,19 @@ export default function LibraryDetailPage() {
               </div>
 
               {/* Header */}
-              <div className="p-6 pb-4 border-b border-[#2a2a2a]">
+              <div className="p-6 pb-4 border-b border-border">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex-1 min-w-0 pr-4">
                     <h2 className="text-xl font-semibold truncate text-center">{selectedDocument.title}</h2>
                   </div>
                   <button
                     onClick={() => setSelectedDocument(null)}
-                    className="p-2 hover:bg-[#2a2a2a] rounded-lg transition-colors flex-shrink-0"
+                    className="p-2 hover:bg-bg-tertiary rounded-lg transition-colors flex-shrink-0"
                   >
                     <X size={20} />
                   </button>
                 </div>
-                <div className="flex items-center justify-center gap-4 text-sm text-gray-500">
+                <div className="flex items-center justify-center gap-4 text-sm text-text-muted">
                   {selectedDocument.processingStatus === 'pending' || selectedDocument.processingStatus === 'processing' ? (
                     <span className="flex items-center gap-2 text-amber-400">
                       <Loader2 size={14} className="animate-spin" />
@@ -1332,11 +1332,11 @@ export default function LibraryDetailPage() {
               <div className="flex-1 overflow-y-auto p-6">
                 {loadingChunks ? (
                   <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
-                    <span className="ml-3 text-gray-500">Loading document chunks...</span>
+                    <Loader2 className="w-8 h-8 animate-spin text-text-muted" />
+                    <span className="ml-3 text-text-muted">Loading document chunks...</span>
                   </div>
                 ) : documentChunks.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
+                  <div className="text-center py-12 text-text-muted">
                     <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No chunks found for this document</p>
                   </div>
@@ -1345,17 +1345,17 @@ export default function LibraryDetailPage() {
                     {documentChunks.map((chunk, idx) => (
                       <div
                         key={chunk.id}
-                        className="p-4 bg-[#111] border border-[#2a2a2a] rounded-lg"
+                        className="p-4 bg-bg-elevated border border-border rounded-lg"
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-text-muted">
                             Chunk {chunk.chunkIndex + 1} of {documentChunks.length}
                           </span>
-                          <span className="text-xs text-gray-600">
+                          <span className="text-xs text-text-disabled">
                             {chunk.text.length.toLocaleString()} chars
                           </span>
                         </div>
-                        <p className="text-sm text-gray-300 whitespace-pre-wrap">
+                        <p className="text-sm text-text-secondary whitespace-pre-wrap">
                           {chunk.text}
                         </p>
                       </div>
@@ -1365,18 +1365,18 @@ export default function LibraryDetailPage() {
               </div>
 
               {/* Footer */}
-              <div className="p-4 border-t border-[#2a2a2a] flex items-center justify-between text-sm text-gray-500">
+              <div className="p-4 border-t border-border flex items-center justify-between text-sm text-text-muted">
                 <span>Added {formatDate(selectedDocument.addedAt)}</span>
                 <div className="flex items-center gap-2">
                   <Link
                     href={`/knowledge/${libraryId}/documents/${selectedDocument.documentId}`}
-                    className="px-4 py-2 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded-lg transition-colors font-medium"
+                    className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors font-medium"
                   >
                     View
                   </Link>
                   <button
                     onClick={() => setSelectedDocument(null)}
-                    className="px-4 py-2 bg-[#1a1a1a] hover:bg-[#2a2a2a] rounded-lg transition-colors"
+                    className="px-4 py-2 bg-bg-secondary hover:bg-bg-tertiary rounded-lg transition-colors"
                   >
                     Close
                   </button>
@@ -1402,7 +1402,7 @@ export default function LibraryDetailPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl w-full max-w-md overflow-hidden"
+              className="relative bg-bg-primary border border-border rounded-xl w-full max-w-md overflow-hidden"
             >
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-4">
@@ -1411,24 +1411,24 @@ export default function LibraryDetailPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold">Delete Document</h3>
-                    <p className="text-sm text-gray-500">This action cannot be undone</p>
+                    <p className="text-sm text-text-muted">This action cannot be undone</p>
                   </div>
                 </div>
-                <p className="text-gray-400 mb-6">
-                  Are you sure you want to delete <span className="text-white font-medium">{deleteConfirmDoc.title}</span>?
+                <p className="text-text-secondary mb-6">
+                  Are you sure you want to delete <span className="text-text-primary font-medium">{deleteConfirmDoc.title}</span>?
                   This will remove all {deleteConfirmDoc.chunkCount} chunks from the vector store.
                 </p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setDeleteConfirmDoc(null)}
-                    className="flex-1 py-3 bg-[#1a1a1a] hover:bg-[#2a2a2a] rounded-lg transition-colors"
+                    className="flex-1 py-3 bg-bg-secondary hover:bg-bg-tertiary rounded-lg transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={() => handleDeleteDocument(deleteConfirmDoc.documentId)}
                     disabled={deletingDocId === deleteConfirmDoc.documentId}
-                    className="flex-1 py-3 bg-red-500 hover:bg-red-600 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
                     {deletingDocId === deleteConfirmDoc.documentId ? (
                       <>
@@ -1464,35 +1464,35 @@ export default function LibraryDetailPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl w-full max-w-md overflow-hidden"
+              className="relative bg-bg-primary border border-border rounded-xl w-full max-w-md overflow-hidden"
             >
-              <div className="p-6 border-b border-[#2a2a2a]">
+              <div className="p-6 border-b border-border">
                 <h3 className="text-lg font-semibold">Library Settings</h3>
-                <p className="text-sm text-gray-500">Update library name, description, and access</p>
+                <p className="text-sm text-text-muted">Update library name, description, and access</p>
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">Name</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Name</label>
                   <input
                     type="text"
                     value={settingsForm.name}
                     onChange={(e) => setSettingsForm(f => ({ ...f, name: e.target.value }))}
-                    className="w-full px-4 py-3 bg-[#111] border border-[#2a2a2a] rounded-lg focus:outline-none focus:border-red-500 transition-colors"
+                    className="w-full px-4 py-3 bg-bg-elevated border border-border rounded-lg focus:outline-none focus:border-red-500 transition-colors"
                     placeholder="Library name"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">Description</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Description</label>
                   <textarea
                     value={settingsForm.description}
                     onChange={(e) => setSettingsForm(f => ({ ...f, description: e.target.value }))}
-                    className="w-full px-4 py-3 bg-[#111] border border-[#2a2a2a] rounded-lg focus:outline-none focus:border-red-500 transition-colors resize-none"
+                    className="w-full px-4 py-3 bg-bg-elevated border border-border rounded-lg focus:outline-none focus:border-red-500 transition-colors resize-none"
                     placeholder="Optional description"
                     rows={3}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">Access Level</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Access Level</label>
                   <div className="grid grid-cols-3 gap-2">
                     {([
                       { value: 'private' as const, label: 'Private', icon: Lock },
@@ -1505,7 +1505,7 @@ export default function LibraryDetailPage() {
                         className={`p-3 rounded-lg border transition-colors flex flex-col items-center gap-2 ${
                           settingsForm.access === value
                             ? 'border-red-500 bg-red-500/10 text-red-400'
-                            : 'border-[#2a2a2a] hover:border-[#3a3a3a] text-gray-400'
+                            : 'border-border hover:border-border-hover text-text-secondary'
                         }`}
                       >
                         <Icon size={18} />
@@ -1515,17 +1515,17 @@ export default function LibraryDetailPage() {
                   </div>
                 </div>
               </div>
-              <div className="p-6 border-t border-[#2a2a2a] flex gap-3">
+              <div className="p-6 border-t border-border flex gap-3">
                 <button
                   onClick={() => setShowSettings(false)}
-                  className="flex-1 py-3 bg-[#1a1a1a] hover:bg-[#2a2a2a] rounded-lg transition-colors"
+                  className="flex-1 py-3 bg-bg-secondary hover:bg-bg-tertiary rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveSettings}
                   disabled={savingSettings || !settingsForm.name.trim()}
-                  className="flex-1 py-3 bg-red-500 hover:bg-red-600 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
                   {savingSettings ? (
                     <>
@@ -1560,7 +1560,7 @@ export default function LibraryDetailPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-[#0a0a0a] border border-red-500/50 rounded-xl w-full max-w-md overflow-hidden"
+              className="relative bg-bg-primary border border-red-500/50 rounded-xl w-full max-w-md overflow-hidden"
             >
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-4">
@@ -1569,7 +1569,7 @@ export default function LibraryDetailPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-red-400">Delete Library</h3>
-                    <p className="text-sm text-gray-500">This action is permanent</p>
+                    <p className="text-sm text-text-muted">This action is permanent</p>
                   </div>
                 </div>
                 <div className="p-4 bg-red-500/5 border border-red-500/20 rounded-lg mb-4">
@@ -1581,20 +1581,20 @@ export default function LibraryDetailPage() {
                     <li>{library.totalChunks} vector chunks</li>
                   </ul>
                 </div>
-                <p className="text-gray-400 text-sm mb-6">
+                <p className="text-text-secondary text-sm mb-6">
                   This will remove all documents and their vectors from the database. This cannot be undone.
                 </p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowDeleteLibrary(false)}
-                    className="flex-1 py-3 bg-[#1a1a1a] hover:bg-[#2a2a2a] rounded-lg transition-colors"
+                    className="flex-1 py-3 bg-bg-secondary hover:bg-bg-tertiary rounded-lg transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleDeleteLibrary}
                     disabled={deletingLibrary}
-                    className="flex-1 py-3 bg-red-500 hover:bg-red-600 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
                     {deletingLibrary ? (
                       <>
@@ -1630,23 +1630,23 @@ export default function LibraryDetailPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl w-full max-w-md overflow-hidden"
+              className="relative bg-bg-primary border border-border rounded-xl w-full max-w-md overflow-hidden"
             >
-              <div className="p-6 border-b border-[#2a2a2a]">
+              <div className="p-6 border-b border-border">
                 <h3 className="text-lg font-semibold">Clone Document</h3>
-                <p className="text-sm text-gray-500">Copy "{cloneDoc.title}" to another library</p>
+                <p className="text-sm text-text-muted">Copy "{cloneDoc.title}" to another library</p>
               </div>
               <div className="p-6">
-                <label className="block text-sm font-medium text-gray-400 mb-2">Target Library</label>
+                <label className="block text-sm font-medium text-text-secondary mb-2">Target Library</label>
                 {availableLibraries.length === 0 ? (
-                  <p className="text-sm text-gray-500 p-4 bg-[#111] rounded-lg text-center">
+                  <p className="text-sm text-text-muted p-4 bg-bg-elevated rounded-lg text-center">
                     No other libraries available
                   </p>
                 ) : (
                   <select
                     value={cloneTargetLibrary}
                     onChange={(e) => setCloneTargetLibrary(e.target.value)}
-                    className="w-full px-4 py-3 bg-[#111] border border-[#2a2a2a] rounded-lg focus:outline-none focus:border-red-500 transition-colors"
+                    className="w-full px-4 py-3 bg-bg-elevated border border-border rounded-lg focus:outline-none focus:border-red-500 transition-colors"
                   >
                     <option value="">Select a library...</option>
                     {availableLibraries.map((lib) => (
@@ -1657,10 +1657,10 @@ export default function LibraryDetailPage() {
                   </select>
                 )}
               </div>
-              <div className="p-6 border-t border-[#2a2a2a] flex gap-3">
+              <div className="p-6 border-t border-border flex gap-3">
                 <button
                   onClick={() => setCloneDoc(null)}
-                  className="flex-1 py-3 bg-[#1a1a1a] hover:bg-[#2a2a2a] rounded-lg transition-colors"
+                  className="flex-1 py-3 bg-bg-secondary hover:bg-bg-tertiary rounded-lg transition-colors"
                 >
                   Cancel
                 </button>

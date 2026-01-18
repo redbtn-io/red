@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, ChevronDown, Check } from 'lucide-react';
+import { Bot, ChevronDown, Check, Star } from 'lucide-react';
 
 interface AgentGraph {
   graphId: string;
@@ -17,6 +17,7 @@ interface AgentSelectorProps {
   agents: AgentGraph[];
   selectedGraphId: string | null;
   onSelectGraph: (graphId: string) => void;
+  onSetDefault?: (graphId: string) => void;
   disabled?: boolean;
   loading?: boolean;
 }
@@ -24,7 +25,8 @@ interface AgentSelectorProps {
 export function AgentSelector({ 
   agents, 
   selectedGraphId, 
-  onSelectGraph, 
+  onSelectGraph,
+  onSetDefault,
   disabled = false,
   loading = false 
 }: AgentSelectorProps) {
@@ -88,17 +90,17 @@ export function AgentSelector({
         disabled={disabled || loading}
         className={`
           flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg text-sm
-          border border-[#2a2a2a] bg-[#1a1a1a] 
-          hover:bg-[#252525] hover:border-[#3a3a3a]
+          border border-border bg-bg-secondary 
+          hover:bg-bg-tertiary hover:border-border-hover
           transition-colors
           ${disabled || loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         `}
       >
         <Bot className="w-4 h-4 text-purple-500 flex-shrink-0" />
-        <span className="text-gray-300 hidden sm:inline max-w-[120px] truncate">
+        <span className="text-text-secondary hidden sm:inline max-w-[120px] truncate">
           {loading ? 'Loading...' : selectedAgent?.name || 'Select Agent'}
         </span>
-        <ChevronDown className={`w-3 h-3 sm:w-4 sm:h-4 text-gray-500 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3 h-3 sm:w-4 sm:h-4 text-text-muted transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       
       {mounted && createPortal(
@@ -117,33 +119,61 @@ export function AgentSelector({
                 exit={{ opacity: 0, y: -5, scale: 0.95 }}
                 transition={{ duration: 0.15 }}
                 style={{ top: dropdownPosition.top, left: dropdownPosition.left }}
-                className="fixed z-[9999] min-w-[180px] max-w-[240px] bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl overflow-hidden"
+                className="fixed z-[9999] min-w-[180px] max-w-[240px] bg-bg-secondary border border-border rounded-lg shadow-xl overflow-hidden"
               >
                 <div className="max-h-[200px] overflow-y-auto py-1">
                   {agents.map((agent) => (
-                    <button
+                    <div
                       key={agent.graphId}
-                      onClick={() => {
-                        onSelectGraph(agent.graphId);
-                        setIsOpen(false);
-                      }}
                       className={`
-                        w-full flex items-center gap-2 px-3 py-2 text-left
-                        hover:bg-[#252525] transition-colors
-                        ${agent.graphId === selectedGraphId ? 'bg-[#252525]' : ''}
+                        w-full flex items-center gap-2 px-3 py-2
+                        hover:bg-bg-tertiary transition-colors
+                        ${agent.graphId === selectedGraphId ? 'bg-bg-tertiary' : ''}
                       `}
                     >
-                      <Bot className="w-4 h-4 text-purple-500 flex-shrink-0" />
-                      <span className="text-sm text-white truncate flex-1">{agent.name}</span>
-                      {agent.isDefault && (
-                        <span className="text-[10px] px-1 py-0.5 rounded bg-[#ef4444]/20 text-[#ef4444] flex-shrink-0">
-                          Default
-                        </span>
+                      {/* Set as default button */}
+                      {onSetDefault && (
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            if (!agent.isDefault) {
+                              onSetDefault(agent.graphId);
+                            }
+                          }}
+                          className={`
+                            flex-shrink-0 p-0.5 rounded transition-colors
+                            ${agent.isDefault 
+                              ? 'text-amber-500 cursor-default' 
+                              : 'text-text-muted hover:text-amber-500'
+                            }
+                          `}
+                          title={agent.isDefault ? 'Current default' : 'Set as default'}
+                        >
+                          <Star className={`w-3.5 h-3.5 ${agent.isDefault ? 'fill-amber-500' : ''}`} />
+                        </button>
                       )}
-                      {agent.graphId === selectedGraphId && (
-                        <Check className="w-4 h-4 text-[#ef4444] flex-shrink-0" />
-                      )}
-                    </button>
+                      
+                      {/* Agent select button */}
+                      <button
+                        onClick={() => {
+                          onSelectGraph(agent.graphId);
+                          setIsOpen(false);
+                        }}
+                        className="flex-1 flex items-center gap-2 text-left min-w-0"
+                      >
+                        <Bot className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                        <span className="text-sm text-text-primary truncate flex-1">{agent.name}</span>
+                        {agent.graphId === selectedGraphId && (
+                          <Check className="w-4 h-4 text-accent-text flex-shrink-0" />
+                        )}
+                      </button>
+                    </div>
                   ))}
                 </div>
               </motion.div>

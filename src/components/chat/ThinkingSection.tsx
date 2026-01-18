@@ -79,7 +79,7 @@ export function ThinkingSection({ thinkingExecutions, isContentStreaming = false
   const status = getOverallStatus();
 
   return (
-    <div className="p-6 border-b border-[#2a2a2a]">
+    <div className="p-6 border-b border-border">
       {/* Header - Clickable to expand/collapse */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -94,10 +94,10 @@ export function ThinkingSection({ thinkingExecutions, isContentStreaming = false
             )}
           </div>
           <div>
-            <h3 className="text-lg font-medium text-white flex items-center gap-2">
+            <h3 className="text-lg font-medium text-text-primary flex items-center gap-2">
               AI Reasoning
               {totalDuration > 0 && !hasRunningThinking && (
-                <span className="text-sm text-gray-500 font-normal">
+                <span className="text-sm text-text-muted font-normal">
                   ({formatDuration(totalDuration)})
                 </span>
               )}
@@ -107,7 +107,7 @@ export function ThinkingSection({ thinkingExecutions, isContentStreaming = false
                 {status.label}
               </span>
               {thinkingExecutions.length > 1 && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-text-muted">
                   • {thinkingExecutions.length} steps
                 </span>
               )}
@@ -116,7 +116,7 @@ export function ThinkingSection({ thinkingExecutions, isContentStreaming = false
         </div>
 
         {/* Expand/Collapse Icon */}
-        <div className="text-gray-400">
+        <div className="text-text-secondary">
           {isExpanded ? (
             <ChevronDown className="w-5 h-5" />
           ) : (
@@ -132,15 +132,15 @@ export function ThinkingSection({ thinkingExecutions, isContentStreaming = false
           {allThinkingContent && (
             <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-4">
               <div className="prose prose-invert max-w-none prose-sm
-                prose-p:my-2 prose-p:leading-relaxed prose-p:text-gray-300
+                prose-p:my-2 prose-p:leading-relaxed prose-p:text-text-secondary
                 prose-pre:bg-black/40 prose-pre:border prose-pre:border-white/10 prose-pre:my-2
                 prose-code:text-purple-400 prose-code:bg-black/30 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm
                 prose-a:text-purple-400 prose-a:underline
-                prose-strong:text-white prose-strong:font-semibold
-                prose-em:text-gray-300 prose-em:italic
-                prose-headings:text-white prose-headings:font-bold prose-headings:mt-3 prose-headings:mb-2
-                prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-li:text-gray-300
-                prose-blockquote:border-l-4 prose-blockquote:border-purple-500/50 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-gray-400">
+                prose-strong:text-text-primary prose-strong:font-semibold
+                prose-em:text-text-secondary prose-em:italic
+                prose-headings:text-text-primary prose-headings:font-bold prose-headings:mt-3 prose-headings:mb-2
+                prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-li:text-text-secondary
+                prose-blockquote:border-l-4 prose-blockquote:border-purple-500/50 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-text-secondary">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkMath]}
                   rehypePlugins={[rehypeKatex]}
@@ -154,7 +154,7 @@ export function ThinkingSection({ thinkingExecutions, isContentStreaming = false
           {/* Individual Thinking Steps (if multiple) */}
           {thinkingExecutions.length > 1 && (
             <div className="space-y-2">
-              <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <h4 className="text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Reasoning Steps
               </h4>
               <div className="space-y-2">
@@ -166,9 +166,9 @@ export function ThinkingSection({ thinkingExecutions, isContentStreaming = false
                     <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-purple-400 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-300">Step {index + 1}</span>
+                        <span className="text-text-secondary">Step {index + 1}</span>
                         {execution.duration !== undefined && (
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-text-muted">
                             ({formatDuration(execution.duration)})
                           </span>
                         )}
@@ -186,7 +186,7 @@ export function ThinkingSection({ thinkingExecutions, isContentStreaming = false
                               return null;
                             }
                             return (
-                              <p key={stepIndex} className="text-xs text-gray-400">
+                              <p key={stepIndex} className="text-xs text-text-secondary">
                                 {String(step.step)}
                               </p>
                             );
@@ -216,7 +216,7 @@ export function ThinkingSection({ thinkingExecutions, isContentStreaming = false
             <div className="flex items-center justify-center py-8 text-center">
               <div className="space-y-3">
                 <Loader2 className="w-8 h-8 text-purple-400 animate-spin mx-auto" />
-                <p className="text-sm text-gray-400">AI is reasoning through the problem...</p>
+                <p className="text-sm text-text-secondary">AI is reasoning through the problem...</p>
               </div>
             </div>
           )}

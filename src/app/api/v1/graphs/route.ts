@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Parse request body
     const body = await request.json();
-    const { name, description, nodes, edges, tier, graphType } = body;
+    const { name, description, nodes, edges, tier, graphType, layout, isPublic, tags } = body;
 
     // 3. Validate required fields
     if (!name || !nodes || !edges) {
@@ -61,13 +61,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Check tier enforcement
+    // 4. Tier enforcement
+    // Tier system: 1 = admin/premium, 4 = free. Lower number = higher access.
+    // Users can only create graphs at their tier level or higher (higher number = lower tier)
     const userTier = user.accountLevel || 4;
-    const graphTier = tier || userTier;
+    // Default to user's tier level - users create graphs at their own tier
+    const graphTier = tier ?? userTier;
     
+    // User cannot create graphs that require higher access than they have
     if (graphTier < userTier) {
       return NextResponse.json(
-        { error: `Tier ${graphTier} requires account level ${graphTier} or higher (you have tier ${userTier})` },
+        { error: `Cannot create tier ${graphTier} graph - your account is tier ${userTier}` },
         { status: 403 }
       );
     }
@@ -93,9 +97,12 @@ export async function POST(request: NextRequest) {
       graphType: graphType || 'agent', // Default to agent if not specified
       nodes,
       edges,
+      layout: layout || {},
       tier: graphTier,
       version: '1.0.0',
       isDefault: false,
+      isPublic: isPublic || false,
+      tags: tags || [],
     };
 
     // 8. Save to MongoDB

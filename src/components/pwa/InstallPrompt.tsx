@@ -98,23 +98,23 @@ export default function InstallPrompt() {
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 50 }}
-        className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50"
+        className="fixed bottom-safe left-4 right-4 md:left-auto md:right-4 md:w-80 z-[60]"
       >
-        <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden">
+        <div className="bg-bg-secondary border border-border rounded-xl shadow-2xl overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between p-3 border-b border-gray-700">
+          <div className="flex items-center justify-between p-3 border-b border-border">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
                 <Download size={16} className="text-white" />
               </div>
-              <span className="font-semibold text-white text-sm">Install redbtn</span>
+              <span className="font-semibold text-text-primary text-sm">Install redbtn</span>
             </div>
             <button
               onClick={handleDismiss}
-              className="p-1 hover:bg-gray-700 rounded-lg transition-colors"
+              className="p-1 hover:bg-bg-tertiary rounded-lg transition-colors"
               aria-label="Dismiss"
             >
-              <X size={18} className="text-gray-400" />
+              <X size={18} className="text-text-secondary" />
             </button>
           </div>
 
@@ -123,28 +123,28 @@ export default function InstallPrompt() {
             {isIOS ? (
               // iOS instructions
               <div className="space-y-3">
-                <p className="text-gray-300 text-sm">
+                <p className="text-text-secondary text-sm">
                   Install this app on your device for quick access:
                 </p>
                 <div className="space-y-2">
-                  <div className="flex items-center gap-3 text-sm text-gray-400">
-                    <div className="w-6 h-6 bg-gray-700 rounded flex items-center justify-center shrink-0">
+                  <div className="flex items-center gap-3 text-sm text-text-secondary">
+                    <div className="w-6 h-6 bg-bg-tertiary rounded flex items-center justify-center shrink-0">
                       <Share size={14} className="text-blue-400" />
                     </div>
-                    <span>Tap the <strong className="text-white">Share</strong> button</span>
+                    <span>Tap the <strong className="text-text-primary">Share</strong> button</span>
                   </div>
-                  <div className="flex items-center gap-3 text-sm text-gray-400">
-                    <div className="w-6 h-6 bg-gray-700 rounded flex items-center justify-center shrink-0">
+                  <div className="flex items-center gap-3 text-sm text-text-secondary">
+                    <div className="w-6 h-6 bg-bg-tertiary rounded flex items-center justify-center shrink-0">
                       <Plus size={14} className="text-blue-400" />
                     </div>
-                    <span>Select <strong className="text-white">Add to Home Screen</strong></span>
+                    <span>Select <strong className="text-text-primary">Add to Home Screen</strong></span>
                   </div>
                 </div>
               </div>
             ) : deferredPrompt ? (
               // Chrome/Edge with native install
               <div className="space-y-3">
-                <p className="text-gray-300 text-sm">
+                <p className="text-text-secondary text-sm">
                   Get quick access with offline support
                 </p>
                 <button
@@ -158,10 +158,10 @@ export default function InstallPrompt() {
             ) : (
               // Generic browser instructions
               <div className="space-y-2">
-                <p className="text-gray-300 text-sm">
+                <p className="text-text-secondary text-sm">
                   Install this app for a better experience:
                 </p>
-                <p className="text-gray-400 text-xs">
+                <p className="text-text-secondary text-xs">
                   Look for the install icon in your browser&apos;s address bar or menu.
                 </p>
               </div>

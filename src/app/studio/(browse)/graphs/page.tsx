@@ -20,7 +20,9 @@ import {
   Lock,
   User,
   Shield,
-  Zap
+  Zap,
+  MessageSquare,
+  Bot
 } from 'lucide-react';
 import { 
   pageVariants, 
@@ -28,13 +30,14 @@ import {
   staggerItemVariants,
   fadeUpVariants,
 } from '@/lib/animations';
-import { ErrorModal } from '@/components/ui/Modal';
+import { ErrorModal, ConfirmModal } from '@/components/ui/Modal';
 
 interface GraphInfo {
   graphId: string;
   name: string;
   description?: string;
   tier: number;
+  graphType?: 'agent' | 'workflow';
   isDefault: boolean;
   isSystem: boolean;
   isImmutable?: boolean;
@@ -50,12 +53,17 @@ interface GraphInfo {
   tags?: string[];
 }
 
+const GRAPH_TYPE_LABELS: Record<string, { label: string; color: string; icon: typeof Workflow }> = {
+  agent: { label: 'Agent', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30', icon: MessageSquare },
+  workflow: { label: 'Workflow', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30', icon: Workflow },
+};
+
 const TIER_LABELS: Record<number, { label: string; color: string }> = {
   0: { label: 'Admin', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
   1: { label: 'Ultimate', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
   2: { label: 'Advanced', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   3: { label: 'Basic', color: 'bg-green-500/20 text-green-400 border-green-500/30' },
-  4: { label: 'Free', color: 'bg-gray-500/20 text-gray-400 border-gray-500/30' },
+  4: { label: 'Free', color: 'bg-gray-500/20 text-text-secondary border-gray-500/30' },
 };
 
 export default function GraphsPage() {
@@ -64,6 +72,7 @@ export default function GraphsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'mine' | 'system'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'agent' | 'workflow'>('all');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const fetchGraphs = useCallback(async () => {
@@ -85,9 +94,15 @@ export default function GraphsPage() {
 
   // Filter and search
   const filteredGraphs = graphs.filter((g) => {
-    // Filter
+    // Ownership filter
     if (filter === 'mine' && g.isSystem) return false;
     if (filter === 'system' && !g.isSystem) return false;
+    
+    // Type filter
+    if (typeFilter !== 'all') {
+      const gType = g.graphType || 'agent'; // Default to agent
+      if (gType !== typeFilter) return false;
+    }
     
     // Search
     if (searchQuery) {
@@ -107,7 +122,7 @@ export default function GraphsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+        <Loader2 className="w-8 h-8 text-text-secondary animate-spin" />
       </div>
     );
   }
@@ -129,31 +144,57 @@ export default function GraphsPage() {
       animate="animate"
     >
       {/* Search & Filter */}
-      <motion.div className="flex flex-col sm:flex-row gap-3" variants={fadeUpVariants}>
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-          <input
-            type="text"
-            placeholder="Search graphs..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg pl-10 pr-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#ef4444]"
-          />
+      <motion.div className="flex flex-col gap-3" variants={fadeUpVariants}>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+            <input
+              type="text"
+              placeholder="Search graphs..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-bg-secondary border border-border rounded-lg pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+            />
+          </div>
+          <div className="flex gap-2">
+            {(['all', 'mine', 'system'] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                  filter === f
+                    ? 'bg-accent/10 text-accent-text border border-accent/30'
+                    : 'bg-bg-secondary text-text-secondary border border-border hover:text-text-primary hover:border-border-hover'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
         </div>
+        
+        {/* Type Filter */}
         <div className="flex gap-2">
-          {(['all', 'mine', 'system'] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-                filter === f
-                  ? 'bg-[#ef4444]/10 text-[#ef4444] border border-[#ef4444]/30'
-                  : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a] hover:text-white hover:border-[#3a3a3a]'
-              }`}
-            >
-              {f}
-            </button>
-          ))}
+          {(['all', 'agent', 'workflow'] as const).map((t) => {
+            const typeInfo = t === 'all' ? null : GRAPH_TYPE_LABELS[t];
+            const Icon = typeInfo?.icon || Bot;
+            return (
+              <button
+                key={t}
+                onClick={() => setTypeFilter(t)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                  typeFilter === t
+                    ? t === 'all' 
+                      ? 'bg-accent/10 text-accent-text border border-accent/30'
+                      : `${typeInfo?.color}`
+                    : 'bg-bg-secondary text-text-secondary border border-border hover:text-text-primary hover:border-border-hover'
+                }`}
+              >
+                {t !== 'all' && <Icon className="w-3 h-3" />}
+                {t === 'all' ? 'All Types' : typeInfo?.label}
+              </button>
+            );
+          })}
         </div>
       </motion.div>
 
@@ -167,7 +208,7 @@ export default function GraphsPage() {
           animate="animate"
           exit="exit"
         >
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+          <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">
             System Graphs
           </h3>
           <motion.div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -194,7 +235,7 @@ export default function GraphsPage() {
           initial="initial"
           animate="animate"
         >
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+          <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">
             Your Graphs
           </h3>
           <motion.div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -222,9 +263,9 @@ export default function GraphsPage() {
           initial="initial"
           animate="animate"
         >
-          <Workflow className="w-16 h-16 text-gray-600 mb-4" />
-          <h3 className="text-lg font-medium text-gray-300 mb-2">No graphs found</h3>
-          <p className="text-gray-500 text-sm max-w-sm">
+          <Workflow className="w-16 h-16 text-text-disabled mb-4" />
+          <h3 className="text-lg font-medium text-text-secondary mb-2">No graphs found</h3>
+          <p className="text-text-muted text-sm max-w-sm">
             {searchQuery 
               ? 'Try a different search term'
               : 'Create your first graph to get started'}
@@ -232,7 +273,7 @@ export default function GraphsPage() {
           {!searchQuery && (
             <Link
               href="/studio"
-              className="mt-4 flex items-center gap-2 px-4 py-2 bg-[#ef4444] text-white rounded-lg hover:bg-[#dc2626] transition-colors font-medium text-sm"
+              className="mt-4 flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors font-medium text-sm"
             >
               <Plus className="w-4 h-4" />
               Create Graph
@@ -258,10 +299,13 @@ function GraphCard({
   onDelete?: () => void;
 }) {
   const tierInfo = TIER_LABELS[graph.tier] || TIER_LABELS[4];
+  const graphTypeInfo = GRAPH_TYPE_LABELS[graph.graphType || 'agent'];
+  const TypeIcon = graphTypeInfo.icon;
   const isMenuOpen = openMenuId === graph.graphId;
   const [forking, setForking] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Determine ownership status
   const isEditable = graph.isOwned && !graph.isImmutable && !graph.isSystem;
@@ -291,10 +335,6 @@ function GraphCard({
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete "${graph.name}"? This cannot be undone.`)) {
-      return;
-    }
-    
     setDeleting(true);
     try {
       const response = await fetch(`/api/v1/graphs/${graph.graphId}`, {
@@ -312,24 +352,29 @@ function GraphCard({
       setDeleteError('Failed to delete graph');
     } finally {
       setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
   return (
-    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5 hover:border-[#3a3a3a] transition-colors group relative">
+    <div className="bg-bg-secondary border border-border rounded-xl p-5 hover:border-border-hover transition-colors group relative">
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-            graph.isSystem ? 'bg-[#ef4444]/10' : 'bg-blue-500/10'
+            graph.isSystem ? 'bg-accent/10' : 'bg-blue-500/10'
           }`}>
-            <Workflow className={`w-5 h-5 ${graph.isSystem ? 'text-[#ef4444]' : 'text-blue-400'}`} />
+            <Workflow className={`w-5 h-5 ${graph.isSystem ? 'text-accent-text' : 'text-blue-400'}`} />
           </div>
           <div>
-            <h4 className="font-semibold text-white group-hover:text-[#ef4444] transition-colors">
+            <h4 className="font-semibold text-text-primary group-hover:text-accent-text transition-colors">
               {graph.name}
             </h4>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border flex items-center gap-1 ${graphTypeInfo.color}`}>
+                <TypeIcon className="w-3 h-3" />
+                {graphTypeInfo.label}
+              </span>
               <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${tierInfo.color}`}>
                 {tierInfo.label}
               </span>
@@ -359,7 +404,7 @@ function GraphCard({
               e.preventDefault();
               onMenuToggle(isMenuOpen ? null : graph.graphId);
             }}
-            className="p-1.5 rounded-lg hover:bg-[#2a2a2a] text-gray-400 hover:text-white transition-colors"
+            className="p-1.5 rounded-lg hover:bg-bg-tertiary text-text-secondary hover:text-text-primary transition-colors"
           >
             <MoreHorizontal className="w-4 h-4" />
           </button>
@@ -370,10 +415,10 @@ function GraphCard({
                 className="fixed inset-0 z-40" 
                 onClick={() => onMenuToggle(null)} 
               />
-              <div className="absolute right-0 top-full mt-1 w-44 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl z-50 py-1">
+              <div className="absolute right-0 top-full mt-1 w-44 bg-bg-secondary border border-border rounded-lg shadow-xl z-50 py-1">
                 <Link
                   href={`/studio/${graph.graphId}`}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-[#2a2a2a] hover:text-white"
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
                   onClick={() => onMenuToggle(null)}
                 >
                   <ExternalLink className="w-4 h-4" />
@@ -381,7 +426,7 @@ function GraphCard({
                 </Link>
                 <Link
                   href={`/automations/new?graphId=${graph.graphId}`}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-[#ef4444] hover:bg-[#ef4444]/10"
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-accent-text hover:bg-accent/10"
                   onClick={() => onMenuToggle(null)}
                 >
                   <Zap className="w-4 h-4" />
@@ -407,17 +452,17 @@ function GraphCard({
                 {/* Edit options - only for owned, non-system, non-immutable graphs */}
                 {isEditable && (
                   <>
-                    <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-[#2a2a2a] hover:text-white">
+                    <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary hover:text-text-primary">
                       <Pencil className="w-4 h-4" />
                       Rename
                     </button>
-                    <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-[#2a2a2a] hover:text-white">
+                    <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary hover:text-text-primary">
                       <Copy className="w-4 h-4" />
                       Duplicate
                     </button>
-                    <hr className="my-1 border-[#2a2a2a]" />
+                    <hr className="my-1 border-border" />
                     <button 
-                      onClick={handleDelete}
+                      onClick={() => { onMenuToggle(null); setShowDeleteConfirm(true); }}
                       disabled={deleting}
                       className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 disabled:opacity-50"
                     >
@@ -437,12 +482,12 @@ function GraphCard({
       </div>
 
       {/* Description */}
-      <p className="text-sm text-gray-400 line-clamp-2 mb-4">
+      <p className="text-sm text-text-secondary line-clamp-2 mb-4">
         {graph.description || 'No description'}
       </p>
 
       {/* Stats */}
-      <div className="flex items-center gap-4 text-xs text-gray-500">
+      <div className="flex items-center gap-4 text-xs text-text-muted">
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-blue-400" />
           {graph.nodeCount} nodes
@@ -460,14 +505,14 @@ function GraphCard({
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#2a2a2a]">
-        <span className="text-xs text-gray-500 flex items-center gap-1">
+      <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+        <span className="text-xs text-text-muted flex items-center gap-1">
           <Clock className="w-3 h-3" />
           {new Date(graph.updatedAt).toLocaleDateString()}
         </span>
         <Link
           href={`/studio/${graph.graphId}`}
-          className="text-xs text-[#ef4444] hover:text-[#f87171] font-medium"
+          className="text-xs text-accent-text hover:text-accent-hover font-medium"
         >
           Open →
         </Link>
@@ -477,6 +522,17 @@ function GraphCard({
         isOpen={!!deleteError}
         onClose={() => setDeleteError(null)}
         message={deleteError || ''}
+      />
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="Delete Graph"
+        message={`Are you sure you want to delete "${graph.name}"? This cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
       />
     </div>
   );

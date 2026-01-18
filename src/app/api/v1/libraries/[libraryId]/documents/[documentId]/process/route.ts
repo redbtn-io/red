@@ -6,12 +6,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { VectorStoreManager, DocumentParser } from '@redbtn/ai';
+import { verifyAuth } from '@/lib/auth/auth';
 import mongoose from 'mongoose';
 import { GridFSBucket, ObjectId } from 'mongodb';
 import connectToDatabase from '@/lib/database/mongodb';
 
 interface LibraryDocument {
   libraryId: string;
+  userId: string;
   vectorCollection: string;
   chunkSize: number;
   chunkOverlap: number;
@@ -28,6 +30,12 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ libraryId: string; documentId: string }> }
 ) {
+  // Verify authentication
+  const user = await verifyAuth(request);
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { libraryId, documentId } = await params;
   
   console.log(`[Process API] Starting OCR for document ${documentId} in library ${libraryId}`);
@@ -44,6 +52,11 @@ export async function POST(
 
     if (!library) {
       return NextResponse.json({ error: 'Library not found' }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (library.userId && library.userId !== user.userId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const docRecord = library.documents.find(d => d.documentId === documentId);

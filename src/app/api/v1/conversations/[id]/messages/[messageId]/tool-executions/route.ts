@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '@redbtn/ai';
+import { verifyAuth } from '@/lib/auth/auth';
 
 /**
  * POST /api/v1/conversations/[id]/messages/[messageId]/tool-executions
@@ -12,6 +13,12 @@ export async function POST(
   { params }: { params: Promise<{ id: string; messageId: string }> }
 ) {
   try {
+    // Verify authentication
+    const user = await verifyAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id: conversationId, messageId } = await params;
     
     if (!conversationId || !messageId) {
@@ -19,6 +26,13 @@ export async function POST(
         { error: 'Conversation ID and message ID are required' },
         { status: 400 }
       );
+    }
+
+    // Verify ownership
+    const db = getDatabase();
+    const conversation = await db.getConversation(conversationId);
+    if (conversation?.userId && conversation.userId !== user.userId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -34,8 +48,6 @@ export async function POST(
     console.log(`[API] Updating message ${messageId} with ${toolExecutions.length} tool executions`);
 
     // Update the message in the database with tool execution data
-    const db = getDatabase();
-
     const updatePayload = { $set: { toolExecutions } } as const;
 
     let updateApplied = false;

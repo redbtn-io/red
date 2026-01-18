@@ -230,43 +230,43 @@ function CanvasContextMenu({ x, y, onClose, onSelectMode, onFitView, onSelectAll
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 bg-[#1a1a1a] border border-[#333] rounded-lg shadow-xl py-1 min-w-[160px]"
+      className="fixed z-50 bg-bg-secondary border border-border-hover rounded-lg shadow-xl py-1 min-w-[160px]"
       style={{ left: x, top: y }}
     >
       <button
         onClick={() => { onSelectMode(); onClose(); }}
-        className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-[#2a2a2a] flex items-center gap-2"
+        className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-bg-tertiary flex items-center gap-2"
       >
         <MousePointer2 className="w-4 h-4" />
         Select Mode
-        <span className="ml-auto text-[10px] text-gray-500">Box select</span>
+        <span className="ml-auto text-[10px] text-text-muted">Box select</span>
       </button>
       <button
         onClick={() => { onSelectAll(); onClose(); }}
-        className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-[#2a2a2a] flex items-center gap-2"
+        className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-bg-tertiary flex items-center gap-2"
       >
         <Copy className="w-4 h-4" />
         Select All
-        <span className="ml-auto text-[10px] text-gray-500">⌘A</span>
+        <span className="ml-auto text-[10px] text-text-muted">⌘A</span>
       </button>
-      <div className="border-t border-[#333] my-1" />
+      <div className="border-t border-border-hover my-1" />
       <button
         onClick={() => { onFitView(); onClose(); }}
-        className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-[#2a2a2a] flex items-center gap-2"
+        className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-bg-tertiary flex items-center gap-2"
       >
         <Maximize className="w-4 h-4" />
         Fit View
       </button>
       {onPaste && (
         <>
-          <div className="border-t border-[#333] my-1" />
+          <div className="border-t border-border-hover my-1" />
           <button
             onClick={() => { onPaste(); onClose(); }}
-            className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-[#2a2a2a] flex items-center gap-2"
+            className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-bg-tertiary flex items-center gap-2"
           >
             <ClipboardPaste className="w-4 h-4" />
             Paste
-            <span className="ml-auto text-[10px] text-gray-500">⌘V</span>
+            <span className="ml-auto text-[10px] text-text-muted">⌘V</span>
           </button>
         </>
       )}
@@ -783,11 +783,11 @@ export default function StudioCanvas({ onNodeAdded, onNodeDoubleClick }: StudioC
           color="#444444"
         />
         <Controls 
-          className="!bg-[#1a1a1a] !border-[#2a2a2a] !shadow-lg"
+          className="!bg-bg-secondary !border-border !shadow-lg"
           showInteractive={false}
         />
         <MiniMap
-          className="!bg-[#1a1a1a] !border-[#2a2a2a]"
+          className="!bg-bg-secondary !border-border"
           nodeColor={(node) => {
             if (node.type === 'startNode') return '#22c55e';
             if (node.type === 'endNode') return '#ef4444';

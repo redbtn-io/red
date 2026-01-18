@@ -160,13 +160,13 @@ export default function NewAutomationPage() {
   const selectedGraph = graphs.find(g => g.graphId === selectedGraphId);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-screen bg-bg-primary overflow-hidden">
       <StudioSidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <StudioHeader
           title="New Automation"
           subtitle="Configure automatic graph execution"
@@ -184,7 +184,7 @@ export default function NewAutomationPage() {
             <motion.div className="mb-6" variants={fadeUpVariants}>
               <Link 
                 href="/automations"
-                className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back to Automations
@@ -194,17 +194,17 @@ export default function NewAutomationPage() {
             <form onSubmit={handleSubmit}>
               {/* Basic Info */}
               <motion.div 
-                className="p-6 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] mb-6"
+                className="p-6 rounded-xl border border-border bg-bg-secondary mb-6"
                 variants={fadeUpVariants}
               >
-                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-[#ef4444]" />
+                <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-accent-text" />
                   Basic Information
                 </h2>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-text-secondary mb-2">
                       Name *
                     </label>
                     <input
@@ -212,12 +212,12 @@ export default function NewAutomationPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="My Automation"
-                      className="w-full px-4 py-2 rounded-lg border border-[#2a2a2a] bg-[#0a0a0a] text-white placeholder-gray-600 focus:border-[#ef4444] focus:outline-none"
+                      className="w-full px-4 py-2 rounded-lg border border-border bg-bg-primary text-text-primary placeholder-text-disabled focus:border-accent focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-text-secondary mb-2">
                       Description
                     </label>
                     <textarea
@@ -225,7 +225,7 @@ export default function NewAutomationPage() {
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="What does this automation do?"
                       rows={2}
-                      className="w-full px-4 py-2 rounded-lg border border-[#2a2a2a] bg-[#0a0a0a] text-white placeholder-gray-600 focus:border-[#ef4444] focus:outline-none resize-none"
+                      className="w-full px-4 py-2 rounded-lg border border-border bg-bg-primary text-text-primary placeholder-text-disabled focus:border-accent focus:outline-none resize-none"
                     />
                   </div>
                 </div>
@@ -233,17 +233,17 @@ export default function NewAutomationPage() {
 
               {/* Graph Selection */}
               <motion.div 
-                className="p-6 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] mb-6"
+                className="p-6 rounded-xl border border-border bg-bg-secondary mb-6"
                 variants={fadeUpVariants}
               >
-                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
                   <GitBranch className="w-5 h-5 text-blue-500" />
                   Select Graph *
                 </h2>
 
                 {loading ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
+                    <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
                   </div>
                 ) : (
                 <>
@@ -251,25 +251,25 @@ export default function NewAutomationPage() {
                     <button
                       type="button"
                       onClick={() => setShowGraphDropdown(!showGraphDropdown)}
-                      className="w-full px-4 py-3 rounded-lg border border-[#2a2a2a] bg-[#0a0a0a] text-left flex items-center justify-between hover:border-[#3a3a3a] transition-colors"
+                      className="w-full px-4 py-3 rounded-lg border border-border bg-bg-primary text-left flex items-center justify-between hover:border-border-hover transition-colors"
                     >
                       {selectedGraph ? (
                         <div>
-                          <div className="font-medium text-white">{selectedGraph.name}</div>
+                          <div className="font-medium text-text-primary">{selectedGraph.name}</div>
                           {selectedGraph.description && (
-                            <div className="text-sm text-gray-500 truncate">{selectedGraph.description}</div>
+                            <div className="text-sm text-text-muted truncate">{selectedGraph.description}</div>
                           )}
                         </div>
                       ) : (
-                        <span className="text-gray-500">Choose a graph to run...</span>
+                        <span className="text-text-muted">Choose a graph to run...</span>
                       )}
-                      <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showGraphDropdown ? 'rotate-180' : ''}`} />
+                      <ChevronDown className={`w-5 h-5 text-text-secondary transition-transform ${showGraphDropdown ? 'rotate-180' : ''}`} />
                     </button>
 
                     {showGraphDropdown && (
-                      <div className="absolute top-full left-0 right-0 mt-2 max-h-64 overflow-y-auto rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] shadow-xl z-10">
+                      <div className="absolute top-full left-0 right-0 mt-2 max-h-64 overflow-y-auto rounded-lg border border-border bg-bg-secondary shadow-xl z-10">
                         {graphs.length === 0 ? (
-                          <div className="p-4 text-center text-gray-500">
+                          <div className="p-4 text-center text-text-muted">
                             No graphs available. Create one in the Studio first.
                           </div>
                         ) : (
@@ -281,12 +281,12 @@ export default function NewAutomationPage() {
                                 setSelectedGraphId(graph.graphId);
                                 setShowGraphDropdown(false);
                               }}
-                              className={`w-full px-4 py-3 text-left hover:bg-[#2a2a2a] transition-colors border-b border-[#2a2a2a] last:border-0 ${
-                                selectedGraphId === graph.graphId ? 'bg-[#2a2a2a]' : ''
+                              className={`w-full px-4 py-3 text-left hover:bg-bg-tertiary transition-colors border-b border-border last:border-0 ${
+                                selectedGraphId === graph.graphId ? 'bg-bg-tertiary' : ''
                               }`}
                             >
                               <div className="flex items-center justify-between">
-                                <div className="font-medium text-white">{graph.name}</div>
+                                <div className="font-medium text-text-primary">{graph.name}</div>
                                 {graph.graphType && (
                                   <span className={`text-xs px-2 py-0.5 rounded ${
                                     graph.graphType === 'workflow' 
@@ -298,7 +298,7 @@ export default function NewAutomationPage() {
                                 )}
                               </div>
                               {graph.description && (
-                                <div className="text-sm text-gray-500 truncate mt-1">{graph.description}</div>
+                                <div className="text-sm text-text-muted truncate mt-1">{graph.description}</div>
                               )}
                             </button>
                           ))
@@ -313,10 +313,10 @@ export default function NewAutomationPage() {
 
               {/* Trigger Selection */}
               <motion.div 
-                className="p-6 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] mb-6"
+                className="p-6 rounded-xl border border-border bg-bg-secondary mb-6"
                 variants={fadeUpVariants}
               >
-                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
                   <Zap className="w-5 h-5 text-yellow-500" />
                   Trigger Type
                 </h2>
@@ -333,22 +333,22 @@ export default function NewAutomationPage() {
                         disabled={!option.available}
                         className={`p-4 rounded-lg border text-left transition-all ${
                           isSelected 
-                            ? 'border-[#ef4444] bg-[#ef4444]/10' 
+                            ? 'border-accent bg-accent/10' 
                             : option.available
-                              ? 'border-[#2a2a2a] hover:border-[#3a3a3a]'
-                              : 'border-[#2a2a2a] opacity-50 cursor-not-allowed'
+                              ? 'border-border hover:border-border-hover'
+                              : 'border-border opacity-50 cursor-not-allowed'
                         }`}
                       >
                         <div className="flex items-center gap-2 mb-1">
-                          <Icon className={`w-4 h-4 ${isSelected ? 'text-[#ef4444]' : 'text-gray-400'}`} />
-                          <span className={`font-medium ${isSelected ? 'text-white' : 'text-gray-300'}`}>
+                          <Icon className={`w-4 h-4 ${isSelected ? 'text-accent-text' : 'text-text-secondary'}`} />
+                          <span className={`font-medium ${isSelected ? 'text-text-primary' : 'text-text-secondary'}`}>
                             {option.label}
                           </span>
                           {!option.available && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#2a2a2a] text-gray-500">Soon</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-bg-tertiary text-text-muted">Soon</span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500">{option.description}</p>
+                        <p className="text-xs text-text-muted">{option.description}</p>
                       </button>
                     );
                   })}
@@ -357,17 +357,17 @@ export default function NewAutomationPage() {
 
               {/* Input Mapping (simplified for now) */}
               <motion.div 
-                className="p-6 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] mb-6"
+                className="p-6 rounded-xl border border-border bg-bg-secondary mb-6"
                 variants={fadeUpVariants}
               >
-                <h2 className="text-lg font-semibold text-white mb-2">Default Input</h2>
-                <p className="text-sm text-gray-500 mb-4">
+                <h2 className="text-lg font-semibold text-text-primary mb-2">Default Input</h2>
+                <p className="text-sm text-text-muted mb-4">
                   Set default values that will be passed to the graph when triggered.
                 </p>
 
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-2">
+                    <label className="block text-sm font-medium text-text-secondary mb-2">
                       Message (default input)
                     </label>
                     <input
@@ -375,7 +375,7 @@ export default function NewAutomationPage() {
                       value={inputMapping.message || ''}
                       onChange={(e) => setInputMapping({ ...inputMapping, message: e.target.value })}
                       placeholder="Optional default message..."
-                      className="w-full px-4 py-2 rounded-lg border border-[#2a2a2a] bg-[#0a0a0a] text-white placeholder-gray-600 focus:border-[#ef4444] focus:outline-none"
+                      className="w-full px-4 py-2 rounded-lg border border-border bg-bg-primary text-text-primary placeholder-text-disabled focus:border-accent focus:outline-none"
                     />
                   </div>
                 </div>
@@ -399,14 +399,14 @@ export default function NewAutomationPage() {
               >
                 <Link
                   href="/automations"
-                  className="px-4 py-2 rounded-lg border border-[#2a2a2a] text-gray-300 hover:bg-[#1a1a1a] transition-colors"
+                  className="px-4 py-2 rounded-lg border border-border text-text-secondary hover:bg-bg-secondary transition-colors"
                 >
                   Cancel
                 </Link>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#ef4444] text-white rounded-lg hover:bg-[#dc2626] transition-colors font-medium disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors font-medium disabled:opacity-50"
                 >
                   {saving ? (
                     <>

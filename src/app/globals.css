@@ -2,7 +2,62 @@
 @plugin "@tailwindcss/typography";
 @import "katex/dist/katex.min.css";
 
-:root {
+/* ============================================
+   THEME SYSTEM - CSS Custom Properties
+   ============================================ */
+
+/* Dark theme (default) */
+:root,
+:root.dark,
+.dark {
+  /* Backgrounds */
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #1a1a1a;
+  --bg-tertiary: #2a2a2a;
+  --bg-elevated: #0f0f0f;
+  --bg-hover: #2a2a2a;
+  --bg-active: #3a3a3a;
+  
+  /* Text */
+  --text-primary: #ffffff;
+  --text-secondary: #a3a3a3;
+  --text-muted: #737373;
+  --text-disabled: #525252;
+  
+  /* Borders */
+  --border: #2a2a2a;
+  --border-hover: #3a3a3a;
+  --border-focus: rgba(239, 68, 68, 0.5);
+  
+  /* Accent (Brand Red) */
+  --accent: #ef4444;
+  --accent-hover: #dc2626;
+  --accent-muted: rgba(239, 68, 68, 0.1);
+  --accent-text: #ef4444;
+  --accent-foreground: #ffffff; /* Text ON accent backgrounds - always white */
+  
+  /* Semantic Colors */
+  --success: #22c55e;
+  --success-muted: rgba(34, 197, 94, 0.1);
+  --warning: #eab308;
+  --warning-muted: rgba(234, 179, 8, 0.1);
+  --error: #ef4444;
+  --error-muted: rgba(239, 68, 68, 0.1);
+  --info: #3b82f6;
+  --info-muted: rgba(59, 130, 246, 0.1);
+  
+  /* Scrollbar */
+  --scrollbar-track: #0a0a0a;
+  --scrollbar-thumb: #333333;
+  --scrollbar-thumb-hover: #444444;
+  
+  /* Shadows */
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  
+  /* Backdrop/Overlay */
+  --backdrop: rgba(0, 0, 0, 0.5);
+  
+  /* Legacy variables (for backwards compat) */
   --background: #0a0a0a;
   --foreground: #ededed;
   --sidebar-bg: #0f0f0f;
@@ -12,7 +67,109 @@
   --border-color: #2a2a2a;
 }
 
+/* Light theme */
+:root.light,
+.light {
+  /* Backgrounds */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #e5e5e5;
+  --bg-elevated: #ffffff;
+  --bg-hover: #f0f0f0;
+  --bg-active: #e5e5e5;
+  
+  /* Text */
+  --text-primary: #0a0a0a;
+  --text-secondary: #525252;
+  --text-muted: #6b7280;
+  --text-disabled: #9ca3af;
+  
+  /* Borders - darker for better contrast */
+  --border: #d1d5db;
+  --border-hover: #9ca3af;
+  --border-focus: rgba(220, 38, 38, 0.5);
+  
+  /* Accent (Brand Red) */
+  --accent: #dc2626;
+  --accent-hover: #b91c1c;
+  --accent-muted: rgba(220, 38, 38, 0.1);
+  --accent-text: #dc2626;
+  --accent-foreground: #ffffff; /* Text ON accent backgrounds - always white */
+  
+  /* Semantic Colors */
+  --success: #16a34a;
+  --success-muted: rgba(22, 163, 74, 0.1);
+  --warning: #ca8a04;
+  --warning-muted: rgba(202, 138, 4, 0.1);
+  --error: #dc2626;
+  --error-muted: rgba(220, 38, 38, 0.1);
+  --info: #2563eb;
+  --info-muted: rgba(37, 99, 235, 0.1);
+  
+  /* Scrollbar */
+  --scrollbar-track: #f5f5f5;
+  --scrollbar-thumb: #d4d4d4;
+  --scrollbar-thumb-hover: #a3a3a3;
+  
+  /* Shadows - more prominent for light mode */
+  --shadow-color: rgba(0, 0, 0, 0.12);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  
+  /* Backdrop/Overlay */
+  --backdrop: rgba(0, 0, 0, 0.3);
+  
+  /* Legacy variables (for backwards compat) */
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --sidebar-bg: #f5f5f5;
+  --card-bg: #ffffff;
+  --red-primary: #dc2626;
+  --red-hover: #b91c1c;
+  --border-color: #e5e5e5;
+}
+
+/* ============================================
+   TAILWIND THEME EXTENSION
+   ============================================ */
 @theme inline {
+  /* Map CSS variables to Tailwind colors */
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-hover: var(--bg-hover);
+  --color-bg-active: var(--bg-active);
+  
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-disabled: var(--text-disabled);
+  
+  --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
+  --color-border-focus: var(--border-focus);
+  
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-muted: var(--accent-muted);
+  --color-accent-text: var(--accent-text);
+  --color-accent-foreground: var(--accent-foreground);
+  
+  --color-success: var(--success);
+  --color-success-muted: var(--success-muted);
+  --color-warning: var(--warning);
+  --color-warning-muted: var(--warning-muted);
+  --color-error: var(--error);
+  --color-error-muted: var(--error-muted);
+  --color-info: var(--info);
+  --color-info-muted: var(--info-muted);
+  
+  /* Backdrop */
+  --color-backdrop: var(--backdrop);
+  
+  /* Legacy */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
@@ -23,16 +180,23 @@
 html {
   touch-action: pan-x pan-y;
   -ms-touch-action: pan-x pan-y;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg-primary);
+  color: var(--text-primary);
   font-family: Arial, Helvetica, sans-serif;
   touch-action: pan-x pan-y;
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  height: 100%;
+  overflow: hidden;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  /* Base bottom padding + PWA safe area for curved screens / home indicator */
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* All buttons should have pointer cursor */
@@ -57,17 +221,38 @@ input, textarea, select {
   height: 8px;
 }
 
+/* PWA standalone mode - remove top padding/margin since there's no browser chrome */
+@media (display-mode: standalone) {
+  .pwa-header {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+  }
+}
+
 ::-webkit-scrollbar-track {
-  background: var(--background);
+  background: var(--scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #333;
+  background: var(--scrollbar-thumb);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #444;
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* PWA Safe Area Utilities */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.bottom-safe {
+  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* Skeleton placeholder for assistant message */
@@ -160,4 +345,40 @@ input, textarea, select {
     border-color: rgba(147, 51, 234, 0.8);
     box-shadow: 0 0 15px 2px rgba(147, 51, 234, 0.2);
   }
+}
+
+/* Graph edge animations - flowing dotted lines */
+@keyframes graph-edge-flow {
+  0% { stroke-dashoffset: 20; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes graph-back-edge-flow {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -20; }
+}
+
+@keyframes graph-edge-oscillate {
+  0%, 100% { stroke-dashoffset: 0; }
+  50% { stroke-dashoffset: 20; }
+}
+
+.graph-edge {
+  animation: graph-edge-flow 1s linear infinite;
+}
+
+.graph-back-edge {
+  animation: graph-back-edge-flow 1s linear infinite;
+}
+
+.graph-edge-oscillate {
+  animation: graph-edge-oscillate 1.5s ease-in-out infinite;
+}
+
+.graph-edge-completed {
+  animation: graph-edge-flow 0.8s linear infinite;
+}
+
+.graph-edge-active {
+  animation: graph-edge-flow 0.5s linear infinite;
 }

@@ -35,6 +35,8 @@ export async function GET(request: NextRequest) {
         dateOfBirth: user.dateOfBirth,
         profileComplete: user.profileComplete,
         accountLevel: user.accountLevel,
+        defaultGraphId: user.defaultGraphId,
+        defaultNeuronId: user.defaultNeuronId,
         createdAt: user.createdAt,
       },
     });

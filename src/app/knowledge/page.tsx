@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
   Search, 
@@ -24,8 +23,6 @@ import {
   Globe,
   Sparkles,
   Check,
-  Trash2,
-  ExternalLink,
 } from 'lucide-react';
 import { pageVariants, staggerContainerVariants, staggerItemVariants, scaleVariants } from '@/lib/animations';
 
@@ -51,12 +48,7 @@ type SortOption = 'name' | 'updated' | 'documents' | 'searches';
 type FilterOption = 'all' | 'owned' | 'shared' | 'public';
 
 export default function KnowledgePage() {
-  const router = useRouter();
   const [libraries, setLibraries] = useState<LibraryInfo[]>([]);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<LibraryInfo | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,38 +137,6 @@ export default function KnowledgePage() {
   useEffect(() => {
     fetchLibraries();
   }, [fetchLibraries]);
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpenMenuId(null);
-      }
-    };
-    if (openMenuId) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [openMenuId]);
-
-  // Delete library handler
-  const handleDeleteLibrary = async (library: LibraryInfo) => {
-    try {
-      setDeleting(true);
-      const response = await fetch(`/api/v1/libraries/${library.libraryId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete library');
-      }
-      setDeleteConfirm(null);
-      fetchLibraries();
-    } catch (err) {
-      console.error('Delete library error:', err);
-    } finally {
-      setDeleting(false);
-    }
-  };
 
   // Listen for create library event from sidebar
   useEffect(() => {
@@ -366,60 +326,15 @@ export default function KnowledgePage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <AccessIcon size={14} className="text-gray-500" />
-                      <div className="relative" ref={openMenuId === library.libraryId ? menuRef : null}>
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setOpenMenuId(openMenuId === library.libraryId ? null : library.libraryId);
-                          }}
-                          className="p-1 hover:bg-[#1a1a1a] rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <MoreVertical size={16} className="text-gray-400" />
-                        </button>
-                        {openMenuId === library.libraryId && (
-                          <div className="absolute right-0 top-full mt-1 w-40 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl z-20 overflow-hidden">
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setOpenMenuId(null);
-                                router.push(`/knowledge/${library.libraryId}`);
-                              }}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-[#2a2a2a] transition-colors"
-                            >
-                              <ExternalLink size={14} />
-                              Open
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setOpenMenuId(null);
-                                router.push(`/knowledge/${library.libraryId}?settings=true`);
-                              }}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-[#2a2a2a] transition-colors"
-                            >
-                              <Settings size={14} />
-                              Settings
-                            </button>
-                            {library.isOwned && (
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setOpenMenuId(null);
-                                  setDeleteConfirm(library);
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
-                              >
-                                <Trash2 size={14} />
-                                Delete
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // TODO: Open menu
+                        }}
+                        className="p-1 hover:bg-[#1a1a1a] rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <MoreVertical size={16} className="text-gray-400" />
+                      </button>
                     </div>
                   </div>
 
@@ -695,58 +610,6 @@ export default function KnowledgePage() {
                   </>
                 )}
               </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <motion.div
-            className="bg-[#111] border border-[#2a2a2a] rounded-xl w-full max-w-md overflow-hidden"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
-                  <Trash2 size={20} className="text-red-500" />
-                </div>
-                <h2 className="text-xl font-bold">Delete Library</h2>
-              </div>
-              <p className="text-gray-400 mb-2">
-                Are you sure you want to delete <span className="text-white font-medium">{deleteConfirm.name}</span>?
-              </p>
-              <p className="text-sm text-gray-500 mb-6">
-                This will permanently delete all {deleteConfirm.documentCount} documents and their embeddings. This action cannot be undone.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setDeleteConfirm(null)}
-                  className="flex-1 py-2.5 bg-[#1a1a1a] hover:bg-[#2a2a2a] rounded-lg transition-colors"
-                  disabled={deleting}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDeleteLibrary(deleteConfirm)}
-                  disabled={deleting}
-                  className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-50 rounded-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  {deleting ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 size={16} />
-                      Delete Library
-                    </>
-                  )}
-                </button>
-              </div>
             </div>
           </motion.div>
         </div>

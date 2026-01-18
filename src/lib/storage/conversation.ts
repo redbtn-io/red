@@ -3,6 +3,30 @@
  * Note: These types are now compatible with server-stored conversations
  */
 
+export interface NodeProgress {
+  nodeId: string;
+  status: 'pending' | 'running' | 'completed' | 'error';
+  currentStep?: number;
+  totalSteps?: number;
+  stepName?: string;
+  startTime?: number;
+  endTime?: number;
+  error?: string;
+}
+
+export interface GraphRun {
+  graphId: string;
+  graphName?: string;
+  runId?: string;
+  status: 'running' | 'completed' | 'error';
+  executionPath: string[];
+  nodeProgress: Record<string, NodeProgress>;
+  startTime?: number;
+  endTime?: number;
+  duration?: number;
+  error?: string;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -17,6 +41,7 @@ export interface Message {
       total?: number;
     };
   };
+  graphRun?: GraphRun; // Graph execution history
 }
 
 export interface Conversation {

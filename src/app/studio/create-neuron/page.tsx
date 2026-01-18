@@ -111,30 +111,30 @@ export default function CreateNeuronPage() {
   const selectedProvider = PROVIDERS.find(p => p.id === provider);
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0a]">
+    <div className="flex flex-col h-screen bg-bg-primary overflow-hidden">
       {/* Header */}
       <motion.div 
-        className="flex items-center justify-between px-4 py-3 border-b border-[#2a2a2a] bg-[#0a0a0a]/80 backdrop-blur-sm sticky top-0 z-10"
+        className="flex items-center justify-between px-4 py-3 border-b border-border bg-bg-primary/80 backdrop-blur-sm sticky top-0 z-10"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="flex items-center gap-3">
           <Link 
             href="/studio/neurons"
-            className="p-2 hover:bg-[#1a1a1a] rounded-lg transition-colors"
+            className="p-2 hover:bg-bg-secondary rounded-lg transition-colors"
           >
-            <ArrowLeft className="w-5 h-5 text-gray-400" />
+            <ArrowLeft className="w-5 h-5 text-text-secondary" />
           </Link>
           <div>
-            <h1 className="text-lg font-semibold text-white">Create Neuron</h1>
-            <p className="text-xs text-gray-500">Configure a new AI model</p>
+            <h1 className="text-lg font-semibold text-text-primary">Create Neuron</h1>
+            <p className="text-xs text-text-muted">Configure a new AI model</p>
           </div>
         </div>
 
         <button
           onClick={handleSave}
           disabled={saving || success || !name.trim() || !model.trim()}
-          className="flex items-center gap-2 px-4 py-2 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving ? (
             <>
@@ -180,14 +180,14 @@ export default function CreateNeuronPage() {
 
           {/* Basic Info */}
           <motion.section 
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-6 space-y-4"
+            className="bg-bg-secondary border border-border rounded-xl p-6 space-y-4"
             variants={staggerItemVariants}
           >
-            <h2 className="text-lg font-semibold text-white">Basic Information</h2>
+            <h2 className="text-lg font-semibold text-text-primary">Basic Information</h2>
             
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1.5">
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
                   Neuron Name <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -195,18 +195,18 @@ export default function CreateNeuronPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., Fast Chat Model"
-                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-[#ef4444]"
+                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1.5">
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
                   Role
                 </label>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-[#ef4444]"
+                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
                 >
                   {ROLES.map((r) => (
                     <option key={r.id} value={r.id}>
@@ -218,7 +218,7 @@ export default function CreateNeuronPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1.5">
+              <label className="block text-sm font-medium text-text-secondary mb-1.5">
                 Description
               </label>
               <textarea
@@ -226,17 +226,17 @@ export default function CreateNeuronPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe what this neuron is for..."
                 rows={2}
-                className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-[#ef4444] resize-none"
+                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent resize-none"
               />
             </div>
           </motion.section>
 
           {/* Provider Selection */}
           <motion.section 
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-6 space-y-4"
+            className="bg-bg-secondary border border-border rounded-xl p-6 space-y-4"
             variants={staggerItemVariants}
           >
-            <h2 className="text-lg font-semibold text-white">Provider</h2>
+            <h2 className="text-lg font-semibold text-text-primary">Provider</h2>
             
             <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
               {PROVIDERS.map((p) => {
@@ -251,8 +251,8 @@ export default function CreateNeuronPage() {
                     }}
                     className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-colors ${
                       isSelected
-                        ? 'bg-[#0a0a0a] border-[#ef4444]'
-                        : 'bg-[#0a0a0a] border-[#2a2a2a] hover:border-[#3a3a3a]'
+                        ? 'bg-bg-primary border-accent'
+                        : 'bg-bg-primary border-border hover:border-border-hover'
                     }`}
                   >
                     <div 
@@ -261,7 +261,7 @@ export default function CreateNeuronPage() {
                     >
                       <Icon className="w-5 h-5" style={{ color: p.color }} />
                     </div>
-                    <span className={`text-sm font-medium ${isSelected ? 'text-white' : 'text-gray-400'}`}>
+                    <span className={`text-sm font-medium ${isSelected ? 'text-text-primary' : 'text-text-secondary'}`}>
                       {p.name}
                     </span>
                   </button>
@@ -272,14 +272,14 @@ export default function CreateNeuronPage() {
 
           {/* Model Configuration */}
           <motion.section 
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-6 space-y-4"
+            className="bg-bg-secondary border border-border rounded-xl p-6 space-y-4"
             variants={staggerItemVariants}
           >
-            <h2 className="text-lg font-semibold text-white">Model Configuration</h2>
+            <h2 className="text-lg font-semibold text-text-primary">Model Configuration</h2>
             
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1.5">
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
                   Model <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -287,7 +287,7 @@ export default function CreateNeuronPage() {
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
                   placeholder={provider === 'ollama' ? 'llama3.3:70b' : 'Model name'}
-                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-[#ef4444]"
+                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
                 />
                 {MODEL_SUGGESTIONS[provider]?.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1.5">
@@ -295,7 +295,7 @@ export default function CreateNeuronPage() {
                       <button
                         key={m}
                         onClick={() => setModel(m)}
-                        className="text-xs px-1.5 py-0.5 text-gray-600 hover:text-gray-400"
+                        className="text-xs px-1.5 py-0.5 text-text-disabled hover:text-text-secondary"
                       >
                         +{m}
                       </button>
@@ -305,22 +305,22 @@ export default function CreateNeuronPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1.5">
-                  Endpoint {provider === 'ollama' && <span className="text-gray-600">(optional)</span>}
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                  Endpoint {provider === 'ollama' && <span className="text-text-disabled">(optional)</span>}
                 </label>
                 <input
                   type="text"
                   value={endpoint}
                   onChange={(e) => setEndpoint(e.target.value)}
                   placeholder={provider === 'ollama' ? 'http://localhost:11434' : 'API endpoint URL'}
-                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-[#ef4444]"
+                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
                 />
               </div>
             </div>
 
             {provider !== 'ollama' && (
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1.5">
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
                   API Key
                 </label>
                 <div className="relative">
@@ -329,17 +329,17 @@ export default function CreateNeuronPage() {
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                     placeholder="sk-..."
-                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 pr-10 text-sm text-gray-200 focus:outline-none focus:border-[#ef4444]"
+                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2.5 pr-10 text-sm text-text-primary focus:outline-none focus:border-accent"
                   />
                   <button
                     type="button"
                     onClick={() => setShowApiKey(!showApiKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary"
                   >
                     {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                <p className="text-xs text-gray-600 mt-1 flex items-center gap-1">
+                <p className="text-xs text-text-disabled mt-1 flex items-center gap-1">
                   <Info className="w-3 h-3" />
                   Leave blank to use system default key
                 </p>
@@ -349,14 +349,14 @@ export default function CreateNeuronPage() {
 
           {/* Parameters */}
           <motion.section 
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-6 space-y-4"
+            className="bg-bg-secondary border border-border rounded-xl p-6 space-y-4"
             variants={staggerItemVariants}
           >
-            <h2 className="text-lg font-semibold text-white">Parameters</h2>
+            <h2 className="text-lg font-semibold text-text-primary">Parameters</h2>
             
             <div className="grid gap-6 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1.5">
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
                   Temperature: {temperature}
                 </label>
                 <input
@@ -366,16 +366,16 @@ export default function CreateNeuronPage() {
                   step="0.1"
                   value={temperature}
                   onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                  className="w-full accent-[#ef4444]"
+                  className="w-full accent-accent"
                 />
-                <div className="flex justify-between text-xs text-gray-600 mt-1">
+                <div className="flex justify-between text-xs text-text-disabled mt-1">
                   <span>Precise (0)</span>
                   <span>Creative (2)</span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1.5">
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
                   Max Tokens
                 </label>
                 <input
@@ -384,14 +384,14 @@ export default function CreateNeuronPage() {
                   onChange={(e) => setMaxTokens(parseInt(e.target.value) || 4096)}
                   min="256"
                   max="128000"
-                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-[#ef4444]"
+                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
                 />
                 <div className="flex flex-wrap gap-1 mt-1.5">
                   {[1024, 2048, 4096, 8192, 16384].map((t) => (
                     <button
                       key={t}
                       onClick={() => setMaxTokens(t)}
-                      className="text-xs px-1.5 py-0.5 text-gray-600 hover:text-gray-400"
+                      className="text-xs px-1.5 py-0.5 text-text-disabled hover:text-text-secondary"
                     >
                       {t >= 1000 ? `${t/1000}k` : t}
                     </button>

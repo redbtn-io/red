@@ -54,8 +54,8 @@ function StudioNode({ data, selected }: NodeProps<StudioNodeData>) {
   return (
     <div
       className={`
-        relative rounded-xl border-2 bg-[#1a1a1a] shadow-lg transition-all cursor-pointer
-        ${selected ? 'border-[#ef4444] ring-2 ring-[#ef4444]/30' : 'border-[#2a2a2a] hover:border-[#3a3a3a]'}
+        relative rounded-xl border-2 bg-bg-secondary shadow-lg transition-all cursor-pointer
+        ${selected ? 'border-accent ring-2 ring-accent/30' : 'border-border hover:border-border-hover'}
       `}
       style={{ width: 120, height: 100 }}
     >
@@ -63,7 +63,7 @@ function StudioNode({ data, selected }: NodeProps<StudioNodeData>) {
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-3 !h-3 !bg-gray-500 !border-2 !border-[#1a1a1a] hover:!bg-white transition-colors"
+        className="!w-3 !h-3 !bg-gray-500 !border-2 !border-border hover:!bg-white transition-colors"
       />
 
       {/* Content */}
@@ -72,9 +72,9 @@ function StudioNode({ data, selected }: NodeProps<StudioNodeData>) {
           className="w-9 h-9 rounded-lg flex items-center justify-center mb-2"
           style={{ backgroundColor: bgColor }}
         >
-          <IconComponent className="w-4 h-4 text-white" />
+          <IconComponent className="w-4 h-4 text-text-primary" />
         </div>
-        <span className="text-xs font-medium text-gray-200 text-center leading-tight line-clamp-2">
+        <span className="text-xs font-medium text-text-primary text-center leading-tight line-clamp-2">
           {data.label}
         </span>
       </div>
@@ -83,12 +83,12 @@ function StudioNode({ data, selected }: NodeProps<StudioNodeData>) {
       <Handle
         type="source"
         position={Position.Right}
-        className="!w-3 !h-3 !bg-gray-500 !border-2 !border-[#1a1a1a] hover:!bg-white transition-colors"
+        className="!w-3 !h-3 !bg-gray-500 !border-2 !border-border hover:!bg-white transition-colors"
       />
       
       {/* Branching indicator badge */}
       {isBranching && (
-        <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#1a1a1a] border border-[#2a2a2a] rounded-full flex items-center justify-center">
+        <div className="absolute -top-1 -right-1 w-4 h-4 bg-bg-secondary border border-border rounded-full flex items-center justify-center">
           <GitBranch className="w-2.5 h-2.5 text-amber-400" />
         </div>
       )}

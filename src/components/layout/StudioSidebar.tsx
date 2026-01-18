@@ -38,7 +38,7 @@ export function StudioSidebar({ isOpen, onClose }: StudioSidebarProps) {
       headerAction={
         <Link
           href="/studio/new"
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 rounded-lg transition-colors font-medium"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors font-medium"
         >
           <Plus size={18} />
           <span>New Graph</span>
@@ -47,7 +47,7 @@ export function StudioSidebar({ isOpen, onClose }: StudioSidebarProps) {
     >
       {/* Studio Navigation */}
       <div className="p-3">
-        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
+        <div className="text-xs font-semibold text-text-muted uppercase tracking-wider px-3 mb-2">
           Studio
         </div>
         <div className="space-y-1">
@@ -60,8 +60,8 @@ export function StudioSidebar({ isOpen, onClose }: StudioSidebarProps) {
                 href={item.href}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                   active
-                    ? 'bg-[#ef4444]/10 text-[#ef4444] font-medium'
-                    : 'text-gray-400 hover:text-white hover:bg-[#1a1a1a]'
+                    ? 'bg-accent/10 text-accent-text font-medium'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -73,8 +73,8 @@ export function StudioSidebar({ isOpen, onClose }: StudioSidebarProps) {
       </div>
 
       {/* Create Section */}
-      <div className="p-3 border-t border-[#2a2a2a]">
-        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
+      <div className="p-3 border-t border-border">
+        <div className="text-xs font-semibold text-text-muted uppercase tracking-wider px-3 mb-2">
           Create
         </div>
         <div className="space-y-1">
@@ -87,8 +87,8 @@ export function StudioSidebar({ isOpen, onClose }: StudioSidebarProps) {
                 href={item.href}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                   active
-                    ? 'bg-[#ef4444]/10 text-[#ef4444] font-medium'
-                    : 'text-gray-400 hover:text-white hover:bg-[#1a1a1a]'
+                    ? 'bg-accent/10 text-accent-text font-medium'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
                 }`}
               >
                 <Icon className="w-4 h-4" />

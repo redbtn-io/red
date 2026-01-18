@@ -4,30 +4,31 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { 
-  Search, 
-  Brain, 
-  Loader2, 
-  AlertCircle,
-  Plus,
-  Server,
-  Zap,
-  MessageSquare,
-  Wrench,
-  Star,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  Copy,
-  Settings,
-  LucideProps,
-  Lock,
-  Unlock,
-  Shield,
-  User,
-  GitFork,
-  Archive,
-  Eye,
+import { ConfirmModal } from '@/components/ui/Modal';
+import {
+    Search,
+    Brain,
+    Loader2,
+    AlertCircle,
+    Plus,
+    Server,
+    Zap,
+    MessageSquare,
+    Wrench,
+    Star,
+    MoreHorizontal,
+    Pencil,
+    Trash2,
+    Copy,
+    Settings,
+    LucideProps,
+    Lock,
+    Unlock,
+    Shield,
+    User,
+    GitFork,
+    Archive,
+    Eye,
 } from 'lucide-react';
 import { pageVariants, staggerContainerVariants, staggerItemVariants, scaleVariants } from '@/lib/animations';
 
@@ -55,7 +56,7 @@ const TIER_LABELS: Record<number, { label: string; color: string }> = {
   1: { label: 'Ultimate', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
   2: { label: 'Advanced', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   3: { label: 'Basic', color: 'bg-green-500/20 text-green-400 border-green-500/30' },
-  4: { label: 'Free', color: 'bg-gray-500/20 text-gray-400 border-gray-500/30' },
+  4: { label: 'Free', color: 'bg-gray-500/20 text-text-secondary border-gray-500/30' },
 };
 
 const PROVIDER_INFO: Record<string, { label: string; color: string; icon: React.ComponentType<LucideProps> }> = {
@@ -144,7 +145,7 @@ export default function NeuronsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+        <Loader2 className="w-8 h-8 text-text-secondary animate-spin" />
       </div>
     );
   }
@@ -170,15 +171,15 @@ export default function NeuronsPage() {
       <div className="flex-1 space-y-6">
         {/* View Mode Tabs */}
         <motion.div 
-          className="flex gap-2 border-b border-[#2a2a2a] pb-4"
+          className="flex gap-2 border-b border-border pb-4"
           variants={staggerItemVariants}
         >
           <button
             onClick={() => setViewMode('all')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               viewMode === 'all'
-                ? 'bg-[#ef4444] text-white'
-                : 'bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#2a2a2a]'
+                ? 'bg-accent text-white'
+                : 'bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
             }`}
           >
             <Eye className="w-4 h-4" />
@@ -188,8 +189,8 @@ export default function NeuronsPage() {
             onClick={() => setViewMode('archived')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               viewMode === 'archived'
-                ? 'bg-[#ef4444] text-white'
-                : 'bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#2a2a2a]'
+                ? 'bg-accent text-white'
+                : 'bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
             }`}
           >
             <Archive className="w-4 h-4" />
@@ -200,13 +201,13 @@ export default function NeuronsPage() {
         {/* Search & Filter */}
         <motion.div className="flex flex-col sm:flex-row gap-3" variants={staggerItemVariants}>
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
             <input
               type="text"
               placeholder="Search neurons..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg pl-10 pr-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#ef4444]"
+              className="w-full bg-bg-secondary border border-border rounded-lg pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
             />
           </div>
           <div className="flex gap-2">
@@ -214,8 +215,8 @@ export default function NeuronsPage() {
               onClick={() => setRoleFilter(null)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 !roleFilter
-                  ? 'bg-[#ef4444]/10 text-[#ef4444] border border-[#ef4444]/30'
-                  : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a] hover:text-white hover:border-[#3a3a3a]'
+                  ? 'bg-accent/10 text-accent-text border border-accent/30'
+                  : 'bg-bg-secondary text-text-secondary border border-border hover:text-text-primary hover:border-border-hover'
               }`}
             >
               All
@@ -226,8 +227,8 @@ export default function NeuronsPage() {
                 onClick={() => setRoleFilter(roleFilter === role ? null : role)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   roleFilter === role
-                    ? 'bg-[#ef4444]/10 text-[#ef4444] border border-[#ef4444]/30'
-                    : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a] hover:text-white hover:border-[#3a3a3a]'
+                    ? 'bg-accent/10 text-accent-text border border-accent/30'
+                    : 'bg-bg-secondary text-text-secondary border border-border hover:text-text-primary hover:border-border-hover'
                 }`}
               >
                 {info.label}
@@ -251,10 +252,10 @@ export default function NeuronsPage() {
             return (
               <motion.section key={role} variants={staggerItemVariants}>
                 <div className="flex items-center gap-3 mb-4">
-                  <RoleIcon className="w-5 h-5 text-[#ef4444]" />
+                  <RoleIcon className="w-5 h-5 text-accent-text" />
                   <div>
-                    <h3 className="font-semibold text-white">{roleInfo.label}</h3>
-                    <p className="text-xs text-gray-500">{roleInfo.description}</p>
+                    <h3 className="font-semibold text-text-primary">{roleInfo.label}</h3>
+                    <p className="text-xs text-text-muted">{roleInfo.description}</p>
                   </div>
                 </div>
 
@@ -282,11 +283,11 @@ export default function NeuronsPage() {
             className="flex flex-col items-center justify-center py-16 text-center"
             variants={scaleVariants}
           >
-            <Brain className="w-16 h-16 text-gray-600 mb-4" />
-            <h3 className="text-lg font-medium text-gray-300 mb-2">
+            <Brain className="w-16 h-16 text-text-disabled mb-4" />
+            <h3 className="text-lg font-medium text-text-secondary mb-2">
               {viewMode === 'archived' ? 'No archived neurons' : 'No neurons found'}
             </h3>
-            <p className="text-gray-500 text-sm">
+            <p className="text-text-muted text-sm">
               {viewMode === 'archived' 
                 ? 'Neurons you archive will appear here'
                 : searchQuery 
@@ -318,9 +319,9 @@ export default function NeuronsPage() {
               }}
             />
           ) : (
-            <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-6 text-center sticky top-20">
-              <Brain className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-400 text-sm">Select a neuron to view details</p>
+            <div className="bg-bg-secondary border border-border rounded-xl p-6 text-center sticky top-20">
+              <Brain className="w-12 h-12 text-text-disabled mx-auto mb-3" />
+              <p className="text-text-secondary text-sm">Select a neuron to view details</p>
             </div>
           )}
         </motion.div>
@@ -338,16 +339,16 @@ export default function NeuronsPage() {
                 <Brain className="w-4 h-4 text-purple-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">{selectedNeuron.name}</p>
-                <p className="text-xs text-gray-500">Tap to see details</p>
+                <p className="text-sm font-medium text-text-primary truncate">{selectedNeuron.name}</p>
+                <p className="text-xs text-text-muted">Tap to see details</p>
               </div>
             </div>
           ) : (
             <Link 
               href="/studio/create-neuron"
-              className="flex items-center gap-3 text-gray-400 hover:text-white transition-colors"
+              className="flex items-center gap-3 text-text-secondary hover:text-text-primary transition-colors"
             >
-              <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-bg-secondary flex items-center justify-center">
                 <Plus className="w-4 h-4" />
               </div>
               <span className="text-sm">Add a new neuron</span>
@@ -398,10 +399,10 @@ function NeuronCard({
   return (
     <div 
       onClick={onSelect}
-      className={`bg-[#1a1a1a] border rounded-xl p-4 cursor-pointer transition-all ${
+      className={`bg-bg-secondary border rounded-xl p-4 cursor-pointer transition-all ${
         isSelected 
-          ? 'border-[#ef4444] ring-1 ring-[#ef4444]/30' 
-          : 'border-[#2a2a2a] hover:border-[#3a3a3a]'
+          ? 'border-accent ring-1 ring-accent/30' 
+          : 'border-border hover:border-border-hover'
       }`}
     >
       {/* Header */}
@@ -415,16 +416,16 @@ function NeuronCard({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h4 className="font-semibold text-white">{neuron.name}</h4>
+              <h4 className="font-semibold text-text-primary">{neuron.name}</h4>
               {isDefault && <Star className="w-4 h-4 text-amber-400 fill-amber-400" />}
               {/* Editability indicator */}
               {isEditable ? (
                 <span title="Editable"><Unlock className="w-3.5 h-3.5 text-green-400" /></span>
               ) : (
-                <span title="Read-only"><Lock className="w-3.5 h-3.5 text-gray-500" /></span>
+                <span title="Read-only"><Lock className="w-3.5 h-3.5 text-text-muted" /></span>
               )}
             </div>
-            <p className="text-xs text-gray-500">{providerInfo.label}</p>
+            <p className="text-xs text-text-muted">{providerInfo.label}</p>
           </div>
         </div>
 
@@ -435,7 +436,7 @@ function NeuronCard({
               e.stopPropagation();
               onMenuToggle(isMenuOpen ? null : neuron.neuronId);
             }}
-            className="p-1.5 rounded-lg hover:bg-[#2a2a2a] text-gray-400 hover:text-white transition-colors"
+            className="p-1.5 rounded-lg hover:bg-bg-tertiary text-text-secondary hover:text-text-primary transition-colors"
           >
             <MoreHorizontal className="w-4 h-4" />
           </button>
@@ -446,18 +447,22 @@ function NeuronCard({
                 className="fixed inset-0 z-40" 
                 onClick={(e) => { e.stopPropagation(); onMenuToggle(null); }} 
               />
-              <div className="absolute right-0 top-full mt-1 w-40 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl z-50 py-1">
+              <div className="absolute right-0 top-full mt-1 w-40 bg-bg-secondary border border-border rounded-lg shadow-xl z-50 py-1">
                 {isEditable ? (
                   <>
-                    <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-[#2a2a2a] hover:text-white">
+                    <Link 
+                      href={`/studio/edit-neuron/${neuron.neuronId}`}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Pencil className="w-4 h-4" />
                       Edit
-                    </button>
-                    <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-[#2a2a2a] hover:text-white">
+                    </Link>
+                    <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary hover:text-text-primary">
                       <Copy className="w-4 h-4" />
                       Duplicate
                     </button>
-                    <hr className="my-1 border-[#2a2a2a]" />
+                    <hr className="my-1 border-border" />
                     <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10">
                       <Trash2 className="w-4 h-4" />
                       Delete
@@ -465,11 +470,11 @@ function NeuronCard({
                   </>
                 ) : (
                   <>
-                    <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-[#2a2a2a] hover:text-white">
+                    <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary hover:text-text-primary">
                       <GitFork className="w-4 h-4" />
                       Fork
                     </button>
-                    <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-[#2a2a2a] hover:text-white">
+                    <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary hover:text-text-primary">
                       <Copy className="w-4 h-4" />
                       Use
                     </button>
@@ -483,7 +488,7 @@ function NeuronCard({
 
       {/* Model */}
       <div className="mb-3">
-        <code className="text-xs bg-[#2a2a2a] text-gray-300 px-2 py-1 rounded font-mono">
+        <code className="text-xs bg-bg-tertiary text-text-secondary px-2 py-1 rounded font-mono">
           {neuron.model}
         </code>
       </div>
@@ -531,6 +536,7 @@ function NeuronDetail({ neuron, onClose, onRefresh, onSelectForked, compact }: {
   const tierInfo = TIER_LABELS[neuron.tier] || TIER_LABELS[4];
   const [actionLoading, setActionLoading] = useState<'fork' | 'archive' | 'delete' | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Determine editability
   const isEditable = neuron.isOwned && !neuron.isImmutable && !neuron.isSystem;
@@ -565,10 +571,6 @@ function NeuronDetail({ neuron, onClose, onRefresh, onSelectForked, compact }: {
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete "${neuron.name}"? This cannot be undone.`)) {
-      return;
-    }
-    
     setActionLoading('delete');
     setActionMessage(null);
     try {
@@ -590,6 +592,7 @@ function NeuronDetail({ neuron, onClose, onRefresh, onSelectForked, compact }: {
       setActionMessage({ type: 'error', text: 'Network error' });
     } finally {
       setActionLoading(null);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -630,10 +633,10 @@ function NeuronDetail({ neuron, onClose, onRefresh, onSelectForked, compact }: {
   };
 
   return (
-    <div className={`bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl overflow-hidden ${compact ? '' : 'sticky top-20'}`}>
+    <div className={`bg-bg-secondary border border-border rounded-xl overflow-hidden ${compact ? '' : 'sticky top-20'}`}>
       {/* Header */}
       <div 
-        className={`${compact ? 'p-4' : 'p-6'} border-b border-[#2a2a2a]`}
+        className={`${compact ? 'p-4' : 'p-6'} border-b border-border`}
         style={{ backgroundColor: `${providerInfo.color}10` }}
       >
         <div className="flex items-start justify-between">
@@ -668,8 +671,8 @@ function NeuronDetail({ neuron, onClose, onRefresh, onSelectForked, compact }: {
             ) : null}
           </div>
         </div>
-        <h3 className="text-xl font-bold text-white mt-4">{neuron.name}</h3>
-        <p className="text-sm text-gray-400 mt-1">{providerInfo.label} • {roleInfo.label}</p>
+        <h3 className="text-xl font-bold text-text-primary mt-4">{neuron.name}</h3>
+        <p className="text-sm text-text-secondary mt-1">{providerInfo.label} • {roleInfo.label}</p>
       </div>
 
       {/* Content */}
@@ -677,51 +680,51 @@ function NeuronDetail({ neuron, onClose, onRefresh, onSelectForked, compact }: {
         {/* Description */}
         {neuron.description && (
           <div>
-            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+            <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
               Description
             </h4>
-            <p className="text-sm text-gray-300">{neuron.description}</p>
+            <p className="text-sm text-text-secondary">{neuron.description}</p>
           </div>
         )}
 
         {/* Model */}
         <div>
-          <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+          <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
             Model
           </h4>
-          <code className="text-sm bg-[#2a2a2a] text-gray-300 px-3 py-2 rounded-lg font-mono block">
+          <code className="text-sm bg-bg-tertiary text-text-secondary px-3 py-2 rounded-lg font-mono block">
             {neuron.model}
           </code>
         </div>
 
         {/* Provider */}
         <div>
-          <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+          <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
             Provider
           </h4>
           <div className="flex items-center gap-2">
             <ProviderIcon className="w-4 h-4" color={providerInfo.color} />
-            <span className="text-sm text-gray-300">{providerInfo.label}</span>
+            <span className="text-sm text-text-secondary">{providerInfo.label}</span>
           </div>
         </div>
 
         {/* Role */}
         <div>
-          <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+          <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
             Role
           </h4>
           <div>
-            <span className="text-sm text-gray-300">{roleInfo.label}</span>
-            <p className="text-xs text-gray-500 mt-1">{roleInfo.description}</p>
+            <span className="text-sm text-text-secondary">{roleInfo.label}</span>
+            <p className="text-xs text-text-muted mt-1">{roleInfo.description}</p>
           </div>
         </div>
 
         {/* Neuron ID */}
         <div>
-          <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+          <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
             Neuron ID
           </h4>
-          <code className="text-xs bg-[#2a2a2a] text-gray-300 px-2 py-1 rounded font-mono break-all">
+          <code className="text-xs bg-bg-tertiary text-text-secondary px-2 py-1 rounded font-mono break-all">
             {neuron.neuronId}
           </code>
         </div>
@@ -729,10 +732,10 @@ function NeuronDetail({ neuron, onClose, onRefresh, onSelectForked, compact }: {
         {/* Parent Neuron ID (if forked) */}
         {neuron.parentNeuronId && (
           <div>
-            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+            <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
               Forked From
             </h4>
-            <code className="text-xs bg-[#2a2a2a] text-cyan-300 px-2 py-1 rounded font-mono break-all">
+            <code className="text-xs bg-bg-tertiary text-cyan-300 px-2 py-1 rounded font-mono break-all">
               {neuron.parentNeuronId}
             </code>
           </div>
@@ -750,15 +753,18 @@ function NeuronDetail({ neuron, onClose, onRefresh, onSelectForked, compact }: {
         )}
 
         {/* Action Buttons */}
-        <div className="pt-4 border-t border-[#2a2a2a] space-y-2">
+        <div className="pt-4 border-t border-border space-y-2">
           {isEditable ? (
             <>
-              <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#ef4444] text-white rounded-lg hover:bg-[#dc2626] transition-colors font-medium text-sm">
+              <Link 
+                href={`/studio/edit-neuron/${neuron.neuronId}`}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors font-medium text-sm"
+              >
                 <Pencil className="w-4 h-4" />
                 Edit Neuron
-              </button>
+              </Link>
               <button 
-                onClick={handleDelete}
+                onClick={() => setShowDeleteConfirm(true)}
                 disabled={actionLoading === 'delete'}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 disabled:opacity-50 transition-colors font-medium text-sm border border-red-500/30"
               >
@@ -784,7 +790,7 @@ function NeuronDetail({ neuron, onClose, onRefresh, onSelectForked, compact }: {
                 )}
                 Fork Neuron
               </button>
-              <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#2a2a2a] text-gray-300 rounded-lg hover:bg-[#3a3a3a] transition-colors font-medium text-sm border border-[#3a3a3a]">
+              <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-bg-tertiary text-text-secondary rounded-lg hover:bg-bg-active transition-colors font-medium text-sm border border-border-hover">
                 <Copy className="w-4 h-4" />
                 Use in Workflow
               </button>
@@ -798,8 +804,8 @@ function NeuronDetail({ neuron, onClose, onRefresh, onSelectForked, compact }: {
               disabled={actionLoading === 'archive'}
               className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors ${
                 neuron.isArchived
-                  ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                  : 'bg-[#2a2a2a] hover:bg-[#3a3a3a] text-gray-300 border border-[#3a3a3a]'
+                  ? 'bg-amber-600 hover:bg-amber-700 text-text-primary'
+                  : 'bg-bg-tertiary hover:bg-bg-active text-text-secondary border border-border-hover'
               }`}
             >
               {actionLoading === 'archive' ? (
@@ -812,6 +818,18 @@ function NeuronDetail({ neuron, onClose, onRefresh, onSelectForked, compact }: {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="Delete Neuron"
+        message={`Are you sure you want to delete "${neuron.name}"? This cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 }

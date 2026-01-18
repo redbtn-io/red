@@ -54,7 +54,7 @@ export function StreamingThinkingBubble({ thinking, isStreaming, isThinkingDispl
         onClick={onOpenModal}
         className={`
         max-w-[80%] rounded-xl px-5 py-3.5 shadow-lg cursor-pointer transition-all duration-400 ease-in-out select-none
-        bg-purple-600 border border-purple-500/50 text-white hover:bg-purple-700
+        bg-purple-600 border border-purple-500/50 text-text-primary hover:bg-purple-700
         ${isStreaming ? 'thinking-pulse' : ''}
         ${isShrinking ? 'transform scale-x-0 scale-y-0 opacity-0 origin-top-left' : 'transform scale-x-100 scale-y-100 opacity-100 origin-top-left'}
       `}>

@@ -1,14 +1,14 @@
 # Red AI Web Application
 
-A Next.js web application that provides a chat interface, Studio UI, and Knowledge Libraries for the Red AI system.
+A Next.js web application that provides a chat interface, Studio UI, Automations, and Knowledge Libraries for the Red AI system.
 
-**Version**: 2.0  
+**Version**: 2.1  
 **Last Updated**: December 2025  
 **Build Status**: ✅ Compiles successfully
 
 ## Overview
 
-This is the web frontend for Red AI, built with Next.js 15, React 19, and Tailwind CSS 4. It provides a modern chat interface with **stream reconnection** support, a **Studio UI** for managing AI configurations (nodes, neurons, graphs), and **Knowledge Libraries** for RAG-powered document storage and search.
+This is the web frontend for Red AI, built with Next.js 15, React 19, and Tailwind CSS 4. It provides a modern chat interface with **stream reconnection** support, a **Studio UI** for visual graph editing, **Automations** for scheduled workflows, and **Knowledge Libraries** for RAG-powered document storage and search.
 
 ### Key Features
 
@@ -18,9 +18,36 @@ This is the web frontend for Red AI, built with Next.js 15, React 19, and Tailwi
 - 💾 **MongoDB Persistence**: Complete conversation history stored permanently
 - ⚡ **Server-Sent Events**: Efficient streaming with native browser support
 - 🎨 **Smooth UX**: Character-by-character display with skeleton animation during generation
-- 🛠️ **Studio UI**: Manage nodes, neurons, and graphs through a visual interface
+- 🛠️ **Studio UI**: Visual graph editor with drag-and-drop canvas, state manager, and live preview
+- ⚙️ **Automations**: Schedule and run workflow graphs on cron triggers or manual invocation
+- 📊 **Dashboard**: Home page with quick stats, recent chats, and automation runs
 - 📚 **Knowledge Libraries**: Upload, organize, and search documents with RAG integration
 - 🗄️ **Archive System**: Soft-delete resources with restore capability
+
+## Studio UI Features
+
+The Studio provides a visual graph editor for creating AI workflows:
+
+### Graph Editor
+- **Drag-and-Drop Canvas**: Add nodes from the palette, connect them visually
+- **ReactFlow Integration**: Smooth panning, zooming, and node manipulation
+- **Graph Types**: 
+  - **Agent** (purple): Interactive chat graphs requiring user input
+  - **Workflow** (cyan): Headless graphs for automations
+- **Node Palette**: Browse available nodes by category (RAG, Communication, Execution, etc.)
+- **Config Panel**: Edit node parameters, prompts, and connections
+
+### State Manager
+- **Tree View**: Visualize the nested state object flowing between nodes
+- **Read/Write Indicators**: See which nodes read or write each field
+- **Type Display**: Shows object `{}`, array `[]`, string, number, boolean types
+- **Click to Select**: Click node names to select them on the canvas
+- **Infrastructure Toggle**: Show/hide system fields (memory, MCP client, etc.)
+
+### Nodes, Neurons, Graphs
+- **Nodes**: Reusable processing units (router, planner, executor, search, respond, etc.)
+- **Neurons**: AI model configurations with provider/model/temperature settings
+- **Graphs**: Complete workflows combining nodes with conditional routing
 
 ## Workspace Layout & Shared Tooling
 
@@ -148,50 +175,57 @@ With `npm link`, changes to the ai module will be reflected immediately (after r
 ```
 webapp/
 ├── src/
-│   ├── app/              # Next.js app directory
-│   │   ├── api/          # API routes (serverless functions)
-│   │   │   ├── health/   # Health check endpoint
-│   │   │   ├── auth/     # Authentication endpoints
-│   │   │   │   ├── check-session/
-│   │   │   │   ├── complete-profile/
-│   │   │   │   ├── logout/
-│   │   │   │   └── request-code/
-│   │   │   └── v1/       # OpenAI-compatible API endpoints
-│   │   │       ├── chat/completions/          # Chat completions
-│   │   │       ├── conversations/             # Conversation management
-│   │   │       ├── generations/               # Generation tracking
-│   │   │       ├── graphs/                    # Graph templates (NEW)
-│   │   │       ├── messages/                  # Message streaming
-│   │   │       ├── models/                    # Model discovery
-│   │   │       ├── neurons/                   # Neuron configs (NEW)
-│   │   │       ├── nodes/                     # Node configs (NEW)
-│   │   │       ├── oauth/                     # OAuth 2.0 endpoints
-│   │   │       ├── user/                      # User preferences (NEW)
-│   │   │       └── README.md                  # API documentation (v2.0)
-│   │   ├── logs/         # Logging dashboard
-│   │   ├── neurons/      # Neuron management UI (NEW)
-│   │   ├── nodes/        # Node management UI (NEW)
-│   │   ├── graphs/       # Graph management UI (NEW)
-│   │   ├── settings/     # User settings UI
-│   │   ├── page.tsx      # Main chat interface
-│   │   ├── layout.tsx    # Root layout
-│   │   └── globals.css   # Global styles
-│   ├── components/       # React components
-│   │   ├── ChatInput.tsx
-│   │   ├── Header.tsx
-│   │   ├── Messages.tsx
-│   │   ├── Modal.tsx
-│   │   ├── SetVh.tsx
-│   │   └── Sidebar.tsx
-│   └── lib/             # Utilities
-│       ├── red.ts        # Red AI initialization
-│       ├── api-helpers.ts
-│       ├── mongodb.ts    # Database connection
-│       ├── mongo-models.ts  # Mongoose schemas (nodes, neurons, graphs)
-│       └── conversation.ts
-├── public/              # Static assets
-├── test-simple.js       # Stream reconnection test (simple)
-├── test-tool-call.js    # Stream reconnection test (with web search)
+│   ├── app/                    # Next.js app directory
+│   │   ├── api/                # API routes
+│   │   │   ├── health/         # Health check endpoint
+│   │   │   ├── auth/           # Authentication endpoints
+│   │   │   └── v1/             # OpenAI-compatible API endpoints
+│   │   │       ├── automations/        # Automation CRUD + triggers
+│   │   │       ├── chat/completions/   # Chat completions
+│   │   │       ├── conversations/      # Conversation management
+│   │   │       ├── dashboard/          # Dashboard stats
+│   │   │       ├── generations/        # Generation tracking
+│   │   │       ├── graphs/             # Graph templates
+│   │   │       ├── libraries/          # Knowledge libraries
+│   │   │       ├── logs/               # Log streaming
+│   │   │       ├── messages/           # Message streaming
+│   │   │       ├── models/             # Model discovery
+│   │   │       ├── neurons/            # Neuron configs
+│   │   │       ├── nodes/              # Node configs
+│   │   │       ├── user/               # User preferences
+│   │   │       └── README.md           # API documentation (v2.1)
+│   │   ├── (chat)/             # Chat interface pages
+│   │   ├── logs/               # Logging dashboard
+│   │   ├── automations/        # Automations UI
+│   │   ├── settings/           # User settings UI
+│   │   ├── studio/             # Studio UI
+│   │   │   ├── (browse)/       # Browse nodes/neurons/graphs
+│   │   │   │   ├── nodes/
+│   │   │   │   ├── neurons/
+│   │   │   │   └── graphs/
+│   │   │   ├── components/     # Studio components
+│   │   │   │   ├── Canvas.tsx          # ReactFlow canvas
+│   │   │   │   ├── NodePalette.tsx     # Node category browser
+│   │   │   │   ├── ConfigPanel.tsx     # Node configuration
+│   │   │   │   ├── GraphHeader.tsx     # Graph toolbar
+│   │   │   │   ├── StateManager.tsx    # State tree visualization
+│   │   │   │   └── nodes/              # Custom node components
+│   │   │   ├── [graphId]/      # Edit existing graph
+│   │   │   ├── new/            # Create new graph
+│   │   │   ├── create-node/    # Create new node
+│   │   │   ├── create-neuron/  # Create new neuron
+│   │   │   └── edit-node/      # Edit existing node
+│   │   ├── page.tsx            # Main home/chat interface
+│   │   ├── layout.tsx          # Root layout
+│   │   └── globals.css         # Global styles
+│   ├── components/             # Shared React components
+│   └── lib/                    # Utilities
+│       ├── red.ts              # Red AI initialization
+│       ├── stores/             # Zustand stores
+│       │   └── graphStore.ts   # Graph editor state
+│       ├── mongodb.ts          # Database connection
+│       └── mongo-models.ts     # Mongoose schemas
+├── public/                     # Static assets
 └── package.json
 ```
 
@@ -226,7 +260,19 @@ The webapp exposes OpenAI-compatible API endpoints. See `src/app/api/README.md` 
 - `DELETE /api/v1/conversations/:id` - Delete conversation
 - `GET /api/v1/conversations/:id/messages` - Get message history
 
-### Studio APIs (NEW)
+### Dashboard
+- `GET /api/v1/dashboard` - Get quick stats, recent chats, recent automation runs
+
+### Automations
+- `GET /api/v1/automations` - List automations
+- `POST /api/v1/automations` - Create automation
+- `GET /api/v1/automations/:id` - Get automation details
+- `PATCH /api/v1/automations/:id` - Update automation
+- `DELETE /api/v1/automations/:id` - Delete automation
+- `POST /api/v1/automations/:id/trigger` - Manually trigger automation
+- `GET /api/v1/automations/:id/runs` - Get run history
+
+### Studio APIs
 
 #### Nodes
 - `GET /api/v1/nodes` - List node configurations
@@ -249,7 +295,7 @@ The webapp exposes OpenAI-compatible API endpoints. See `src/app/api/README.md` 
 #### Graphs
 - `GET /api/v1/graphs` - List graph templates
 - `POST /api/v1/graphs` - Create graph
-- `GET /api/v1/graphs/:id` - Get graph
+- `GET /api/v1/graphs/:id` - Get graph (includes `graphType: 'agent' | 'workflow'`)
 - `PATCH /api/v1/graphs/:id` - Update graph
 - `DELETE /api/v1/graphs/:id` - Delete graph
 - `POST /api/v1/graphs/:id/fork` - Fork system graph

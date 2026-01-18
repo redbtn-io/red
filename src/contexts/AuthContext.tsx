@@ -9,6 +9,8 @@ export interface User {
   dateOfBirth?: string;
   profileComplete: boolean;
   accountLevel: number;
+  defaultGraphId?: string;
+  defaultNeuronId?: string;
   createdAt?: string;
 }
 

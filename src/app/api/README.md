@@ -1,9 +1,9 @@
 # redbtn API Documentation
 
-**Version:** 2.0  
+**Version:** 2.1  
 **Base URL:** `/api`
 
-Complete documentation for the redbtn REST API. This API provides AI chat completions, conversation management, nodes, neurons, graphs, authentication, OAuth, and logging capabilities.
+Complete documentation for the redbtn REST API. This API provides AI chat completions, conversation management, nodes, neurons, graphs, automations, dashboard, authentication, OAuth, and logging capabilities.
 
 ---
 
@@ -14,17 +14,19 @@ Complete documentation for the redbtn REST API. This API provides AI chat comple
 3. [Chat & Completions](#chat--completions)
 4. [Conversations](#conversations)
 5. [Messages](#messages)
-6. [Nodes](#nodes)
-7. [Neurons](#neurons)
-8. [Graphs](#graphs)
-9. [Knowledge Libraries](#knowledge-libraries)
-10. [User Preferences](#user-preferences)
-11. [Models](#models)
-12. [Cleanup](#cleanup)
-13. [Logging & Monitoring](#logging--monitoring)
-14. [Rate Limiting](#rate-limiting)
-15. [Error Handling](#error-handling)
-16. [Streaming Protocol](#streaming-protocol)
+6. [Dashboard](#dashboard)
+7. [Automations](#automations)
+8. [Nodes](#nodes)
+9. [Neurons](#neurons)
+10. [Graphs](#graphs)
+11. [Knowledge Libraries](#knowledge-libraries)
+12. [User Preferences](#user-preferences)
+13. [Models](#models)
+14. [Cleanup](#cleanup)
+15. [Logging & Monitoring](#logging--monitoring)
+16. [Rate Limiting](#rate-limiting)
+17. [Error Handling](#error-handling)
+18. [Streaming Protocol](#streaming-protocol)
 
 ## 🗂️ Directory Overview & Local Tooling
 
@@ -35,14 +37,16 @@ The API surface lives inside the Next.js app directory. Key folders:
 - `src/app/api/v1/chat/completions` – OpenAI-compatible entry point that decouples HTTP from generation
 - `src/app/api/v1/messages/[messageId]/*` – reconnectable SSE stream endpoints
 - `src/app/api/v1/conversations/*` – CRUD + telemetry for stored conversations
+- `src/app/api/v1/dashboard/*` – dashboard stats (quick stats, recent chats, recent runs)
+- `src/app/api/v1/automations/*` – automation CRUD, triggers, run history
 - `src/app/api/v1/nodes/*` – node configuration CRUD, fork, abandon, restore
 - `src/app/api/v1/neurons/*` – neuron (LLM config) CRUD, fork, abandon, restore
-- `src/app/api/v1/graphs/*` – graph workflow CRUD and fork
+- `src/app/api/v1/graphs/*` – graph workflow CRUD and fork (includes graphType: agent | workflow)
+- `src/app/api/v1/libraries/*` – knowledge library CRUD, document upload, RAG search
 - `src/app/api/v1/user/preferences/*` – user preferences and archive management
 - `src/app/api/v1/cleanup/*` – admin cleanup jobs for abandoned resources
 - `src/app/api/v1/models/*` – available model listing
 - `src/app/api/v1/logs/*` and `generations/*` – diagnostics, log tailing, and generation metadata
-- `src/app/api/oauth/*` – OAuth 2.0 authorization server
 - `src/app/api/health` – lightweight readiness probe for load balancers
 
 Because this workspace also contains the `ai/` package, we keep shared automation at the root under `scripts/`. In particular, `scripts/pre-commit-cleanup.sh` moves stray markdown documents into `/explanations` and removes nested `explanations/` or `scripts/` folders from the Next.js project. Run it manually before submitting docs-heavy changes:
@@ -671,6 +675,212 @@ Subscribe to a message stream (similar to reconnect but without requiring prior 
 
 ---
 
+## 📊 Dashboard
+
+The dashboard endpoint provides aggregated statistics and recent activity for the home page.
+
+### Get Dashboard Data
+
+**`GET /api/v1/dashboard`**
+
+Get quick stats, recent chats, and recent automation runs.
+
+**Authentication:** Required
+
+**Success Response (200):**
+```json
+{
+  "stats": {
+    "totalChats": 42,
+    "totalAutomations": 5,
+    "recentActivity": 12
+  },
+  "recentChats": [
+    {
+      "conversationId": "conv_123",
+      "title": "AI assistance chat",
+      "lastMessageAt": "2025-12-22T10:30:00Z",
+      "messageCount": 8
+    }
+  ],
+  "recentRuns": [
+    {
+      "runId": "run_456",
+      "automationId": "auto_789",
+      "automationName": "Daily Report",
+      "status": "completed",
+      "startedAt": "2025-12-22T08:00:00Z",
+      "completedAt": "2025-12-22T08:02:15Z"
+    }
+  ]
+}
+```
+
+---
+
+## ⚙️ Automations
+
+Automations allow scheduling and running workflow graphs (graphs with `graphType: 'workflow'`) on triggers.
+
+### List Automations
+
+**`GET /api/v1/automations`**
+
+List all automations for the current user.
+
+**Authentication:** Required
+
+**Success Response (200):**
+```json
+{
+  "automations": [
+    {
+      "_id": "auto_123",
+      "name": "Daily Report",
+      "graphId": "graph_456",
+      "graphName": "Report Generator",
+      "trigger": {
+        "type": "cron",
+        "schedule": "0 8 * * *"
+      },
+      "enabled": true,
+      "lastRunAt": "2025-12-22T08:00:00Z",
+      "nextRunAt": "2025-12-23T08:00:00Z",
+      "createdAt": "2025-12-01T10:00:00Z"
+    }
+  ],
+  "total": 5
+}
+```
+
+---
+
+### Create Automation
+
+**`POST /api/v1/automations`**
+
+Create a new automation.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "name": "Daily Report",
+  "graphId": "graph_456",
+  "trigger": {
+    "type": "cron",
+    "schedule": "0 8 * * *"
+  },
+  "enabled": true,
+  "payload": {
+    "reportType": "daily"
+  }
+}
+```
+
+**Trigger Types:**
+- `cron` - Scheduled execution with cron expression
+- `manual` - Only runs when manually triggered
+- `webhook` - Triggered by external HTTP request
+
+---
+
+### Get Automation
+
+**`GET /api/v1/automations/[automationId]`**
+
+Get automation details.
+
+**Authentication:** Required
+
+---
+
+### Update Automation
+
+**`PATCH /api/v1/automations/[automationId]`**
+
+Update an automation's configuration.
+
+**Authentication:** Required
+
+---
+
+### Delete Automation
+
+**`DELETE /api/v1/automations/[automationId]`**
+
+Delete an automation.
+
+**Authentication:** Required
+
+---
+
+### Trigger Automation
+
+**`POST /api/v1/automations/[automationId]/trigger`**
+
+Manually trigger an automation.
+
+**Authentication:** Required
+
+**Request Body (optional):**
+```json
+{
+  "payload": {
+    "customData": "value"
+  }
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "runId": "run_789",
+  "message": "Automation triggered"
+}
+```
+
+---
+
+### Get Automation Runs
+
+**`GET /api/v1/automations/[automationId]/runs`**
+
+Get run history for an automation.
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `limit` (number): Max results (default 20)
+- `offset` (number): Pagination offset
+
+**Success Response (200):**
+```json
+{
+  "runs": [
+    {
+      "runId": "run_789",
+      "status": "completed",
+      "startedAt": "2025-12-22T08:00:00Z",
+      "completedAt": "2025-12-22T08:02:15Z",
+      "duration": 135000,
+      "result": { "success": true }
+    }
+  ],
+  "total": 42
+}
+```
+
+**Run Status Values:**
+- `pending` - Queued for execution
+- `running` - Currently executing
+- `completed` - Finished successfully
+- `failed` - Finished with error
+
+---
+
 ## 🧩 Nodes
 
 Nodes are reusable workflow components that can be composed into graphs. They define steps (neuron calls, tool invocations, transforms, conditionals, loops) that execute in sequence.
@@ -1046,6 +1256,10 @@ Restore a neuron you previously abandoned.
 
 Graphs are workflows that connect nodes together with edges and conditions. They define how data flows through a series of processing steps.
 
+**Graph Types:**
+- `agent` - Interactive chat graphs that require user input (used in chat interface)
+- `workflow` - Headless graphs for automations (no user input required)
+
 ### List Graphs
 
 **`GET /api/v1/graphs`**
@@ -1056,6 +1270,7 @@ List available graphs for the user.
 
 **Query Parameters:**
 - `includeSystem` (boolean): Include system graphs (default true)
+- `graphType` (string): Filter by type - `agent` or `workflow`
 - `limit` (number): Max results
 - `offset` (number): Pagination offset
 
@@ -1067,6 +1282,7 @@ List available graphs for the user.
       "graphId": "red-chat",
       "name": "redbtn chat",
       "description": "Default chat graph",
+      "graphType": "agent",
       "tier": 4,
       "isDefault": true,
       "isSystem": true,
@@ -1095,6 +1311,7 @@ Get full details for a specific graph including nodes and edges.
     "graphId": "red-chat",
     "name": "redbtn chat",
     "description": "Default chat graph",
+    "graphType": "agent",
     "tier": 4,
     "isDefault": true,
     "isSystem": true,
@@ -1124,6 +1341,7 @@ Create a new custom graph.
 {
   "name": "My Custom Graph",
   "description": "A custom workflow",
+  "graphType": "workflow",
   "nodes": [
     { "id": "start", "type": "respond", "config": {} }
   ],

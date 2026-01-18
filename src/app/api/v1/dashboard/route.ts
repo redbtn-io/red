@@ -6,6 +6,7 @@ import connectToDatabase from '@/lib/database/mongodb';
 import { Graph } from '@redbtn/ai';
 import { Conversation } from '@/lib/database/models/conversation';
 import { Automation, AutomationRun } from '@/lib/database/models/automation';
+import User from '@/lib/database/models/auth/User';
 
 /**
  * GET /api/v1/dashboard
@@ -42,6 +43,7 @@ export async function GET(request: NextRequest) {
       userGraphs,
       automations,
       recentRuns,
+      fullUser,
     ] = await Promise.all([
       // Total conversation count
       Conversation.countDocuments({ userId: user.userId }),
@@ -84,14 +86,20 @@ export async function GET(request: NextRequest) {
         .sort({ startedAt: -1 })
         .limit(10)
         .lean(),
+      
+      // Fetch full user for preferences
+      User.findById(user.userId).select('defaultGraphId').lean() as Promise<{ defaultGraphId?: string } | null>,
     ]);
 
     // Calculate stats
     const totalGraphs = systemGraphs.length + userGraphs.length;
-    const activeAutomations = automations.filter((a: any) => a.isEnabled).length;
-    const totalRuns = automations.reduce((sum: number, a: any) => sum + (a.stats?.runCount || 0), 0);
-    const successfulRuns = automations.reduce((sum: number, a: any) => sum + (a.stats?.successCount || 0), 0);
+    const activeAutomations = automations.filter((a) => a.isEnabled).length;
+    const totalRuns = automations.reduce((sum, a) => sum + (a.stats?.runCount || 0), 0);
+    const successfulRuns = automations.reduce((sum, a) => sum + (a.stats?.successCount || 0), 0);
     const successRate = totalRuns > 0 ? Math.round((successfulRuns / totalRuns) * 100) : 0;
+
+    // Get user's preferred default graph
+    const userDefaultGraphId = fullUser?.defaultGraphId || 'red-assistant';
 
     // Combine and format graphs for selection
     const availableAgents = [
@@ -100,14 +108,14 @@ export async function GET(request: NextRequest) {
         name: g.name,
         description: g.description,
         isSystem: true,
-        isDefault: g.isDefault || false,
+        isDefault: g.graphId === userDefaultGraphId,
       })),
       ...userGraphs.map((g: any) => ({
         graphId: g.graphId,
         name: g.name,
         description: g.description,
         isSystem: false,
-        isDefault: false,
+        isDefault: g.graphId === userDefaultGraphId,
       })),
     ];
 
@@ -129,6 +137,9 @@ export async function GET(request: NextRequest) {
       lastRunAt: a.lastRunAt,
     }));
 
+    // Get automation IDs for filtering orphaned runs
+    const automationIds = new Set(automations.map((a: any) => a.automationId));
+
     return NextResponse.json({
       stats: {
         conversations: conversationCount,
@@ -141,13 +152,20 @@ export async function GET(request: NextRequest) {
       recentConversations: formattedConversations,
       availableAgents,
       automationSummary,
-      recentRuns: recentRuns.map((r: any) => ({
-        id: r.runId,
-        automationId: r.automationId,
-        status: r.status,
-        durationMs: r.durationMs,
-        startedAt: r.startedAt,
-      })),
+      recentRuns: recentRuns
+        .filter((r: any) => automationIds.has(r.automationId)) // Filter out orphaned runs
+        .map((r: any) => {
+          // Find automation name
+          const automation = automations.find((a: any) => a.automationId === r.automationId);
+          return {
+            id: r.runId,
+            automationId: r.automationId,
+            automationName: automation?.name || 'Deleted',
+            status: r.status,
+            durationMs: r.durationMs,
+            startedAt: r.startedAt,
+          };
+        }),
       user: {
         name: user.email.split('@')[0], // Use email prefix as fallback name
         email: user.email,

@@ -6,7 +6,8 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getRed } from '@/lib/red';
+import { getRed, getDatabase } from '@/lib/red';
+import { verifyAuth } from '@/lib/auth/auth';
 
 export const runtime = 'nodejs';
 
@@ -14,6 +15,12 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ generationId: string }> }
 ) {
+  // Verify authentication
+  const user = await verifyAuth(request);
+  if (!user) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   const { generationId } = await params;
   
   if (!generationId) {
@@ -21,6 +28,16 @@ export async function GET(
   }
 
   const red = await getRed();
+
+  // Verify ownership via generation's conversation
+  const generation = await red.logger.getGeneration(generationId);
+  if (generation) {
+    const db = getDatabase();
+    const conversation = await db.getConversation(generation.conversationId);
+    if (conversation?.userId && conversation.userId !== user.userId) {
+      return new Response('Forbidden', { status: 403 });
+    }
+  }
   
   // Create SSE stream
   const encoder = new TextEncoder();

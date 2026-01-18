@@ -118,12 +118,12 @@ export function BottomSheet({
         ref={sheetRef}
         className="fixed left-0 right-0 bottom-0 z-50 lg:hidden"
         style={{ 
-          height: '80vh',
+          height: '92vh',
           touchAction: 'none',
         }}
         initial={false}
         animate={{ 
-          y: isExpanded ? 0 : `calc(80vh - ${peekHeight}px)`,
+          y: isExpanded ? 0 : `calc(92vh - ${peekHeight}px)`,
         }}
         transition={{
           type: 'spring',
@@ -136,9 +136,9 @@ export function BottomSheet({
         onDragStart={() => setIsDragging(true)}
         onDragEnd={handleDragEnd}
       >
-        <div className="h-full bg-[#0f0f0f] rounded-t-2xl border-t border-x border-[#2a2a2a] shadow-2xl flex flex-col">
+        <div className="h-full bg-bg-elevated rounded-t-2xl border-t border-x border-border shadow-2xl flex flex-col">
           {/* Handle + Header - fixed at top */}
-          <div className="flex-shrink-0 bg-[#0f0f0f] rounded-t-2xl">
+          <div className="flex-shrink-0 bg-bg-elevated rounded-t-2xl">
             {/* Handle */}
             <div 
               className="py-3 cursor-grab active:cursor-grabbing"
@@ -164,7 +164,7 @@ export function BottomSheet({
 
             {/* Header with collapse - shown when expanded */}
             <motion.div 
-              className="px-4 py-2 flex items-center justify-between border-b border-[#2a2a2a] overflow-hidden"
+              className="px-4 py-2 flex items-center justify-between border-b border-border overflow-hidden"
               animate={{ 
                 opacity: isExpanded ? 1 : 0,
                 height: isExpanded ? 'auto' : 0,
@@ -173,14 +173,14 @@ export function BottomSheet({
             >
               <button
                 onClick={collapse}
-                className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors"
+                className="flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary transition-colors"
               >
                 <ChevronDown className="w-4 h-4" />
                 <span>Collapse</span>
               </button>
               <button
                 onClick={collapse}
-                className="p-2 rounded-lg hover:bg-[#1a1a1a] text-gray-400 hover:text-white transition-colors"
+                className="p-2 rounded-lg hover:bg-bg-secondary text-text-secondary hover:text-text-primary transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>

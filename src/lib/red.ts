@@ -1,7 +1,10 @@
 /**
  * redbtn instance initialization for Next.js API routes
  */
-import { Red, RedConfig } from '@redbtn/ai';
+import { Red, RedConfig, getDatabase } from '@redbtn/ai';
+
+// Re-export getDatabase for convenience
+export { getDatabase };
 
 const config: RedConfig = {
   redisUrl: process.env.REDIS_URL || "redis://localhost:6379",

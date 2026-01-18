@@ -18,7 +18,7 @@ function EndNode({ data, selected }: NodeProps<StudioNodeData>) {
     <div
       className={`
         relative rounded-full border-2 bg-red-600 p-4 shadow-lg transition-all cursor-pointer
-        ${selected ? 'border-[#ef4444] ring-2 ring-[#ef4444]/30' : 'border-red-500 hover:border-red-400'}
+        ${selected ? 'border-accent ring-2 ring-accent/30' : 'border-red-500 hover:border-red-400'}
       `}
     >
       <Square className="w-6 h-6 text-white fill-white" />

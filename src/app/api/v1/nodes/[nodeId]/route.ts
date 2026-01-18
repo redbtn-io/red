@@ -319,6 +319,7 @@ export async function GET(
         scheduledDeletionAt: Date,
         isSystem: Boolean,
         isImmutable: Boolean,
+        isPublic: Boolean,
         steps: [mongoose.Schema.Types.Mixed],
         metadata: mongoose.Schema.Types.Mixed
       }));
@@ -327,6 +328,7 @@ export async function GET(
       nodeId,
       $or: [
         { isSystem: true },
+        { isPublic: true },  // Public nodes are accessible to all
         { userId: user.userId },
         { creatorId: user.userId }  // Include abandoned nodes the user created
       ]
@@ -516,7 +518,7 @@ export async function PATCH(
 
     const { nodeId } = await params;
     const body = await request.json();
-    const { name, description, tags, steps, metadata, newNodeId } = body;
+    const { name, description, tags, steps, parameters, metadata, newNodeId, isPublic } = body;
 
     // Get or create model
     const NodeModel = mongoose.models.Node ||
@@ -528,6 +530,7 @@ export async function PATCH(
         userId: { type: String, required: true, index: true },
         isSystem: { type: Boolean, default: false },
         isImmutable: { type: Boolean, default: false },
+        isPublic: { type: Boolean, default: true },
         parentNodeId: { type: String, default: null },
         version: { type: Number, default: 1 },
         steps: [mongoose.Schema.Types.Mixed],
@@ -552,9 +555,27 @@ export async function PATCH(
       if (description !== undefined) node.description = description;
       if (tags !== undefined) node.tags = tags;
       if (steps !== undefined) node.steps = steps;
+      if (parameters !== undefined) node.parameters = parameters;
       if (metadata !== undefined) {
         node.metadata = { ...node.metadata, ...metadata };
       }
+      
+      // Handle isPublic update (only if user has permission)
+      if (isPublic !== undefined) {
+        const userTier = user.accountLevel || 4;
+        const canCreatePrivateNodes = userTier <= 2; // ADMIN, ENTERPRISE, or PRO
+        
+        if (!isPublic && !canCreatePrivateNodes) {
+          // User wants to make node private but doesn't have the tier
+          return NextResponse.json({ 
+            error: 'Private nodes require PRO tier or better',
+            requiredTier: 'PRO'
+          }, { status: 403 });
+        }
+        
+        node.isPublic = isPublic;
+      }
+      
       node.version += 1;
       node.updatedAt = new Date();
       
@@ -588,6 +609,7 @@ export async function PATCH(
         if (description !== undefined) existingClone.description = description;
         if (tags !== undefined) existingClone.tags = tags;
         if (steps !== undefined) existingClone.steps = steps;
+        if (parameters !== undefined) existingClone.parameters = parameters;
         if (metadata !== undefined) {
           existingClone.metadata = { ...existingClone.metadata, ...metadata };
         }
@@ -618,6 +640,7 @@ export async function PATCH(
         parentNodeId: nodeId,
         version: 1,
         steps: steps || node.steps,
+        parameters: parameters || node.parameters,
         metadata: {
           ...node.metadata,
           ...metadata,

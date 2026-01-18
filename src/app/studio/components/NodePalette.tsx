@@ -221,7 +221,7 @@ export default function NodePalette({ isOpen, onClose, onNodeAdded }: NodePalett
     return (
       <AppSidebar isOpen={isOpen} onClose={onClose}>
         <div className="flex items-center justify-center h-full">
-          <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+          <Loader2 className="w-6 h-6 text-text-secondary animate-spin" />
         </div>
       </AppSidebar>
     );
@@ -241,12 +241,12 @@ export default function NodePalette({ isOpen, onClose, onNodeAdded }: NodePalett
   return (
     <AppSidebar isOpen={isOpen} onClose={onClose}>
       {/* Search & Title */}
-      <div className="p-3 border-b border-[#2a2a2a]">
+      <div className="p-3 border-b border-border">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-300">Nodes</h2>
+          <h2 className="text-sm font-semibold text-text-secondary">Nodes</h2>
           <Link
             href="/studio/create-node"
-            className="flex items-center gap-1 text-xs text-[#ef4444] hover:text-[#ff6b6b] transition-colors"
+            className="flex items-center gap-1 text-xs text-accent-text hover:text-accent-hover transition-colors"
           >
             <Plus className="w-3 h-3" />
             Create
@@ -255,20 +255,20 @@ export default function NodePalette({ isOpen, onClose, onNodeAdded }: NodePalett
         
         {/* Mobile hint */}
         {isTouchDevice && (
-          <p className="text-xs text-gray-500 mb-3">
+          <p className="text-xs text-text-muted mb-3">
             Tap a node to add it to the canvas
           </p>
         )}
         
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
           <input
             type="text"
             placeholder="Search nodes..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg pl-9 pr-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-red-500"
+            className="w-full bg-bg-secondary border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-red-500"
           />
         </div>
       </div>
@@ -277,7 +277,7 @@ export default function NodePalette({ isOpen, onClose, onNodeAdded }: NodePalett
       <div className="p-2 overflow-y-auto">
         {/* Start/End nodes - always visible */}
         <div className="mb-4">
-          <div className="text-xs font-medium text-gray-500 uppercase tracking-wider px-2 mb-2">
+          <div className="text-xs font-medium text-text-muted uppercase tracking-wider px-2 mb-2">
             Flow Control
           </div>
           
@@ -303,14 +303,14 @@ export default function NodePalette({ isOpen, onClose, onNodeAdded }: NodePalett
               inputs: [],
               outputs: ['flow'],
             })}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#1a1a1a] hover:bg-[#2a2a2a] active:bg-[#2a2a2a] cursor-grab active:cursor-grabbing transition-colors mb-1 touch-manipulation"
+            className="flex items-center gap-3 px-3 py-2 rounded-lg bg-bg-secondary hover:bg-bg-tertiary active:bg-bg-tertiary cursor-grab active:cursor-grabbing transition-colors mb-1 touch-manipulation"
           >
             <div className="w-3 h-3 rounded-full bg-green-500" />
             <div className="flex-1">
-              <div className="text-sm font-medium text-gray-200">Start</div>
-              <div className="text-xs text-gray-500">Entry point</div>
+              <div className="text-sm font-medium text-text-primary">Start</div>
+              <div className="text-xs text-text-muted">Entry point</div>
             </div>
-            {isTouchDevice && <Plus className="w-4 h-4 text-gray-500" />}
+            {isTouchDevice && <Plus className="w-4 h-4 text-text-muted" />}
           </div>
           
           <div
@@ -335,14 +335,14 @@ export default function NodePalette({ isOpen, onClose, onNodeAdded }: NodePalett
               inputs: ['flow'],
               outputs: [],
             })}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#1a1a1a] hover:bg-[#2a2a2a] active:bg-[#2a2a2a] cursor-grab active:cursor-grabbing transition-colors touch-manipulation"
+            className="flex items-center gap-3 px-3 py-2 rounded-lg bg-bg-secondary hover:bg-bg-tertiary active:bg-bg-tertiary cursor-grab active:cursor-grabbing transition-colors touch-manipulation"
           >
             <div className="w-3 h-3 rounded-sm bg-red-500" />
             <div className="flex-1">
-              <div className="text-sm font-medium text-gray-200">End</div>
-              <div className="text-xs text-gray-500">Exit point</div>
+              <div className="text-sm font-medium text-text-primary">End</div>
+              <div className="text-xs text-text-muted">Exit point</div>
             </div>
-            {isTouchDevice && <Plus className="w-4 h-4 text-gray-500" />}
+            {isTouchDevice && <Plus className="w-4 h-4 text-text-muted" />}
           </div>
         </div>
 
@@ -356,18 +356,18 @@ export default function NodePalette({ isOpen, onClose, onNodeAdded }: NodePalett
               {/* Category header */}
               <button
                 onClick={() => toggleCategory(group.name)}
-                className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-[#1a1a1a] transition-colors"
+                className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-bg-secondary transition-colors"
               >
                 {isExpanded ? (
-                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                  <ChevronDown className="w-4 h-4 text-text-muted" />
                 ) : (
-                  <ChevronRight className="w-4 h-4 text-gray-500" />
+                  <ChevronRight className="w-4 h-4 text-text-muted" />
                 )}
-                <CategoryIcon className="w-4 h-4 text-gray-400" />
-                <span className="text-xs font-medium text-gray-400 uppercase tracking-wider flex-1 text-left">
+                <CategoryIcon className="w-4 h-4 text-text-secondary" />
+                <span className="text-xs font-medium text-text-secondary uppercase tracking-wider flex-1 text-left">
                   {group.name}
                 </span>
-                <span className="text-xs text-gray-600">{group.nodes.length}</span>
+                <span className="text-xs text-text-disabled">{group.nodes.length}</span>
               </button>
 
               {/* Category nodes */}
@@ -383,18 +383,18 @@ export default function NodePalette({ isOpen, onClose, onNodeAdded }: NodePalett
                         draggable={!isTouchDevice}
                         onDragStart={(e) => handleDragStart(e, node)}
                         onClick={() => isTouchDevice && handleAddNode(node)}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#1a1a1a] hover:bg-[#2a2a2a] active:bg-[#2a2a2a] cursor-grab active:cursor-grabbing transition-colors group touch-manipulation"
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg bg-bg-secondary hover:bg-bg-tertiary active:bg-bg-tertiary cursor-grab active:cursor-grabbing transition-colors group touch-manipulation"
                       >
                         <div className={`w-2 h-6 rounded-full ${colorClass}`} />
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-gray-200 break-words">
+                          <div className="text-sm font-medium text-text-primary break-words">
                             {node.name}
                           </div>
-                          <div className="text-xs text-gray-500 break-words">
+                          <div className="text-xs text-text-muted break-words">
                             {node.description}
                           </div>
                         </div>
-                        {isTouchDevice && <Plus className="w-4 h-4 text-gray-500 flex-shrink-0" />}
+                        {isTouchDevice && <Plus className="w-4 h-4 text-text-muted flex-shrink-0" />}
                         {node.tier !== 'free' && (
                           <span
                             className={`text-[10px] font-medium px-1.5 py-0.5 rounded flex-shrink-0 ${
@@ -418,7 +418,7 @@ export default function NodePalette({ isOpen, onClose, onNodeAdded }: NodePalett
         })}
 
         {filteredNodes.length === 0 && searchQuery && (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-text-muted">
             <p className="text-sm">No nodes found</p>
             <p className="text-xs mt-1">Try a different search term</p>
           </div>

@@ -29,7 +29,7 @@ const defaultNavItems: NavItem[] = [
   { href: '/chat', label: 'Chat', icon: MessageSquare, match: '/chat' },
   { href: '/studio', label: 'Studio', icon: Workflow, match: '/studio' },
   { href: '/automations', label: 'Automations', icon: Zap, match: '/automations' },
-  { href: '/knowledge', label: 'Knowledge', icon: Library, match: '/knowledge' },
+  { href: '/data', label: 'Data', icon: Library, match: '/data' },
   { href: '/logs', label: 'Terminal', icon: Terminal, match: '/logs' },
 ];
 
@@ -90,10 +90,10 @@ function NavItemLink({
         select-none touch-none
         [-webkit-touch-callout:none] [-webkit-user-select:none]
         ${isActive
-          ? 'bg-[#ef4444]/10 text-[#ef4444]'
-          : 'text-gray-400 hover:text-white hover:bg-[#1a1a1a]'
+          ? 'bg-accent/10 text-accent-text'
+          : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
         }
-        ${isLongPressing ? 'ring-2 ring-[#ef4444]/50' : ''}
+        ${isLongPressing ? 'ring-2 ring-accent/50' : ''}
       `}
     >
       <Icon className="w-3.5 h-3.5" />
@@ -108,14 +108,14 @@ function DragPreview({ item, position }: { item: NavItem; position: { x: number;
   return (
     <div
       className="fixed pointer-events-none z-[9999] px-3 py-2 rounded-lg text-sm font-medium
-        bg-[#1a1a1a] text-white border border-[#ef4444]/50 shadow-xl flex items-center gap-2"
+        bg-bg-secondary text-text-primary border border-accent/50 shadow-xl flex items-center gap-2"
       style={{
         left: position.x,
         top: position.y,
         transform: 'translate(-50%, -50%)'
       }}
     >
-      <GripVertical className="w-3.5 h-3.5 text-[#ef4444]" />
+      <GripVertical className="w-3.5 h-3.5 text-accent-text" />
       <Icon className="w-4 h-4" />
       <span>{item.label}</span>
     </div>
@@ -154,12 +154,12 @@ function ReorderableNavItem({
           flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors
           select-none w-full
           ${isActive
-            ? 'bg-[#ef4444]/10 text-[#ef4444]'
-            : 'text-gray-400 hover:bg-[#1a1a1a]'
+            ? 'bg-accent/10 text-accent-text'
+            : 'text-text-secondary hover:bg-bg-secondary'
           }
         `}
       >
-        <GripVertical className="w-3.5 h-3.5 text-gray-600" />
+        <GripVertical className="w-3.5 h-3.5 text-text-disabled" />
         <Icon className="w-4 h-4" />
         <span>{item.label}</span>
       </div>
@@ -345,7 +345,7 @@ export function AppSidebar({
       {/* Sidebar */}
       <div
         className={`
-          fixed inset-y-0 left-0 z-50 w-64 lg:w-80 bg-[#0f0f0f] border-r border-[#2a2a2a] text-white 
+          fixed inset-y-0 left-0 z-50 w-64 lg:w-80 bg-bg-elevated border-r border-border text-text-primary 
           transform transition-transform duration-200 ease-in-out
           lg:relative lg:translate-x-0
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -353,7 +353,7 @@ export function AppSidebar({
       >
         <div className="flex flex-col h-full">
           {/* Logo Header */}
-          <div className="p-4 border-b border-[#2a2a2a]">
+          <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between mb-4">
               <Link href="/" className="flex items-center gap-2 no-underline hover:opacity-90">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
@@ -369,7 +369,7 @@ export function AppSidebar({
               </Link>
               <button 
                 onClick={onClose}
-                className="lg:hidden p-1.5 rounded-lg hover:bg-[#1a1a1a] text-gray-400"
+                className="lg:hidden p-1.5 rounded-lg hover:bg-bg-secondary text-text-secondary"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -380,7 +380,7 @@ export function AppSidebar({
           </div>
 
           {/* Main Navigation */}
-          <div className="px-3 py-2 border-b border-[#2a2a2a]">
+          <div className="px-3 py-2 border-b border-border">
             {isReorderMode ? (
               // Vertical reorder mode - pointer-based for touch support
               <>
@@ -399,7 +399,7 @@ export function AppSidebar({
                 </div>
                 <button
                   onClick={exitReorderMode}
-                  className="w-full mt-2 py-1.5 text-xs text-[#ef4444] bg-[#ef4444]/10 rounded-lg hover:bg-[#ef4444]/20 transition-colors"
+                  className="w-full mt-2 py-1.5 text-xs text-accent-text bg-accent/10 rounded-lg hover:bg-accent/20 transition-colors"
                 >
                   Done
                 </button>
@@ -433,12 +433,12 @@ export function AppSidebar({
 
           {/* Footer */}
           {footer ? (
-            <div className="p-4 border-t border-[#2a2a2a]">
+            <div className="p-4 border-t border-border">
               {footer}
             </div>
           ) : (
-            <div className="p-4 border-t border-[#2a2a2a]">
-              <div className="flex items-center gap-2 text-xs text-gray-500 px-1">
+            <div className="p-4 border-t border-border">
+              <div className="flex items-center gap-2 text-xs text-text-muted px-1">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 <span>Red Connected</span>
               </div>
@@ -451,7 +451,7 @@ export function AppSidebar({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            className="fixed inset-0 bg-backdrop z-40 lg:hidden"
             onClick={onClose}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

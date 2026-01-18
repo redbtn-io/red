@@ -215,8 +215,8 @@ export function ColorPicker({ value, onChange, disabled, presets = DEFAULT_PRESE
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
         className={`
-          flex items-center gap-2 px-3 py-2 rounded-lg border border-[#2a2a2a] bg-[#0a0a0a]
-          hover:border-[#3a3a3a] transition-colors
+          flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-bg-primary
+          hover:border-border-hover transition-colors
           ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         `}
       >
@@ -224,7 +224,7 @@ export function ColorPicker({ value, onChange, disabled, presets = DEFAULT_PRESE
           className="w-6 h-6 rounded-md border border-white/20"
           style={{ backgroundColor: value }}
         />
-        <span className="text-sm text-gray-300 font-mono">{value}</span>
+        <span className="text-sm text-text-secondary font-mono">{value}</span>
       </button>
 
       {/* Picker dropdown */}
@@ -235,7 +235,7 @@ export function ColorPicker({ value, onChange, disabled, presets = DEFAULT_PRESE
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="fixed z-50 p-3 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] shadow-xl shadow-black/50"
+            className="fixed z-50 p-3 rounded-xl bg-bg-secondary border border-border shadow-xl shadow-black/50"
             style={{ 
               width: Math.min(280, window.innerWidth - 32),
               top: dropdownPosition.top,
@@ -285,26 +285,26 @@ export function ColorPicker({ value, onChange, disabled, presets = DEFAULT_PRESE
             {/* Hex input and preview */}
             <div className="flex items-center gap-2 mt-3">
               <div 
-                className="w-10 h-10 rounded-lg border border-[#2a2a2a] flex-shrink-0"
+                className="w-10 h-10 rounded-lg border border-border flex-shrink-0"
                 style={{ backgroundColor: value }}
               />
               <div className="flex-1">
                 <div className="flex items-center gap-1">
-                  <Pipette className="w-3 h-3 text-gray-500" />
-                  <span className="text-xs text-gray-500">HEX</span>
+                  <Pipette className="w-3 h-3 text-text-muted" />
+                  <span className="text-xs text-text-muted">HEX</span>
                 </div>
                 <input
                   type="text"
                   value={hexInput}
                   onChange={handleHexChange}
-                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded px-2 py-1 text-sm text-gray-200 font-mono uppercase focus:outline-none focus:border-[#ef4444]"
+                  className="w-full bg-bg-primary border border-border rounded px-2 py-1 text-sm text-text-primary font-mono uppercase focus:outline-none focus:border-accent"
                 />
               </div>
             </div>
 
             {/* Preset colors */}
-            <div className="mt-3 pt-3 border-t border-[#2a2a2a]">
-              <div className="text-xs text-gray-500 mb-2">Presets</div>
+            <div className="mt-3 pt-3 border-t border-border">
+              <div className="text-xs text-text-muted mb-2">Presets</div>
               <div className="grid grid-cols-8 gap-1.5">
                 {presets.map((preset) => (
                   <button
@@ -312,7 +312,7 @@ export function ColorPicker({ value, onChange, disabled, presets = DEFAULT_PRESE
                     onClick={() => handlePresetClick(preset)}
                     className={`
                       w-6 h-6 rounded transition-transform hover:scale-110
-                      ${value === preset ? 'ring-2 ring-white ring-offset-1 ring-offset-[#1a1a1a]' : ''}
+                      ${value === preset ? 'ring-2 ring-white ring-offset-1 ring-offset-bg-secondary' : ''}
                     `}
                     style={{ backgroundColor: preset }}
                   />

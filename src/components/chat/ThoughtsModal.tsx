@@ -157,11 +157,11 @@ export function ThoughtsModal({ isOpen, onClose, message, streamingThoughts = ''
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div 
-          className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col pointer-events-auto animate-in zoom-in-95 duration-200"
+          className="bg-bg-secondary border border-border rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col pointer-events-auto animate-in zoom-in-95 duration-200"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-[#2a2a2a]">
+          <div className="flex items-center justify-between p-6 border-b border-border">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-red-500/10 rounded-lg">
                 {message.role === 'assistant' ? (
@@ -171,8 +171,8 @@ export function ThoughtsModal({ isOpen, onClose, message, streamingThoughts = ''
                 )}
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-white">Message Details</h2>
-                <div className="flex items-center gap-4 text-sm text-gray-400 mt-1">
+                <h2 className="text-xl font-semibold text-text-primary">Message Details</h2>
+                <div className="flex items-center gap-4 text-sm text-text-secondary mt-1">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     {message.timestamp ? formatTimestamp(message.timestamp) : 'No timestamp'}
@@ -200,7 +200,7 @@ export function ThoughtsModal({ isOpen, onClose, message, streamingThoughts = ''
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-text-secondary hover:text-text-primary"
               aria-label="Close message details"
             >
               <X className="w-5 h-5" />
@@ -210,23 +210,23 @@ export function ThoughtsModal({ isOpen, onClose, message, streamingThoughts = ''
           {/* Content */}
           <div className="flex-1 overflow-y-auto">
             {/* Message Content */}
-            <div className="p-6 border-b border-[#2a2a2a]">
+            <div className="p-6 border-b border-border">
               <div className="flex items-center gap-2 mb-3">
-                <MessageSquare className="w-4 h-4 text-gray-400" />
-                <h3 className="text-lg font-medium text-white">Message Content</h3>
+                <MessageSquare className="w-4 h-4 text-text-secondary" />
+                <h3 className="text-lg font-medium text-text-primary">Message Content</h3>
               </div>
               <div className="prose prose-invert max-w-none
-                prose-p:my-2 prose-p:leading-relaxed prose-p:text-gray-300
+                prose-p:my-2 prose-p:leading-relaxed prose-p:text-text-secondary
                 prose-pre:bg-black/40 prose-pre:border prose-pre:border-white/10 prose-pre:my-3
                 prose-code:text-red-400 prose-code:bg-black/30 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm
                 prose-a:text-red-400 prose-a:underline prose-a:decoration-red-400/30 hover:prose-a:decoration-red-400
-                prose-strong:text-white prose-strong:font-semibold
-                prose-em:text-gray-300 prose-em:italic
-                prose-headings:text-white prose-headings:font-bold prose-headings:mt-4 prose-headings:mb-2
-                prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-li:text-gray-300
+                prose-strong:text-text-primary prose-strong:font-semibold
+                prose-em:text-text-secondary prose-em:italic
+                prose-headings:text-text-primary prose-headings:font-bold prose-headings:mt-4 prose-headings:mb-2
+                prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-li:text-text-secondary
                 prose-table:my-3 prose-th:px-3 prose-th:py-2 prose-th:bg-white/5 prose-td:px-3 prose-td:py-2 prose-td:border-white/10
-                prose-blockquote:border-l-4 prose-blockquote:border-red-500/50 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-gray-400
-                [&_.katex]:text-white [&_.katex-display]:my-3 [&_.katex-display]:overflow-x-auto">
+                prose-blockquote:border-l-4 prose-blockquote:border-red-500/50 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-text-secondary
+                [&_.katex]:text-text-primary [&_.katex-display]:my-3 [&_.katex-display]:overflow-x-auto">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkMath]}
                   rehypePlugins={[rehypeKatex]}
@@ -245,13 +245,13 @@ export function ThoughtsModal({ isOpen, onClose, message, streamingThoughts = ''
                 >
                 <div className="flex items-center gap-2">
                   <Brain className="w-4 h-4 text-red-500" />
-                  <h3 className="text-lg font-medium text-white">
+                  <h3 className="text-lg font-medium text-text-primary">
                     {message.role === 'assistant' ? 'Reasoning' : 'Reasoning Details'}
                   </h3>
                   {message.role === 'assistant' && (
                     <div className="flex items-center gap-2 ml-3">
                       {thoughtData?.isLoading ? (
-                        <span className="flex items-center gap-2 text-sm text-gray-400">
+                        <span className="flex items-center gap-2 text-sm text-text-secondary">
                           <Loader2 className="w-3 h-3 animate-spin" />
                           Loading...
                         </span>
@@ -266,7 +266,7 @@ export function ThoughtsModal({ isOpen, onClose, message, streamingThoughts = ''
                           Streaming
                         </span>
                       ) : thoughtData?.content && (
-                        <span className="text-sm text-gray-400">
+                        <span className="text-sm text-text-secondary">
                           {thoughtData.content.length} chars
                         </span>
                       )}
@@ -274,7 +274,7 @@ export function ThoughtsModal({ isOpen, onClose, message, streamingThoughts = ''
                   )}
                 </div>
                 
-                <div className="flex items-center text-gray-400">
+                <div className="flex items-center text-text-secondary">
                   {isThoughtsExpanded ? (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -293,10 +293,10 @@ export function ThoughtsModal({ isOpen, onClose, message, streamingThoughts = ''
                   {!streamingThoughts && (thoughtData?.isLoading || (message.metadata?.status === 'thinking' && !thoughtData?.content)) ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <Loader2 className="w-8 h-8 text-red-500 animate-spin mb-4" />
-                      <p className="text-gray-400">
+                      <p className="text-text-secondary">
                         {message.metadata?.status === 'thinking' ? 'AI is thinking...' : 'Loading AI thoughts...'}
                       </p>
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-text-muted mt-1">
                         {message.metadata?.status === 'thinking' 
                           ? 'Thoughts will appear here as the AI processes your request'
                           : 'This may take a moment if thoughts need to be fetched'
@@ -307,23 +307,23 @@ export function ThoughtsModal({ isOpen, onClose, message, streamingThoughts = ''
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <AlertCircle className="w-8 h-8 text-red-500 mb-4" />
                       <p className="text-red-400 mb-2">Failed to load thoughts</p>
-                      <p className="text-sm text-gray-500">{thoughtData.error}</p>
+                      <p className="text-sm text-text-muted">{thoughtData.error}</p>
                     </div>
                   ) : (streamingThoughts && streamingThoughts.trim().length > 0) || (thoughtData?.content && thoughtData.content.trim().length > 0) ? (
                     <div className="prose prose-invert max-w-none
-                      prose-p:my-3 prose-p:leading-relaxed prose-p:text-gray-300
+                      prose-p:my-3 prose-p:leading-relaxed prose-p:text-text-secondary
                       prose-pre:bg-black/40 prose-pre:border prose-pre:border-white/10 prose-pre:my-4
                       prose-code:text-red-400 prose-code:bg-black/30 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm
                       prose-a:text-red-400 prose-a:underline prose-a:decoration-red-400/30 hover:prose-a:decoration-red-400
-                      prose-strong:text-white prose-strong:font-semibold
-                      prose-em:text-gray-300 prose-em:italic
-                      prose-headings:text-white prose-headings:font-bold prose-headings:mt-6 prose-headings:mb-3
+                      prose-strong:text-text-primary prose-strong:font-semibold
+                      prose-em:text-text-secondary prose-em:italic
+                      prose-headings:text-text-primary prose-headings:font-bold prose-headings:mt-6 prose-headings:mb-3
                       prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg
-                      prose-ul:my-3 prose-ol:my-3 prose-li:my-1 prose-li:text-gray-300
+                      prose-ul:my-3 prose-ol:my-3 prose-li:my-1 prose-li:text-text-secondary
                       prose-table:my-4 prose-th:px-4 prose-th:py-2 prose-th:bg-white/5 prose-td:px-4 prose-td:py-2 prose-td:border-white/10
-                      prose-blockquote:border-l-4 prose-blockquote:border-red-500/50 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-gray-400
+                      prose-blockquote:border-l-4 prose-blockquote:border-red-500/50 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-text-secondary
                       prose-hr:border-white/10 prose-hr:my-6
-                      [&_.katex]:text-white [&_.katex-display]:my-4 [&_.katex-display]:overflow-x-auto">
+                      [&_.katex]:text-text-primary [&_.katex-display]:my-4 [&_.katex-display]:overflow-x-auto">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm, remarkMath]}
                         rehypePlugins={[rehypeKatex]}
@@ -333,9 +333,9 @@ export function ThoughtsModal({ isOpen, onClose, message, streamingThoughts = ''
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <Brain className="w-8 h-8 text-gray-600 mb-4" />
-                      <p className="text-gray-400">No thoughts available for this message</p>
-                      <p className="text-sm text-gray-500 mt-1">
+                      <Brain className="w-8 h-8 text-text-disabled mb-4" />
+                      <p className="text-text-secondary">No thoughts available for this message</p>
+                      <p className="text-sm text-text-muted mt-1">
                         The AI may not have recorded internal reasoning for this response
                       </p>
                     </div>
@@ -347,11 +347,11 @@ export function ThoughtsModal({ isOpen, onClose, message, streamingThoughts = ''
           </div>
 
           {/* Footer */}
-          <div className="p-4 border-t border-[#2a2a2a] flex justify-between items-center">
-            <div className="text-sm text-gray-500">
-              Message ID: <code className="text-gray-400">{message.id}</code>
+          <div className="p-4 border-t border-border flex justify-between items-center">
+            <div className="text-sm text-text-muted">
+              Message ID: <code className="text-text-secondary">{message.id}</code>
               {message.metadata?.conversationId && (
-                <> • Conversation: <code className="text-gray-400">{message.metadata.conversationId}</code></>
+                <> • Conversation: <code className="text-text-secondary">{message.metadata.conversationId}</code></>
               )}
             </div>
             <button

@@ -1,10 +1,20 @@
 import { NextRequest } from 'next/server';
-import { getRed } from '@/lib/red';
+import { getRed, getDatabase } from '@/lib/red';
+import { verifyAuth } from '@/lib/auth/auth';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ messageId: string }> }
 ) {
+  // Verify authentication
+  const user = await verifyAuth(request);
+  if (!user) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
   // Await params in Next.js 15
   const { messageId } = await params;
   
@@ -25,6 +35,16 @@ export async function GET(
           status: 404,
           headers: { 'Content-Type': 'application/json' }
         }
+      );
+    }
+
+    // Verify ownership via conversation
+    const db = getDatabase();
+    const conversation = await db.getConversation(existingState.conversationId);
+    if (conversation?.userId && conversation.userId !== user.userId) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
       );
     }
     

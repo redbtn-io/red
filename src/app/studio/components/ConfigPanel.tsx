@@ -1,26 +1,29 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  X,
-  Trash2,
-  Copy,
-  Loader2,
-  AlertCircle,
-  ChevronDown,
-  ChevronRight,
-  Info,
-  Brain,
-  Wrench,
-  Shuffle,
-  GitBranch,
-  Repeat,
-  Plus,
-  GripVertical,
-  Save,
-  Variable,
+    X,
+    Trash2,
+    Copy,
+    Loader2,
+    AlertCircle,
+    ChevronDown,
+    ChevronRight,
+    Info,
+    Brain,
+    Wrench,
+    Shuffle,
+    GitBranch,
+    Repeat, GripVertical,
+    Save,
+    Variable,
+    Lock,
+    Unlock,
+    Search
 } from 'lucide-react';
 import { useGraphStore } from '@/lib/stores/graphStore';
+import SmartInput from './SmartInput';
+import { useAvailableTools } from '@/hooks/useAvailableTools';
 import type { StudioNodeData } from '@/lib/stores/graphStore';
 import type { Node } from 'reactflow';
 
@@ -49,6 +52,18 @@ interface NeuronInfo {
   role: string;
 }
 
+/** Parameter definition from node schema */
+interface NodeParameter {
+  type: 'string' | 'number' | 'boolean' | 'select' | 'json';
+  default?: unknown;
+  description?: string;
+  min?: number;
+  max?: number;
+  enum?: string[];
+  stepIndex?: number;
+  configPath?: string;
+}
+
 interface NodeSchema {
   nodeId: string;
   name: string;
@@ -63,6 +78,8 @@ interface NodeSchema {
   };
   steps?: StepConfig[];
   fullConfig?: FullStepConfig[];
+  /** Parameterizable fields defined by the node */
+  parameters?: Record<string, NodeParameter>;
 }
 
 interface SchemaProperty {
@@ -86,10 +103,11 @@ export default function ConfigPanel({ isOpen, onClose }: ConfigPanelProps) {
   const [nodeSchema, setNodeSchema] = useState<NodeSchema | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['basic', 'config', 'steps']));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['basic', 'config', 'parameters', 'steps']));
   const [neurons, setNeurons] = useState<NeuronInfo[]>([]);
   const [editedSteps, setEditedSteps] = useState<FullStepConfig[]>([]);
   const [hasStepChanges, setHasStepChanges] = useState(false);
+  const [stepsUnlocked, setStepsUnlocked] = useState(false);
 
   // Find the selected node
   const selectedNode = selectedNodeId 
@@ -118,6 +136,7 @@ export default function ConfigPanel({ isOpen, onClose }: ConfigPanelProps) {
       if (!selectedNode || selectedNode.type === 'startNode' || selectedNode.type === 'endNode') {
         setNodeSchema(null);
         setEditedSteps([]);
+        setStepsUnlocked(false);
         return;
       }
 
@@ -125,6 +144,7 @@ export default function ConfigPanel({ isOpen, onClose }: ConfigPanelProps) {
       if (!nodeType) {
         setNodeSchema(null);
         setEditedSteps([]);
+        setStepsUnlocked(false);
         return;
       }
 
@@ -144,8 +164,15 @@ export default function ConfigPanel({ isOpen, onClose }: ConfigPanelProps) {
         }
         const data = await response.json();
         setNodeSchema(data);
-        // Initialize edited steps from schema
-        if (data.fullConfig) {
+        // Initialize edited steps: prefer per-graph overrides, fall back to node definition
+        // This allows each graph to have its own step configuration
+        const graphSteps = selectedNode.data?.steps;
+        if (graphSteps && graphSteps.length > 0) {
+          // Use per-graph step overrides
+          setEditedSteps(graphSteps);
+          setHasStepChanges(false);
+        } else if (data.fullConfig) {
+          // Fall back to node definition's default config
           setEditedSteps(data.fullConfig);
           setHasStepChanges(false);
         }
@@ -234,7 +261,7 @@ export default function ConfigPanel({ isOpen, onClose }: ConfigPanelProps) {
         )}
         <div className={`
           fixed lg:relative inset-y-0 right-0 z-50 lg:z-auto
-          w-80 bg-[#0f0f0f] border-l border-[#2a2a2a] p-6
+          w-80 bg-bg-elevated border-l border-border p-6
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
           lg:block
@@ -242,16 +269,16 @@ export default function ConfigPanel({ isOpen, onClose }: ConfigPanelProps) {
           {/* Close button for mobile */}
           <button 
             onClick={onClose}
-            className="lg:hidden absolute top-4 right-4 p-1 rounded hover:bg-[#1a1a1a] text-gray-400"
+            className="lg:hidden absolute top-4 right-4 p-1 rounded hover:bg-bg-secondary text-text-secondary"
           >
             <X className="w-5 h-5" />
           </button>
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-16 h-16 rounded-full bg-[#1a1a1a] flex items-center justify-center mb-4">
-              <Info className="w-8 h-8 text-gray-600" />
+            <div className="w-16 h-16 rounded-full bg-bg-secondary flex items-center justify-center mb-4">
+              <Info className="w-8 h-8 text-text-disabled" />
             </div>
-            <p className="text-gray-400 text-sm">Select a node to configure</p>
-            <p className="text-gray-600 text-xs mt-2">
+            <p className="text-text-secondary text-sm">Select a node to configure</p>
+            <p className="text-text-disabled text-xs mt-2">
               Click on a node in the canvas or drag a new node from the palette
             </p>
           </div>
@@ -273,7 +300,7 @@ export default function ConfigPanel({ isOpen, onClose }: ConfigPanelProps) {
         )}
         <div className={`
           fixed lg:relative inset-y-0 right-0 z-50 lg:z-auto
-          w-80 bg-[#0f0f0f] border-l border-[#2a2a2a] flex flex-col
+          w-80 bg-bg-elevated border-l border-border flex flex-col
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
           lg:block
@@ -284,7 +311,7 @@ export default function ConfigPanel({ isOpen, onClose }: ConfigPanelProps) {
             onClose={onClose}
           />
           <div className="p-4">
-            <p className="text-gray-400 text-sm">
+            <p className="text-text-secondary text-sm">
               {selectedNode.type === 'startNode'
                 ? 'This is the entry point of your graph. Connect it to the first node in your flow.'
                 : 'This is the exit point of your graph. Connect the last node to this to complete the flow.'}
@@ -306,7 +333,7 @@ export default function ConfigPanel({ isOpen, onClose }: ConfigPanelProps) {
       )}
       <div className={`
         fixed lg:relative inset-y-0 right-0 z-50 lg:z-auto
-        w-80 lg:w-96 h-full max-h-full min-h-0 bg-[#0f0f0f] border-l border-[#2a2a2a] flex flex-col overflow-hidden
+        w-72 md:w-80 lg:w-96 xl:w-[28rem] h-full max-h-full min-h-0 bg-bg-elevated border-l border-border flex flex-col overflow-hidden
         transform transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
         lg:flex
@@ -335,12 +362,12 @@ export default function ConfigPanel({ isOpen, onClose }: ConfigPanelProps) {
                     data: { ...selectedNode.data, label: e.target.value },
                   })
                 }
-                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-red-500"
+                className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-red-500"
               />
             </Field>
 
             <Field label="Node Type">
-              <div className="text-sm text-gray-400 bg-[#1a1a1a] rounded-lg px-3 py-2">
+              <div className="text-sm text-text-secondary bg-bg-secondary rounded-lg px-3 py-2">
                 {selectedNode.data?.nodeType || 'Unknown'}
               </div>
             </Field>
@@ -350,7 +377,7 @@ export default function ConfigPanel({ isOpen, onClose }: ConfigPanelProps) {
         {/* Configuration Section */}
         {loading ? (
           <div className="p-4 flex items-center justify-center">
-            <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+            <Loader2 className="w-5 h-5 text-text-secondary animate-spin" />
           </div>
         ) : error ? (
           <div className="p-4">
@@ -381,7 +408,57 @@ export default function ConfigPanel({ isOpen, onClose }: ConfigPanelProps) {
             expanded={expandedSections.has('config')}
             onToggle={() => toggleSection('config')}
           >
-            <p className="text-gray-500 text-sm">No configuration available for this node type.</p>
+            <p className="text-text-muted text-sm">No configuration available for this node type.</p>
+          </Section>
+        )}
+
+        {/* Parameters Section - Per-graph overrides */}
+        {nodeSchema?.parameters && Object.keys(nodeSchema.parameters).length > 0 && (
+          <Section
+            title="Parameters"
+            expanded={expandedSections.has('parameters')}
+            onToggle={() => toggleSection('parameters')}
+          >
+            <div className="mb-3 p-2 bg-blue-900/20 rounded-lg border border-blue-500/30">
+              <div className="flex items-center gap-2 text-blue-400 text-xs">
+                <Variable className="w-3.5 h-3.5" />
+                <span>Per-graph overrides. Changes only affect this graph.</span>
+              </div>
+            </div>
+            <div className="space-y-4">
+              {Object.entries(nodeSchema.parameters).map(([key, param]) => (
+                <Field key={key} label={formatLabel(key)}>
+                  <ParameterInput
+                    paramKey={key}
+                    param={param}
+                    value={selectedNode.data?.parameters?.[key]}
+                    defaultValue={param.default}
+                    onChange={(value) => {
+                      const currentParams = selectedNode.data?.parameters || {};
+                      updateNode(selectedNodeId, {
+                        data: {
+                          ...selectedNode.data,
+                          parameters: { ...currentParams, [key]: value }
+                        }
+                      });
+                    }}
+                    onReset={() => {
+                      const currentParams = { ...(selectedNode.data?.parameters || {}) };
+                      delete currentParams[key];
+                      updateNode(selectedNodeId, {
+                        data: {
+                          ...selectedNode.data,
+                          parameters: currentParams
+                        }
+                      });
+                    }}
+                  />
+                  {param.description && (
+                    <p className="text-xs text-text-disabled mt-1">{param.description}</p>
+                  )}
+                </Field>
+              ))}
+            </div>
           </Section>
         )}
 
@@ -392,11 +469,11 @@ export default function ConfigPanel({ isOpen, onClose }: ConfigPanelProps) {
             expanded={expandedSections.has('info')}
             onToggle={() => toggleSection('info')}
           >
-            <p className="text-gray-400 text-sm">{nodeSchema.description}</p>
+            <p className="text-text-secondary text-sm">{nodeSchema.description}</p>
             {nodeSchema.type && (
               <div className="mt-2">
-                <span className="text-xs text-gray-500">Type: </span>
-                <span className="text-xs text-gray-400">{nodeSchema.type}</span>
+                <span className="text-xs text-text-muted">Type: </span>
+                <span className="text-xs text-text-secondary">{nodeSchema.type}</span>
               </div>
             )}
             {nodeSchema.tier !== 'free' && (
@@ -417,33 +494,97 @@ export default function ConfigPanel({ isOpen, onClose }: ConfigPanelProps) {
           </Section>
         )}
 
-        {/* Steps Section - For Universal Nodes */}
+        {/* Steps Section - For Universal Nodes with per-graph overrides */}
         {editedSteps && editedSteps.length > 0 && (
           <Section
             title={`Steps (${editedSteps.length})`}
             expanded={expandedSections.has('steps')}
             onToggle={() => toggleSection('steps')}
-            action={hasStepChanges ? (
-              <button
-                onClick={handleSaveSteps}
-                className="flex items-center gap-1 text-xs bg-[#ef4444] text-white px-2 py-1 rounded hover:bg-[#dc2626] transition-colors"
-              >
-                <Save className="w-3 h-3" />
-                Save
-              </button>
-            ) : undefined}
+            action={
+              <div className="flex items-center gap-2">
+                {!stepsUnlocked ? (
+                  <button
+                    onClick={() => setStepsUnlocked(true)}
+                    className="flex items-center gap-1 text-xs text-text-muted hover:text-text-secondary px-2 py-1 rounded transition-colors"
+                    title="Unlock to edit step configurations"
+                  >
+                    <Lock className="w-3 h-3" />
+                    <span>Locked</span>
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setStepsUnlocked(false)}
+                      className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 px-2 py-1 rounded transition-colors"
+                      title="Lock step configurations"
+                    >
+                      <Unlock className="w-3 h-3" />
+                      <span>Unlocked</span>
+                    </button>
+                    {hasStepChanges && (
+                      <button
+                        onClick={handleSaveSteps}
+                        className="flex items-center gap-1 text-xs bg-accent text-white px-2 py-1 rounded hover:bg-accent-hover transition-colors"
+                      >
+                        <Save className="w-3 h-3" />
+                        Save
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            }
           >
-            <div className="space-y-2">
-              {editedSteps.map((step, index) => (
-                <StepCard 
-                  key={index} 
-                  step={step} 
-                  index={index}
-                  neurons={neurons}
-                  onChange={(field, value) => handleStepChange(index, field, value)}
-                />
-              ))}
-            </div>
+            {!stepsUnlocked ? (
+              /* Locked view - show steps as read-only summary */
+              <div className="space-y-2 opacity-60">
+                {editedSteps.map((step, index) => {
+                  const typeInfo = STEP_TYPE_INFO[step.type] || { icon: Info, color: 'text-text-secondary', bgColor: 'bg-gray-900/30', label: step.type };
+                  const Icon = typeInfo.icon;
+                  return (
+                    <div key={index} className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg bg-bg-primary/50">
+                      <span className="text-xs text-text-muted font-mono w-4">{index + 1}</span>
+                      <div className={`p-1 rounded ${typeInfo.bgColor}`}>
+                        <Icon className={`w-3.5 h-3.5 ${typeInfo.color}`} />
+                      </div>
+                      <span className="text-xs font-medium text-text-secondary">{typeInfo.label}</span>
+                      <div className="flex-1" />
+                      <Lock className="w-3 h-3 text-text-disabled" />
+                    </div>
+                  );
+                })}
+                <button
+                  onClick={() => setStepsUnlocked(true)}
+                  className="w-full py-2 text-xs text-text-muted hover:text-text-secondary border border-dashed border-border rounded-lg hover:border-amber-500/50 transition-colors"
+                >
+                  Click to unlock and edit steps
+                </button>
+              </div>
+            ) : (
+              /* Unlocked view - full editing */
+              <div className="space-y-2">
+                {/* Info box explaining per-graph step overrides */}
+                <div className="mb-3 p-2 bg-amber-900/20 rounded-lg border border-amber-500/30">
+                  <div className="flex items-start gap-2 text-amber-400 text-xs">
+                    <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="font-medium">Advanced:</span>
+                      <span className="text-amber-300/80"> Step configs are low-level. Use Parameters above for common tweaks. Changes only affect this graph.</span>
+                    </div>
+                  </div>
+                </div>
+                {editedSteps.map((step, index) => (
+                  <StepCard 
+                    key={index} 
+                    step={step} 
+                    index={index}
+                    neurons={neurons}
+                    nodeParameters={nodeSchema?.parameters ? Object.keys(nodeSchema.parameters) : []}
+                    onChange={(field, value) => handleStepChange(index, field, value)}
+                  />
+                ))}
+              </div>
+            )}
           </Section>
         )}
       </div>
@@ -465,13 +606,13 @@ function Header({
   onClose?: () => void;
 }) {
   return (
-    <div className="p-4 border-b border-[#2a2a2a] flex items-center justify-between">
-      <h3 className="text-sm font-semibold text-gray-200 truncate">{title}</h3>
+    <div className="p-4 border-b border-border flex items-center justify-between">
+      <h3 className="text-sm font-semibold text-text-primary truncate">{title}</h3>
       <div className="flex items-center gap-1">
         {onDuplicate && (
           <button
             onClick={onDuplicate}
-            className="p-1.5 rounded hover:bg-[#1a1a1a] text-gray-400 hover:text-gray-200 transition-colors"
+            className="p-1.5 rounded hover:bg-bg-secondary text-text-secondary hover:text-text-primary transition-colors"
             title="Duplicate node"
           >
             <Copy className="w-4 h-4" />
@@ -479,7 +620,7 @@ function Header({
         )}
         <button
           onClick={onDelete}
-          className="p-1.5 rounded hover:bg-red-900/50 text-gray-400 hover:text-red-400 transition-colors"
+          className="p-1.5 rounded hover:bg-red-900/50 text-text-secondary hover:text-red-400 transition-colors"
           title="Delete node"
         >
           <Trash2 className="w-4 h-4" />
@@ -487,7 +628,7 @@ function Header({
         {onClose && (
           <button
             onClick={onClose}
-            className="lg:hidden p-1.5 rounded hover:bg-[#1a1a1a] text-gray-400 hover:text-gray-200 transition-colors ml-1"
+            className="lg:hidden p-1.5 rounded hover:bg-bg-secondary text-text-secondary hover:text-text-primary transition-colors ml-1"
             title="Close"
           >
             <X className="w-4 h-4" />
@@ -513,18 +654,18 @@ function Section({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="border-b border-[#2a2a2a]">
+    <div className="border-b border-border">
       <div className="flex items-center justify-between">
         <button
           onClick={onToggle}
-          className="flex-1 flex items-center gap-2 px-4 py-3 hover:bg-[#1a1a1a] transition-colors"
+          className="flex-1 flex items-center gap-2 px-4 py-3 hover:bg-bg-secondary transition-colors"
         >
           {expanded ? (
-            <ChevronDown className="w-4 h-4 text-gray-500" />
+            <ChevronDown className="w-4 h-4 text-text-muted" />
           ) : (
-            <ChevronRight className="w-4 h-4 text-gray-500" />
+            <ChevronRight className="w-4 h-4 text-text-muted" />
           )}
-          <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+          <span className="text-xs font-medium text-text-secondary uppercase tracking-wider">
             {title}
           </span>
         </button>
@@ -539,7 +680,7 @@ function Section({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-500 mb-1.5">{label}</label>
+      <label className="block text-xs font-medium text-text-muted mb-1.5">{label}</label>
       {children}
     </div>
   );
@@ -571,7 +712,7 @@ function SchemaForm({
             required={schema.required?.includes(key)}
           />
           {prop.description && (
-            <p className="text-xs text-gray-600 mt-1">{prop.description}</p>
+            <p className="text-xs text-text-disabled mt-1">{prop.description}</p>
           )}
         </Field>
       ))}
@@ -599,7 +740,7 @@ function SchemaField({
       <select
         value={(value as string) || ''}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-red-500"
+        className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-red-500"
       >
         <option value="">Select...</option>
         {prop.enum.map((opt) => (
@@ -639,7 +780,7 @@ function SchemaField({
         onChange={(e) => onChange(e.target.value ? Number(e.target.value) : undefined)}
         min={prop.minimum}
         max={prop.maximum}
-        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-red-500"
+        className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-red-500"
       />
     );
   }
@@ -653,7 +794,7 @@ function SchemaField({
         onChange={(e) => onChange(e.target.value.split('\n').filter(Boolean))}
         placeholder="One item per line"
         rows={3}
-        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-red-500 resize-none"
+        className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-red-500 resize-none"
       />
     );
   }
@@ -664,7 +805,7 @@ function SchemaField({
       type="text"
       value={(value as string) ?? prop.default ?? ''}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-red-500"
+      className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-red-500"
     />
   );
 }
@@ -676,6 +817,174 @@ function formatLabel(key: string): string {
     .replace(/[_-]/g, ' ')
     .replace(/^\w/, (c) => c.toUpperCase())
     .trim();
+}
+
+// Parameter input component for per-graph overrides
+function ParameterInput({
+  paramKey,
+  param,
+  value,
+  defaultValue,
+  onChange,
+  onReset,
+}: {
+  paramKey: string;
+  param: NodeParameter;
+  value: unknown;
+  defaultValue: unknown;
+  onChange: (value: unknown) => void;
+  onReset: () => void;
+}) {
+  const hasOverride = value !== undefined;
+  const displayValue = hasOverride ? value : defaultValue;
+
+  // Select/enum type
+  if (param.type === 'select' && param.enum) {
+    return (
+      <div className="flex gap-2">
+        <select
+          value={(displayValue as string) ?? ''}
+          onChange={(e) => onChange(e.target.value)}
+          className={`flex-1 bg-bg-secondary border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-red-500 ${
+            hasOverride ? 'border-blue-500' : 'border-border'
+          }`}
+        >
+          {param.enum.map((opt) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+        {hasOverride && (
+          <button
+            onClick={onReset}
+            className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-text-secondary rounded transition-colors"
+            title="Reset to default"
+          >
+            Reset
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // Boolean type
+  if (param.type === 'boolean') {
+    return (
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => onChange(!displayValue)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+            displayValue ? 'bg-red-500' : 'bg-gray-700'
+          } ${hasOverride ? 'ring-2 ring-blue-500' : ''}`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              displayValue ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
+        </button>
+        {hasOverride && (
+          <button
+            onClick={onReset}
+            className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-text-secondary rounded transition-colors"
+            title="Reset to default"
+          >
+            Reset
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // Number type
+  if (param.type === 'number') {
+    return (
+      <div className="flex gap-2">
+        <input
+          type="number"
+          value={(displayValue as number) ?? ''}
+          onChange={(e) => onChange(e.target.value ? Number(e.target.value) : undefined)}
+          min={param.min}
+          max={param.max}
+          step={param.min !== undefined && param.max !== undefined && param.max <= 2 ? 0.1 : 1}
+          className={`flex-1 bg-bg-secondary border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-red-500 ${
+            hasOverride ? 'border-blue-500' : 'border-border'
+          }`}
+        />
+        {hasOverride && (
+          <button
+            onClick={onReset}
+            className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-text-secondary rounded transition-colors"
+            title="Reset to default"
+          >
+            Reset
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // JSON type
+  if (param.type === 'json') {
+    const jsonString = typeof displayValue === 'string' 
+      ? displayValue 
+      : JSON.stringify(displayValue ?? {}, null, 2);
+    return (
+      <div className="space-y-1">
+        <div className="flex gap-2">
+          <textarea
+            value={jsonString}
+            onChange={(e) => {
+              try {
+                const parsed = JSON.parse(e.target.value);
+                onChange(parsed);
+              } catch {
+                // Keep raw string if invalid JSON
+                onChange(e.target.value);
+              }
+            }}
+            rows={3}
+            className={`flex-1 bg-bg-secondary border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-red-500 font-mono text-xs resize-none ${
+              hasOverride ? 'border-blue-500' : 'border-border'
+            }`}
+            placeholder="{}"
+          />
+          {hasOverride && (
+            <button
+              onClick={onReset}
+              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-text-secondary rounded transition-colors self-start"
+              title="Reset to default"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Default: string type
+  return (
+    <div className="flex gap-2">
+      <input
+        type="text"
+        value={(displayValue as string) ?? ''}
+        onChange={(e) => onChange(e.target.value)}
+        className={`flex-1 bg-bg-secondary border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-red-500 ${
+          hasOverride ? 'border-blue-500' : 'border-border'
+        }`}
+      />
+      {hasOverride && (
+        <button
+          onClick={onReset}
+          className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-text-secondary rounded transition-colors"
+          title="Reset to default"
+        >
+          Reset
+        </button>
+      )}
+    </div>
+  );
 }
 
 // Step type icons and colors
@@ -692,55 +1001,57 @@ function StepCard({
   step, 
   index,
   neurons,
+  nodeParameters = [],
   onChange,
 }: { 
   step: FullStepConfig; 
   index: number;
   neurons: NeuronInfo[];
+  nodeParameters?: string[];
   onChange: (field: string, value: unknown) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const typeInfo = STEP_TYPE_INFO[step.type] || { icon: Info, color: 'text-gray-400', bgColor: 'bg-gray-900/30', label: step.type };
+  const typeInfo = STEP_TYPE_INFO[step.type] || { icon: Info, color: 'text-text-secondary', bgColor: 'bg-gray-900/30', label: step.type };
   const Icon = typeInfo.icon;
   const config = step.config || {};
 
   return (
-    <div className="border border-[#2a2a2a] rounded-lg overflow-hidden">
+    <div className="border border-border rounded-lg overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#1a1a1a] transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-bg-secondary transition-colors"
       >
-        <GripVertical className="w-3 h-3 text-gray-600" />
-        <span className="text-xs text-gray-500 font-mono w-4">{index + 1}</span>
+        <GripVertical className="w-3 h-3 text-text-disabled" />
+        <span className="text-xs text-text-muted font-mono w-4">{index + 1}</span>
         <div className={`p-1 rounded ${typeInfo.bgColor}`}>
           <Icon className={`w-3.5 h-3.5 ${typeInfo.color}`} />
         </div>
         <div className="flex-1 text-left">
-          <span className="text-xs font-medium text-gray-300">{typeInfo.label}</span>
+          <span className="text-xs font-medium text-text-secondary">{typeInfo.label}</span>
         </div>
         {expanded ? (
-          <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
+          <ChevronDown className="w-3.5 h-3.5 text-text-muted" />
         ) : (
-          <ChevronRight className="w-3.5 h-3.5 text-gray-500" />
+          <ChevronRight className="w-3.5 h-3.5 text-text-muted" />
         )}
       </button>
       
       {expanded && (
-        <div className="px-3 pb-3 pt-2 border-t border-[#2a2a2a] bg-[#0a0a0a] space-y-3">
+        <div className="px-3 pb-3 pt-2 border-t border-border bg-bg-primary space-y-3">
           {step.type === 'neuron' && (
-            <NeuronStepEditor config={config} neurons={neurons} onChange={onChange} />
+            <NeuronStepEditor config={config} neurons={neurons} nodeParameters={nodeParameters} onChange={onChange} />
           )}
           {step.type === 'tool' && (
-            <ToolStepEditor config={config} onChange={onChange} />
+            <ToolStepEditor config={config} nodeParameters={nodeParameters} onChange={onChange} />
           )}
           {step.type === 'transform' && (
-            <TransformStepEditor config={config} onChange={onChange} />
+            <TransformStepEditor config={config} nodeParameters={nodeParameters} onChange={onChange} />
           )}
           {step.type === 'conditional' && (
-            <ConditionalStepEditor config={config} onChange={onChange} />
+            <ConditionalStepEditor config={config} nodeParameters={nodeParameters} onChange={onChange} />
           )}
           {step.type === 'loop' && (
-            <LoopStepEditor config={config} onChange={onChange} />
+            <LoopStepEditor config={config} nodeParameters={nodeParameters} onChange={onChange} />
           )}
         </div>
       )}
@@ -752,10 +1063,12 @@ function StepCard({
 function NeuronStepEditor({ 
   config, 
   neurons,
+  nodeParameters = [],
   onChange 
 }: { 
   config: Record<string, unknown>;
   neurons: NeuronInfo[];
+  nodeParameters?: string[];
   onChange: (field: string, value: unknown) => void;
 }) {
   return (
@@ -764,7 +1077,7 @@ function NeuronStepEditor({
         <select
           value={String(config.neuronId || '')}
           onChange={(e) => onChange('neuronId', e.target.value)}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-purple-500"
+          className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-purple-500"
         >
           <option value="">Select a neuron...</option>
           {neurons.map((n) => (
@@ -775,21 +1088,23 @@ function NeuronStepEditor({
         </select>
       </StepField>
       <StepField label="System Prompt">
-        <SmartInput
+        <GraphSmartInput
           value={String(config.systemPrompt || '')}
           onChange={(val) => onChange('systemPrompt', val)}
           rows={3}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-purple-500 resize-none"
+          className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-purple-500 resize-none"
           placeholder="Instructions for the AI..."
           isOutput={false}
+          nodeParameters={nodeParameters}
         />
       </StepField>
       <StepField label="User Prompt">
-        <SmartInput
+        <GraphSmartInput
           value={String(config.userPrompt || '')}
           onChange={(val) => onChange('userPrompt', val)}
           rows={2}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-purple-500 resize-none"
+          nodeParameters={nodeParameters}
+          className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-purple-500 resize-none"
           placeholder="{{state.variable}}"
           isOutput={false}
         />
@@ -803,7 +1118,7 @@ function NeuronStepEditor({
             min={0}
             max={1}
             step={0.1}
-            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-purple-500"
+            className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-purple-500"
           />
         </StepField>
         <StepField label="Max Tokens" className="flex-1">
@@ -813,15 +1128,15 @@ function NeuronStepEditor({
             onChange={(e) => onChange('maxTokens', parseInt(e.target.value))}
             min={100}
             max={32000}
-            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-purple-500"
+            className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-purple-500"
           />
         </StepField>
       </div>
       <StepField label="Output Field">
-        <SmartInput
+        <GraphSmartInput
           value={String(config.outputField || '')}
           onChange={(val) => onChange('outputField', val)}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-purple-500 resize-none"
+          className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-purple-500 resize-none"
           placeholder="response"
           isOutput={true}
         />
@@ -847,42 +1162,190 @@ function NeuronStepEditor({
 
 // Tool step editor
 function ToolStepEditor({ 
-  config, 
+  config,
+  nodeParameters = [],
   onChange 
 }: { 
   config: Record<string, unknown>;
+  nodeParameters?: string[];
   onChange: (field: string, value: unknown) => void;
 }) {
+  const { tools } = useAvailableTools();
+  const [showBrowser, setShowBrowser] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Find the selected tool's schema
+  const selectedTool = tools.find(t => t.name === config.toolName || t.name === config.name);
+  const schemaProperties = selectedTool?.inputSchema?.properties || {};
+  const requiredParams = selectedTool?.inputSchema?.required || [];
+  const hasSchema = Object.keys(schemaProperties).length > 0;
+
+  // Parse existing parameters or inputMapping (for migration)
+  const getInputMappings = (): Record<string, string> => {
+    const mapping = config.parameters || config.inputMapping;
+    if (typeof mapping === 'object' && mapping !== null) {
+      return mapping as Record<string, string>;
+    }
+    return {};
+  };
+
+  const [inputMappings, setInputMappings] = useState<Record<string, string>>(getInputMappings());
+
+  // Update mappings when tool changes
+  useEffect(() => {
+    if (hasSchema) {
+      const newMappings: Record<string, string> = {};
+      Object.keys(schemaProperties).forEach(key => {
+        newMappings[key] = inputMappings[key] || '';
+      });
+      setInputMappings(newMappings);
+    }
+  }, [config.toolName]);
+
+  const handleSelectTool = (toolName: string) => {
+    onChange('toolName', toolName);
+    setShowBrowser(false);
+    setSearchQuery('');
+  };
+
+  const updateMapping = (param: string, value: string) => {
+    const newMappings = { ...inputMappings, [param]: value };
+    setInputMappings(newMappings);
+    onChange('parameters', newMappings);
+  };
+
+  const filteredTools = tools.filter(t =>
+    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    t.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <>
       <StepField label="Tool Name">
-        <SmartInput
-          value={String(config.toolName || config.name || '')}
-          onChange={(val) => onChange('toolName', val)}
-          rows={1}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500 resize-none"
-          placeholder="mcp-tool-name"
-          isOutput={false}
-        />
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <GraphSmartInput
+              value={String(config.toolName || config.name || '')}
+              onChange={(val) => onChange('toolName', val)}
+              rows={1}
+              className="flex-1 bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-blue-500 resize-none"
+              placeholder="mcp-tool-name"
+              isOutput={false}
+              nodeParameters={nodeParameters}
+            />
+            <button
+              type="button"
+              onClick={() => setShowBrowser(!showBrowser)}
+              className="px-2 py-1.5 text-xs bg-bg-secondary border border-border rounded hover:bg-bg-hover transition-colors text-accent"
+            >
+              {showBrowser ? '×' : '...'}
+            </button>
+          </div>
+          
+          {/* Mini tool browser */}
+          {showBrowser && (
+            <div className="p-2 bg-bg-primary border border-border rounded space-y-2">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-text-muted" />
+                <input
+                  type="text"
+                  placeholder="Search tools..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-6 pr-2 py-1 bg-bg-secondary border border-border rounded text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+                />
+              </div>
+              <div className="max-h-32 overflow-y-auto space-y-1">
+                {filteredTools.slice(0, 8).map(tool => (
+                  <div
+                    key={`${tool.server}:${tool.name}`}
+                    onClick={() => handleSelectTool(tool.name)}
+                    className="p-1.5 bg-bg-secondary rounded hover:bg-bg-hover cursor-pointer"
+                  >
+                    <div className="font-mono text-xs text-accent-text">{tool.name}</div>
+                    <div className="text-xs text-text-muted truncate">{tool.description}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </StepField>
-      <StepField label="Input Mapping">
-        <SmartInput
-          value={String(config.inputMapping || '')}
-          onChange={(val) => onChange('inputMapping', val)}
-          rows={2}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500 resize-none"
-          placeholder="{{state.searchQuery}}"
-          isOutput={false}
-        />
-      </StepField>
+
+      {/* Tool Parameters - show schema-based inputs when available */}
+      {hasSchema ? (
+        <StepField label="Tool Parameters">
+          <div className="space-y-2 p-2 bg-bg-primary border border-border rounded">
+            {Object.entries(schemaProperties).map(([param, schema]) => {
+              const isRequired = requiredParams.includes(param);
+              const paramSchema = schema as { type?: string; description?: string; enum?: string[] };
+              return (
+                <div key={param} className="space-y-0.5">
+                  <div className="flex items-center gap-1">
+                    <label className="text-xs font-mono text-accent-text">
+                      {param}
+                      {isRequired && <span className="text-red-400 ml-0.5">*</span>}
+                    </label>
+                    {paramSchema.type && (
+                      <span className="text-[10px] text-text-disabled px-1 bg-bg-secondary rounded">
+                        {Array.isArray(paramSchema.type) ? paramSchema.type.join('|') : paramSchema.type}
+                      </span>
+                    )}
+                  </div>
+                  {paramSchema.description && (
+                    <p className="text-[10px] text-text-muted leading-tight">{paramSchema.description}</p>
+                  )}
+                  {paramSchema.enum ? (
+                    <select
+                      value={inputMappings[param] || ''}
+                      onChange={(e) => updateMapping(param, e.target.value)}
+                      className="w-full bg-bg-secondary border border-border rounded px-1.5 py-1 text-xs text-text-primary focus:outline-none focus:border-accent"
+                    >
+                      <option value="">Select...</option>
+                      {paramSchema.enum.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={inputMappings[param] || ''}
+                      onChange={(e) => updateMapping(param, e.target.value)}
+                      placeholder={`{{state.${param}}}`}
+                      className="w-full bg-bg-secondary border border-border rounded px-1.5 py-1 text-xs text-text-primary placeholder-text-disabled focus:outline-none focus:border-accent"
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </StepField>
+      ) : (
+        <StepField label="Input Mapping">
+          <GraphSmartInput
+            value={typeof config.inputMapping === 'string' ? config.inputMapping : JSON.stringify(config.inputMapping || '')}
+            onChange={(val) => onChange('inputMapping', val)}
+            rows={2}
+            className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-blue-500 resize-none"
+            placeholder="{{state.searchQuery}}"
+            isOutput={false}
+            nodeParameters={nodeParameters}
+          />
+          <p className="mt-1 text-[10px] text-text-disabled">
+            Select a tool to see its parameters
+          </p>
+        </StepField>
+      )}
+
       <StepField label="Output Field">
-        <SmartInput
+        <GraphSmartInput
           value={String(config.outputField || '')}
           onChange={(val) => onChange('outputField', val)}
           rows={1}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500 resize-none"
+          className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-blue-500 resize-none"
           placeholder="toolResult"
           isOutput={true}
+          nodeParameters={nodeParameters}
         />
       </StepField>
     </>
@@ -891,10 +1354,12 @@ function ToolStepEditor({
 
 // Transform step editor
 function TransformStepEditor({ 
-  config, 
+  config,
+  nodeParameters = [],
   onChange 
 }: { 
   config: Record<string, unknown>;
+  nodeParameters?: string[];
   onChange: (field: string, value: unknown) => void;
 }) {
   const operations = ['map', 'filter', 'select', 'parse-json', 'append', 'concat', 'set'];
@@ -905,7 +1370,7 @@ function TransformStepEditor({
         <select
           value={String(config.operation || 'set')}
           onChange={(e) => onChange('operation', e.target.value)}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-amber-500"
+          className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-amber-500"
         >
           {operations.map((op) => (
             <option key={op} value={op}>{op}</option>
@@ -913,34 +1378,37 @@ function TransformStepEditor({
         </select>
       </StepField>
       <StepField label="Input Field">
-        <SmartInput
+        <GraphSmartInput
           value={String(config.inputField || '')}
           onChange={(val) => onChange('inputField', val)}
           rows={1}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-amber-500 resize-none"
+          className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-amber-500 resize-none"
           placeholder="state.data"
           isOutput={false}
+          nodeParameters={nodeParameters}
         />
       </StepField>
       <StepField label="Output Field">
-        <SmartInput
+        <GraphSmartInput
           value={String(config.outputField || '')}
           onChange={(val) => onChange('outputField', val)}
           rows={1}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-amber-500 resize-none"
-          placeholder="transformedData"
+          className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-amber-500 resize-none"
+          placeholder="data.result or globalState.namespace.key"
           isOutput={true}
+          nodeParameters={nodeParameters}
         />
       </StepField>
       {config.operation === 'set' && (
         <StepField label="Value">
-          <SmartInput
+          <GraphSmartInput
             value={String(config.value || '')}
             onChange={(val) => onChange('value', val)}
             rows={2}
-            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-amber-500 resize-none"
+            className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-amber-500 resize-none"
             placeholder="{{state.variable}}"
             isOutput={false}
+            nodeParameters={nodeParameters}
           />
         </StepField>
       )}
@@ -950,51 +1418,57 @@ function TransformStepEditor({
 
 // Conditional step editor
 function ConditionalStepEditor({ 
-  config, 
+  config,
+  nodeParameters = [],
   onChange 
 }: { 
   config: Record<string, unknown>;
+  nodeParameters?: string[];
   onChange: (field: string, value: unknown) => void;
 }) {
   return (
     <>
       <StepField label="Condition">
-        <SmartInput
+        <GraphSmartInput
+          nodeParameters={nodeParameters}
           value={String(config.condition || '')}
           onChange={(val) => onChange('condition', val)}
           rows={2}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-green-500 resize-none"
+          className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-green-500 resize-none"
           placeholder="state.value > 0"
           isOutput={false}
         />
       </StepField>
       <StepField label="Set Field">
-        <SmartInput
+        <GraphSmartInput
           value={String(config.setField || '')}
           onChange={(val) => onChange('setField', val)}
           rows={1}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-green-500 resize-none"
+          className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-green-500 resize-none"
           placeholder="result"
           isOutput={true}
+          nodeParameters={nodeParameters}
         />
       </StepField>
       <div className="flex gap-2">
         <StepField label="True Value" className="flex-1">
-          <SmartInput
+          <GraphSmartInput
             value={String(config.trueValue || '')}
             onChange={(val) => onChange('trueValue', val)}
             rows={1}
-            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-green-500 resize-none"
+            className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-green-500 resize-none"
             isOutput={false}
+            nodeParameters={nodeParameters}
           />
         </StepField>
         <StepField label="False Value" className="flex-1">
-          <SmartInput
+          <GraphSmartInput
             value={String(config.falseValue || '')}
             onChange={(val) => onChange('falseValue', val)}
             rows={1}
-            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-green-500 resize-none"
+            className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-green-500 resize-none"
             isOutput={false}
+            nodeParameters={nodeParameters}
           />
         </StepField>
       </div>
@@ -1004,22 +1478,25 @@ function ConditionalStepEditor({
 
 // Loop step editor
 function LoopStepEditor({ 
-  config, 
+  config,
+  nodeParameters = [],
   onChange 
 }: { 
   config: Record<string, unknown>;
+  nodeParameters?: string[];
   onChange: (field: string, value: unknown) => void;
 }) {
   return (
     <>
       <StepField label="Iterator Field">
-        <SmartInput
+        <GraphSmartInput
           value={String(config.iteratorField || '')}
           onChange={(val) => onChange('iteratorField', val)}
           rows={1}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-cyan-500 resize-none"
+          className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-cyan-500 resize-none"
           placeholder="state.items"
           isOutput={false}
+          nodeParameters={nodeParameters}
         />
       </StepField>
       <StepField label="Max Iterations">
@@ -1029,17 +1506,18 @@ function LoopStepEditor({
           onChange={(e) => onChange('maxIterations', parseInt(e.target.value))}
           min={1}
           max={100}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-cyan-500"
+          className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-cyan-500"
         />
       </StepField>
       <StepField label="Output Field">
-        <SmartInput
+        <GraphSmartInput
           value={String(config.outputField || '')}
           onChange={(val) => onChange('outputField', val)}
           rows={1}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-cyan-500 resize-none"
+          className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-cyan-500 resize-none"
           placeholder="loopResults"
           isOutput={true}
+          nodeParameters={nodeParameters}
         />
       </StepField>
     </>
@@ -1058,20 +1536,21 @@ function StepField({
 }) {
   return (
     <div className={className}>
-      <label className="block text-[10px] font-medium text-gray-500 mb-1">{label}</label>
+      <label className="block text-[10px] font-medium text-text-muted mb-1">{label}</label>
       {children}
     </div>
   );
 }
 
-// Smart Input Component with Variable Autocomplete
-function SmartInput({
+// GraphSmartInput - wrapper around SmartInput that extracts graph variables and node parameters
+function GraphSmartInput({
   value,
   onChange,
   placeholder,
   isOutput = false,
   rows = 1,
   className = '',
+  nodeParameters = [],
 }: {
   value: string;
   onChange: (val: string) => void;
@@ -1079,13 +1558,12 @@ function SmartInput({
   isOutput?: boolean;
   rows?: number;
   className?: string;
+  nodeParameters?: string[];
 }) {
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const { nodes } = useGraphStore();
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Extract variables from all nodes in the graph
-  const variables = useMemo(() => {
+  const graphVariables = useMemo(() => {
     const vars = new Set<string>();
     nodes.forEach((node) => {
       // Check steps
@@ -1093,6 +1571,7 @@ function SmartInput({
         node.data.steps.forEach((step: any) => {
           if (step.config?.outputField) vars.add(step.config.outputField);
           if (step.config?.setField) vars.add(step.config.setField);
+          if (step.config?.outputPath) vars.add(step.config.outputPath);
         });
       }
       // Check config (if any built-in nodes use standard keys)
@@ -1101,67 +1580,16 @@ function SmartInput({
     return Array.from(vars).sort();
   }, [nodes]);
 
-  // Handle click outside to close suggestions
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      // We force it to use "globalThis.Node" (The HTML one) instead of the React Flow one
-if (containerRef.current && !containerRef.current.contains(event.target as globalThis.Node)) {
-        setShowSuggestions(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleSelect = (variable: string) => {
-    if (isOutput) {
-      onChange(variable);
-    } else {
-      // If input/condition, wrap in state.data accessor
-      // If the field is empty, just insert
-      // If not empty, append with space? Or replace?
-      // For now, let's append if not empty, or replace if empty
-      const toInsert = `state.data.${variable}`;
-      if (!value) {
-        onChange(toInsert);
-      } else {
-        // Simple append for now
-        onChange(`${value} ${toInsert}`);
-      }
-    }
-    setShowSuggestions(false);
-  };
-
   return (
-    <div className="relative" ref={containerRef}>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => setShowSuggestions(true)}
-        rows={rows}
-        className={className}
-        placeholder={placeholder}
-      />
-      {showSuggestions && variables.length > 0 && (
-        <div className="absolute z-20 w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg mt-1 max-h-32 overflow-y-auto shadow-lg">
-          <div className="px-2 py-1 text-[10px] text-gray-500 uppercase tracking-wider border-b border-[#2a2a2a] bg-[#151515]">
-            Variables
-          </div>
-          {variables.map((v) => (
-            <button
-              key={v}
-              onMouseDown={(e) => {
-                e.preventDefault(); // Prevent blur
-                handleSelect(v);
-              }}
-              className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-[#2a2a2a] flex items-center gap-2 transition-colors"
-            >
-              <Variable className="w-3 h-3 text-blue-400" />
-              <span>{v}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <SmartInput
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      isOutput={isOutput}
+      rows={rows}
+      className={className}
+      graphVariables={graphVariables}
+      nodeParameters={nodeParameters}
+    />
   );
 }

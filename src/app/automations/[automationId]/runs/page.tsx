@@ -68,13 +68,13 @@ export default function AutomationRunsPage() {
   const statuses = ['', 'completed', 'failed', 'running', 'pending'];
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-screen bg-bg-primary overflow-hidden">
       <StudioSidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <StudioHeader
           title="Automation Runs"
           subtitle={`Run history for ${automationId}`}
@@ -92,7 +92,7 @@ export default function AutomationRunsPage() {
             <motion.div className="mb-6" variants={fadeUpVariants}>
               <Link 
                 href={`/automations/${automationId}`}
-                className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back to Automation
@@ -105,7 +105,7 @@ export default function AutomationRunsPage() {
               variants={fadeUpVariants}
             >
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-gray-400 text-sm">Filter:</span>
+                <span className="text-text-secondary text-sm">Filter:</span>
                 {statuses.map(status => (
                   <button
                     key={status || 'all'}
@@ -115,8 +115,8 @@ export default function AutomationRunsPage() {
                     }}
                     className={`px-3 py-1 text-sm rounded-lg transition-colors ${
                       statusFilter === status
-                        ? 'bg-[#ef4444] text-white'
-                        : 'bg-[#1a1a1a] text-gray-400 hover:text-white'
+                        ? 'bg-accent text-white'
+                        : 'bg-bg-secondary text-text-secondary hover:text-text-primary'
                     }`}
                   >
                     {status || 'All'}
@@ -124,19 +124,19 @@ export default function AutomationRunsPage() {
                 ))}
               </div>
               
-              <span className="text-sm text-gray-500 flex-shrink-0">{total} total runs</span>
+              <span className="text-sm text-text-muted flex-shrink-0">{total} total runs</span>
             </motion.div>
 
             {/* Runs List */}
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
+                <Loader2 className="w-8 h-8 animate-spin text-text-muted" />
               </div>
             ) : runs.length === 0 ? (
-              <div className="text-center py-12 px-4 rounded-xl border border-dashed border-[#2a2a2a] bg-[#1a1a1a]/50">
-                <Clock className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-300 mb-2">No runs found</h3>
-                <p className="text-gray-500">
+              <div className="text-center py-12 px-4 rounded-xl border border-dashed border-border bg-bg-secondary/50">
+                <Clock className="w-12 h-12 text-text-disabled mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-text-secondary mb-2">No runs found</h3>
+                <p className="text-text-muted">
                   {statusFilter ? `No ${statusFilter} runs yet.` : 'Trigger this automation to see run history.'}
                 </p>
               </div>
@@ -155,7 +155,7 @@ export default function AutomationRunsPage() {
                     <motion.div
                       key={run.runId}
                       variants={staggerItemVariants}
-                      className="p-4 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] hover:border-[#3a3a3a] transition-all overflow-hidden"
+                      className="p-4 rounded-xl border border-border bg-bg-secondary hover:border-border-hover transition-all overflow-hidden"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3">
                         <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -164,7 +164,7 @@ export default function AutomationRunsPage() {
                             style={{ color: config.color }}
                           />
                           <div className="min-w-0 flex-1">
-                            <code className="text-sm font-mono text-white block truncate">{run.runId}</code>
+                            <code className="text-sm font-mono text-text-primary block truncate">{run.runId}</code>
                             <div className="flex items-center gap-2 mt-1 flex-wrap">
                               <span 
                                 className="text-xs px-2 py-0.5 rounded flex-shrink-0"
@@ -175,7 +175,7 @@ export default function AutomationRunsPage() {
                               >
                                 {config.label}
                               </span>
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-text-muted">
                                 via {run.triggeredBy}
                               </span>
                             </div>
@@ -184,9 +184,9 @@ export default function AutomationRunsPage() {
                         
                         <div className="text-left sm:text-right text-sm flex-shrink-0">
                           {run.durationMs !== undefined && (
-                            <div className="text-white">{run.durationMs}ms</div>
+                            <div className="text-text-primary">{run.durationMs}ms</div>
                           )}
-                          <div className="text-gray-500 text-xs">
+                          <div className="text-text-muted text-xs">
                             {new Date(run.startedAt).toLocaleDateString()} {new Date(run.startedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </div>
                         </div>
@@ -196,8 +196,8 @@ export default function AutomationRunsPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {run.input && Object.keys(run.input).length > 0 && (
                           <div className="overflow-hidden">
-                            <div className="text-xs text-gray-500 mb-1">Input</div>
-                            <pre className="text-xs text-gray-400 bg-[#0a0a0a] p-2 rounded overflow-x-auto max-h-20">
+                            <div className="text-xs text-text-muted mb-1">Input</div>
+                            <pre className="text-xs text-text-secondary bg-bg-primary p-2 rounded overflow-x-auto max-h-20">
                               {JSON.stringify(run.input, null, 2)}
                             </pre>
                           </div>
@@ -205,8 +205,8 @@ export default function AutomationRunsPage() {
                         
                         {run.output && (
                           <div className="overflow-hidden">
-                            <div className="text-xs text-gray-500 mb-1">Output</div>
-                            <pre className="text-xs text-green-400 bg-[#0a0a0a] p-2 rounded overflow-x-auto max-h-20">
+                            <div className="text-xs text-text-muted mb-1">Output</div>
+                            <pre className="text-xs text-green-400 bg-bg-primary p-2 rounded overflow-x-auto max-h-20">
                               {typeof run.output === 'string' 
                                 ? run.output.substring(0, 200)
                                 : JSON.stringify(run.output, null, 2).substring(0, 200)}
@@ -235,14 +235,14 @@ export default function AutomationRunsPage() {
                 <button
                   onClick={() => setOffset(Math.max(0, offset - 20))}
                   disabled={offset === 0}
-                  className="px-4 py-2 rounded-lg bg-[#1a1a1a] text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#2a2a2a]"
+                  className="px-4 py-2 rounded-lg bg-bg-secondary text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-bg-tertiary"
                 >
                   Previous
                 </button>
                 <button
                   onClick={() => setOffset(offset + 20)}
                   disabled={!hasMore}
-                  className="px-4 py-2 rounded-lg bg-[#1a1a1a] text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#2a2a2a]"
+                  className="px-4 py-2 rounded-lg bg-bg-secondary text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-bg-tertiary"
                 >
                   Next
                 </button>

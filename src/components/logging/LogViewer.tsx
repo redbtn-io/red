@@ -31,9 +31,9 @@ function parseColorTagsToHtml(text: string): string {
     blue: 'text-blue-400',
     magenta: 'text-magenta-400',
     cyan: 'text-cyan-400',
-    white: 'text-white',
-    gray: 'text-gray-400',
-    dim: 'text-gray-500',
+    white: 'text-text-primary',
+    gray: 'text-text-secondary',
+    dim: 'text-text-muted',
     bold: 'font-bold',
   };
   
@@ -244,12 +244,12 @@ export function LogViewer({
   // Render empty state
   if (!conversationId && !generationId) {
     return (
-      <div className="bg-gray-900 rounded-lg border border-gray-800 p-12 text-center">
+      <div className="bg-bg-secondary rounded-lg border border-border p-12 text-center">
         <div className="text-6xl mb-4">📝</div>
-        <h2 className="text-xl font-semibold text-gray-300 mb-2">
+        <h2 className="text-xl font-semibold text-text-secondary mb-2">
           No logs selected
         </h2>
-        <p className="text-gray-500">
+        <p className="text-text-muted">
           Enter a conversation ID or generation ID to view logs
         </p>
       </div>
@@ -347,7 +347,7 @@ export function LogViewer({
 // Individual log line component
 function LogLine({ log, compact }: { log: LogEntry; compact?: boolean }) {
   const levelColors: Record<string, string> = {
-    debug: 'text-gray-500',
+    debug: 'text-text-muted',
     info: 'text-blue-400',
     success: 'text-green-400',
     warning: 'text-yellow-400',

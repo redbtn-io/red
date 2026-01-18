@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getRateLimitIdentifier, RateLimits } from '@/lib/rate-limit/rate-limit';
 
+// Test bypass token - allows tests to skip rate limiting
+const RATE_LIMIT_BYPASS_TOKEN = process.env.RATE_LIMIT_BYPASS_TOKEN || 'test-bypass-rate-limit-2026';
+
 /**
  * Next.js Middleware - runs on all requests
  * Applies rate limiting based on path patterns
@@ -14,6 +17,12 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/static') ||
     pathname.includes('.') // Files with extensions (images, etc.)
   ) {
+    return NextResponse.next();
+  }
+  
+  // Check for rate limit bypass header (for testing)
+  const bypassHeader = request.headers.get('X-RateLimit-Bypass');
+  if (bypassHeader === RATE_LIMIT_BYPASS_TOKEN) {
     return NextResponse.next();
   }
   

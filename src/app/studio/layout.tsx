@@ -25,7 +25,7 @@ export default function StudioLayout({
     <ReactFlowProvider>
       {/* Use --app-height instead of h-screen to account for mobile browser chrome */}
       <div 
-        className="w-screen overflow-hidden bg-[#0a0a0a]"
+        className="w-screen overflow-hidden bg-bg-primary"
         style={{ height: 'var(--app-height, 100vh)' }}
       >
         {children}

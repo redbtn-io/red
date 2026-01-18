@@ -9,6 +9,7 @@ import Canvas from '../components/Canvas';
 import NodePalette from '../components/NodePalette';
 import ConfigPanel from '../components/ConfigPanel';
 import GraphHeader from '../components/GraphHeader';
+import StateManager from '../components/StateManager';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { pageVariants } from '@/lib/animations';
 
@@ -26,6 +27,7 @@ export default function GraphEditorPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPalette, setShowPalette] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  const [showStateManager, setShowStateManager] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   // Detect mobile
@@ -75,10 +77,10 @@ export default function GraphEditorPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="h-screen bg-bg-primary flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 text-red-500 animate-spin" />
-          <p className="text-gray-400">Loading graph...</p>
+          <p className="text-text-secondary">Loading graph...</p>
         </div>
       </div>
     );
@@ -87,17 +89,17 @@ export default function GraphEditorPage() {
   // Error state
   if (error) {
     return (
-      <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="h-screen bg-bg-primary flex items-center justify-center">
         <div className="flex flex-col items-center gap-4 max-w-md text-center">
           <div className="w-16 h-16 rounded-full bg-red-900/30 flex items-center justify-center">
             <AlertCircle className="w-8 h-8 text-red-500" />
           </div>
-          <h2 className="text-xl font-semibold text-gray-200">Failed to load graph</h2>
-          <p className="text-gray-400">{error}</p>
+          <h2 className="text-xl font-semibold text-text-primary">Failed to load graph</h2>
+          <p className="text-text-secondary">{error}</p>
           <div className="flex gap-3 mt-4">
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-[#1a1a1a] text-gray-200 rounded-lg hover:bg-[#2a2a2a] transition-colors"
+              className="px-4 py-2 bg-bg-secondary text-text-primary rounded-lg hover:bg-bg-tertiary transition-colors"
             >
               Retry
             </button>
@@ -115,7 +117,7 @@ export default function GraphEditorPage() {
 
   return (
     <motion.div 
-      className="h-screen bg-[#0a0a0a] flex flex-col"
+      className="h-screen bg-bg-primary flex flex-col"
       initial="initial"
       animate="animate"
       exit="exit"
@@ -124,14 +126,20 @@ export default function GraphEditorPage() {
       <GraphHeader 
         onTogglePalette={() => setShowPalette(!showPalette)}
         onToggleConfig={() => setShowConfig(!showConfig)}
+        onToggleStateManager={() => setShowStateManager(!showStateManager)}
         showPalette={showPalette}
         showConfig={showConfig}
+        showStateManager={showStateManager}
       />
       <div className="flex-1 flex overflow-hidden relative">
         <NodePalette 
           isOpen={showPalette} 
           onClose={() => setShowPalette(false)}
           onNodeAdded={handleNodeAdded}
+        />
+        <StateManager 
+          isOpen={showStateManager} 
+          onClose={() => setShowStateManager(false)} 
         />
         <Canvas 
           onNodeAdded={handleNodeAdded}

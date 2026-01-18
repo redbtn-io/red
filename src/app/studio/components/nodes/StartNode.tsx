@@ -18,10 +18,10 @@ function StartNode({ data, selected }: NodeProps<StudioNodeData>) {
     <div
       className={`
         relative rounded-full border-2 bg-green-600 p-4 shadow-lg transition-all cursor-pointer
-        ${selected ? 'border-[#ef4444] ring-2 ring-[#ef4444]/30' : 'border-green-500 hover:border-green-400'}
+        ${selected ? 'border-accent ring-2 ring-accent/30' : 'border-green-500 hover:border-green-400'}
       `}
     >
-      <PlayCircle className="w-6 h-6 text-white" />
+      <PlayCircle className="w-6 h-6 text-text-primary" />
       
       {/* Output handle */}
       <Handle

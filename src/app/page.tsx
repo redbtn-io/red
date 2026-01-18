@@ -60,6 +60,7 @@ interface DashboardData {
   recentRuns: Array<{
     id: string;
     automationId: string;
+    automationName: string;
     status: string;
     durationMs?: number;
     startedAt: string;
@@ -160,8 +161,8 @@ export default function DashboardPage() {
 
   if (authLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#0a0a0a]">
-        <Loader2 className="w-8 h-8 text-white animate-spin" />
+      <div className="flex h-screen items-center justify-center bg-bg-primary">
+        <Loader2 className="w-8 h-8 text-text-primary animate-spin" />
       </div>
     );
   }
@@ -177,13 +178,101 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex h-screen bg-[#0a0a0a]">
+    <div className="flex h-screen bg-bg-primary overflow-hidden">
       <AppSidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-      />
+      >
+        {/* Recent Conversations in sidebar */}
+        <div className="p-3">
+          <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2 px-1">
+            Recent Chats
+          </h3>
+          {dashboardData?.recentConversations && dashboardData.recentConversations.length > 0 ? (
+            <div className="space-y-1">
+              {dashboardData.recentConversations.slice(0, 5).map((conv) => (
+                <Link
+                  key={conv.id}
+                  href={`/chat?conversation=${conv.id}`}
+                  className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-bg-secondary transition-colors group"
+                >
+                  <MessageSquare className="w-4 h-4 text-text-muted group-hover:text-accent-text" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-text-secondary truncate">{conv.title || 'Untitled'}</div>
+                    <div className="text-xs text-text-disabled">{formatRelativeTime(conv.updatedAt)}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-text-disabled px-2 py-1">No recent chats</p>
+          )}
+          
+          <Link
+            href="/chat"
+            className="flex items-center gap-2 px-2 py-2 mt-2 text-sm text-accent-text hover:bg-accent/10 rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New Chat</span>
+          </Link>
+        </div>
+        
+        {/* Recent Automation Runs in sidebar */}
+        <div className="p-3 border-t border-border">
+          <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2 px-1">
+            Recent Runs
+          </h3>
+          {dashboardData?.recentRuns && dashboardData.recentRuns.length > 0 ? (
+            <div className="space-y-1">
+              {dashboardData.recentRuns.slice(0, 5).map((run) => (
+                <Link
+                  key={run.id}
+                  href={`/automations/${run.automationId}/runs`}
+                  className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-bg-secondary transition-colors group"
+                >
+                  {runStatusIcons[run.status] || <Clock className="w-4 h-4 text-text-muted" />}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-text-secondary truncate">{run.automationName}</div>
+                    <div className="text-xs text-text-disabled flex items-center gap-1">
+                      <span>{formatRelativeTime(run.startedAt)}</span>
+                      {run.durationMs && <span>• {(run.durationMs / 1000).toFixed(1)}s</span>}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-text-disabled px-2 py-1">No recent runs</p>
+          )}
+        </div>
+        
+        {/* Quick Stats in sidebar */}
+        <div className="p-3 border-t border-border">
+          <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2 px-1">
+            Quick Stats
+          </h3>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="px-2 py-2 rounded-lg bg-bg-secondary">
+              <div className="text-lg font-semibold text-text-primary">{dashboardData?.stats?.conversations || 0}</div>
+              <div className="text-xs text-text-muted">Chats</div>
+            </div>
+            <div className="px-2 py-2 rounded-lg bg-bg-secondary">
+              <div className="text-lg font-semibold text-text-primary">{dashboardData?.stats?.automations || 0}</div>
+              <div className="text-xs text-text-muted">Automations</div>
+            </div>
+            <div className="px-2 py-2 rounded-lg bg-bg-secondary">
+              <div className="text-lg font-semibold text-text-primary">{dashboardData?.stats?.totalRuns || 0}</div>
+              <div className="text-xs text-text-muted">Total Runs</div>
+            </div>
+            <div className="px-2 py-2 rounded-lg bg-bg-secondary">
+              <div className="text-lg font-semibold text-text-primary">{dashboardData?.stats?.successRate || 0}%</div>
+              <div className="text-xs text-text-muted">Success</div>
+            </div>
+          </div>
+        </div>
+      </AppSidebar>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <StudioHeader
           title="Dashboard"
           subtitle={`Welcome back${dashboardData?.user?.name ? `, ${dashboardData.user.name}` : ''}`}
@@ -199,14 +288,14 @@ export default function DashboardPage() {
           >
             {loading ? (
               <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-8 h-8 text-white animate-spin" />
+                <Loader2 className="w-8 h-8 text-text-primary animate-spin" />
               </div>
             ) : error ? (
               <div className="text-center py-20">
                 <p className="text-red-400 mb-4">{error}</p>
                 <button 
                   onClick={fetchDashboard}
-                  className="px-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white hover:bg-[#2a2a2a]"
+                  className="px-4 py-2 bg-bg-secondary border border-border rounded-lg text-text-primary hover:bg-bg-tertiary"
                 >
                   Retry
                 </button>
@@ -219,63 +308,63 @@ export default function DashboardPage() {
                   variants={fadeUpVariants}
                 >
                   <Link href="/chat" className="group">
-                    <div className="p-4 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] hover:border-[#3a3a3a] transition-colors">
+                    <div className="p-4 rounded-xl border border-border bg-bg-secondary hover:border-border-hover transition-colors">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-500/20">
                           <MessageSquare className="w-5 h-5 text-blue-500" />
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-white">
+                          <div className="text-2xl font-bold text-text-primary">
                             {dashboardData.stats.conversations}
                           </div>
-                          <div className="text-sm text-gray-400">Conversations</div>
+                          <div className="text-sm text-text-secondary">Conversations</div>
                         </div>
                       </div>
                     </div>
                   </Link>
                   
                   <Link href="/studio" className="group">
-                    <div className="p-4 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] hover:border-[#3a3a3a] transition-colors">
+                    <div className="p-4 rounded-xl border border-border bg-bg-secondary hover:border-border-hover transition-colors">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-purple-500/20">
                           <Workflow className="w-5 h-5 text-purple-500" />
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-white">
+                          <div className="text-2xl font-bold text-text-primary">
                             {dashboardData.stats.graphs}
                           </div>
-                          <div className="text-sm text-gray-400">Graphs</div>
+                          <div className="text-sm text-text-secondary">Graphs</div>
                         </div>
                       </div>
                     </div>
                   </Link>
                   
                   <Link href="/automations" className="group">
-                    <div className="p-4 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] hover:border-[#3a3a3a] transition-colors">
+                    <div className="p-4 rounded-xl border border-border bg-bg-secondary hover:border-border-hover transition-colors">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-yellow-500/20">
                           <Zap className="w-5 h-5 text-yellow-500" />
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-white">
+                          <div className="text-2xl font-bold text-text-primary">
                             {dashboardData.stats.activeAutomations}/{dashboardData.stats.automations}
                           </div>
-                          <div className="text-sm text-gray-400">Automations</div>
+                          <div className="text-sm text-text-secondary">Automations</div>
                         </div>
                       </div>
                     </div>
                   </Link>
                   
-                  <div className="p-4 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a]">
+                  <div className="p-4 rounded-xl border border-border bg-bg-secondary">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-green-500/20">
                         <TrendingUp className="w-5 h-5 text-green-500" />
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-white">
+                        <div className="text-2xl font-bold text-text-primary">
                           {dashboardData.stats.successRate}%
                         </div>
-                        <div className="text-sm text-gray-400">Success</div>
+                        <div className="text-sm text-text-secondary">Success</div>
                       </div>
                     </div>
                   </div>
@@ -284,10 +373,10 @@ export default function DashboardPage() {
                 {/* Quick Actions - Chat with Agents */}
                 <motion.div className="mb-8" variants={fadeUpVariants}>
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-white">Start a Chat</h2>
+                    <h2 className="text-lg font-semibold text-text-primary">Start a Chat</h2>
                     <Link 
                       href="/chat" 
-                      className="text-sm text-gray-400 hover:text-white flex items-center gap-1"
+                      className="text-sm text-text-secondary hover:text-text-primary flex items-center gap-1"
                     >
                       View all <ArrowRight className="w-4 h-4" />
                     </Link>
@@ -296,15 +385,15 @@ export default function DashboardPage() {
                     {/* New Chat button */}
                     <button
                       onClick={() => startNewChat()}
-                      className="p-4 rounded-xl border border-dashed border-[#3a3a3a] bg-[#0f0f0f] hover:border-[#ef4444] hover:bg-[#1a1a1a] transition-all group text-left"
+                      className="p-4 rounded-xl border border-dashed border-border-hover bg-bg-elevated hover:border-accent hover:bg-bg-secondary transition-all group text-left"
                     >
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[#ef4444]/20 group-hover:bg-[#ef4444]/30 transition-colors">
-                          <Plus className="w-5 h-5 text-[#ef4444]" />
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-accent/20 group-hover:bg-accent/30 transition-colors">
+                          <Plus className="w-5 h-5 text-accent-text" />
                         </div>
-                        <div className="font-medium text-white">New Chat</div>
+                        <div className="font-medium text-text-primary">New Chat</div>
                       </div>
-                      <p className="text-sm text-gray-500">Start a new conversation with the default agent</p>
+                      <p className="text-sm text-text-muted">Start a new conversation with the default agent</p>
                     </button>
 
                     {/* Agent Cards */}
@@ -312,26 +401,26 @@ export default function DashboardPage() {
                       <button
                         key={agent.graphId}
                         onClick={() => startNewChat(agent.graphId)}
-                        className="p-4 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] hover:border-[#3a3a3a] hover:bg-[#252525] transition-all group text-left"
+                        className="p-4 rounded-xl border border-border bg-bg-secondary hover:border-border-hover hover:bg-bg-tertiary transition-all group text-left"
                       >
                         <div className="flex items-center gap-3 mb-2">
                           <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-purple-500/20">
                             <Bot className="w-5 h-5 text-purple-500" />
                           </div>
                           <div>
-                            <div className="font-medium text-white flex items-center gap-2">
+                            <div className="font-medium text-text-primary flex items-center gap-2">
                               {agent.name}
                               {agent.isDefault && (
-                                <span className="text-xs px-1.5 py-0.5 rounded bg-[#ef4444]/20 text-[#ef4444]">Default</span>
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-accent/20 text-accent-text">Default</span>
                               )}
                             </div>
                             {agent.isSystem && (
-                              <span className="text-xs text-gray-500">System</span>
+                              <span className="text-xs text-text-muted">System</span>
                             )}
                           </div>
                         </div>
                         {agent.description && (
-                          <p className="text-sm text-gray-500 line-clamp-2">{agent.description}</p>
+                          <p className="text-sm text-text-muted line-clamp-2">{agent.description}</p>
                         )}
                       </button>
                     ))}
@@ -343,41 +432,41 @@ export default function DashboardPage() {
                   {/* Recent Conversations */}
                   <motion.div variants={fadeUpVariants}>
                     <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-semibold text-white">Recent Conversations</h2>
+                      <h2 className="text-lg font-semibold text-text-primary">Recent Conversations</h2>
                       <Link 
                         href="/chat" 
-                        className="text-sm text-gray-400 hover:text-white flex items-center gap-1"
+                        className="text-sm text-text-secondary hover:text-text-primary flex items-center gap-1"
                       >
                         View all <ArrowRight className="w-4 h-4" />
                       </Link>
                     </div>
-                    <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] overflow-hidden">
+                    <div className="rounded-xl border border-border bg-bg-secondary overflow-hidden">
                       {dashboardData.recentConversations.length === 0 ? (
                         <div className="p-8 text-center">
-                          <MessageSquare className="w-8 h-8 text-gray-600 mx-auto mb-3" />
-                          <p className="text-gray-500">No conversations yet</p>
+                          <MessageSquare className="w-8 h-8 text-text-disabled mx-auto mb-3" />
+                          <p className="text-text-muted">No conversations yet</p>
                           <button
                             onClick={() => startNewChat()}
-                            className="mt-4 px-4 py-2 bg-[#ef4444] text-white rounded-lg text-sm hover:bg-[#dc2626] transition-colors"
+                            className="mt-4 px-4 py-2 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover transition-colors"
                           >
                             Start your first chat
                           </button>
                         </div>
                       ) : (
-                        <div className="divide-y divide-[#2a2a2a]">
+                        <div className="divide-y divide-border">
                           {dashboardData.recentConversations.map((conv) => (
                             <Link
                               key={conv.id}
                               href={`/chat?conversation=${conv.id}`}
-                              className="flex items-center justify-between p-4 hover:bg-[#252525] transition-colors"
+                              className="flex items-center justify-between p-4 hover:bg-bg-tertiary transition-colors"
                             >
                               <div className="flex-1 min-w-0">
-                                <div className="font-medium text-white truncate">{conv.title}</div>
-                                <div className="text-sm text-gray-500">
+                                <div className="font-medium text-text-primary truncate">{conv.title}</div>
+                                <div className="text-sm text-text-muted">
                                   {conv.messageCount} messages
                                 </div>
                               </div>
-                              <div className="text-xs text-gray-500 ml-4">
+                              <div className="text-xs text-text-muted ml-4">
                                 {formatRelativeTime(conv.updatedAt)}
                               </div>
                             </Link>
@@ -390,45 +479,45 @@ export default function DashboardPage() {
                   {/* Automations Overview */}
                   <motion.div variants={fadeUpVariants}>
                     <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-semibold text-white">Automations</h2>
+                      <h2 className="text-lg font-semibold text-text-primary">Automations</h2>
                       <Link 
                         href="/automations" 
-                        className="text-sm text-gray-400 hover:text-white flex items-center gap-1"
+                        className="text-sm text-text-secondary hover:text-text-primary flex items-center gap-1"
                       >
                         View all <ArrowRight className="w-4 h-4" />
                       </Link>
                     </div>
-                    <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] overflow-hidden">
+                    <div className="rounded-xl border border-border bg-bg-secondary overflow-hidden">
                       {dashboardData.automationSummary.length === 0 ? (
                         <div className="p-8 text-center">
-                          <Zap className="w-8 h-8 text-gray-600 mx-auto mb-3" />
-                          <p className="text-gray-500">No automations yet</p>
+                          <Zap className="w-8 h-8 text-text-disabled mx-auto mb-3" />
+                          <p className="text-text-muted">No automations yet</p>
                           <Link
                             href="/automations/new"
-                            className="inline-block mt-4 px-4 py-2 bg-[#ef4444] text-white rounded-lg text-sm hover:bg-[#dc2626] transition-colors"
+                            className="inline-block mt-4 px-4 py-2 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover transition-colors"
                           >
                             Create your first automation
                           </Link>
                         </div>
                       ) : (
-                        <div className="divide-y divide-[#2a2a2a]">
+                        <div className="divide-y divide-border">
                           {dashboardData.automationSummary.map((auto) => (
                             <Link
                               key={auto.id}
                               href={`/automations/${auto.id}`}
-                              className="flex items-center justify-between p-4 hover:bg-[#252525] transition-colors"
+                              className="flex items-center justify-between p-4 hover:bg-bg-tertiary transition-colors"
                             >
                               <div className="flex items-center gap-3">
                                 <div className={`w-2 h-2 rounded-full ${auto.isEnabled ? 'bg-green-500' : 'bg-gray-500'}`} />
                                 <div>
-                                  <div className="font-medium text-white">{auto.name}</div>
-                                  <div className="text-sm text-gray-500">
+                                  <div className="font-medium text-text-primary">{auto.name}</div>
+                                  <div className="text-sm text-text-muted">
                                     {auto.runCount} runs • {auto.successCount} successful
                                   </div>
                                 </div>
                               </div>
                               {auto.lastRunAt && (
-                                <div className="text-xs text-gray-500">
+                                <div className="text-xs text-text-muted">
                                   {formatRelativeTime(auto.lastRunAt)}
                                 </div>
                               )}
@@ -443,9 +532,9 @@ export default function DashboardPage() {
                 {/* Recent Runs */}
                 {dashboardData.recentRuns.length > 0 && (
                   <motion.div className="mt-8" variants={fadeUpVariants}>
-                    <h2 className="text-lg font-semibold text-white mb-4">Recent Activity</h2>
-                    <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] overflow-hidden">
-                      <div className="divide-y divide-[#2a2a2a]">
+                    <h2 className="text-lg font-semibold text-text-primary mb-4">Recent Activity</h2>
+                    <div className="rounded-xl border border-border bg-bg-secondary overflow-hidden">
+                      <div className="divide-y divide-border">
                         {dashboardData.recentRuns.slice(0, 5).map((run) => (
                           <div
                             key={run.id}
@@ -454,15 +543,15 @@ export default function DashboardPage() {
                             <div className="flex items-center gap-3">
                               {runStatusIcons[run.status] || runStatusIcons.pending}
                               <div>
-                                <div className="text-sm text-white">
+                                <div className="text-sm text-text-primary">
                                   Automation run {run.status}
                                 </div>
-                                <div className="text-xs text-gray-500">
+                                <div className="text-xs text-text-muted">
                                   {run.durationMs ? `${(run.durationMs / 1000).toFixed(2)}s` : 'In progress'}
                                 </div>
                               </div>
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-text-muted">
                               {formatRelativeTime(run.startedAt)}
                             </div>
                           </div>

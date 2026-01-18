@@ -38,6 +38,36 @@ export interface IToolExecution {
 }
 
 /**
+ * Node progress interface for graph run tracking
+ */
+export interface INodeProgress {
+  nodeId: string;
+  status: 'pending' | 'running' | 'completed' | 'error';
+  currentStep?: number;
+  totalSteps?: number;
+  stepName?: string;
+  startTime?: number;
+  endTime?: number;
+  error?: string;
+}
+
+/**
+ * Graph run interface for tracking graph execution history
+ */
+export interface IGraphRun {
+  graphId: string;
+  graphName?: string;
+  runId?: string;
+  status: 'running' | 'completed' | 'error';
+  executionPath: string[];
+  nodeProgress: Record<string, INodeProgress>;
+  startTime?: number;
+  endTime?: number;
+  duration?: number;
+  error?: string;
+}
+
+/**
  * Message interface for individual chat messages
  */
 export interface IMessage {
@@ -47,6 +77,7 @@ export interface IMessage {
   timestamp: Date;
   thinking?: string; // Optional thinking process
   toolExecutions?: IToolExecution[]; // Tool executions for this message
+  graphRun?: IGraphRun; // Graph execution history for this message
   metadata?: {
     model?: string;
     tokens?: {
@@ -118,6 +149,50 @@ const ToolExecutionSchema = new Schema<IToolExecution>(
 );
 
 /**
+ * Node progress schema (embedded in GraphRun)
+ */
+const NodeProgressSchema = new Schema<INodeProgress>(
+  {
+    nodeId: { type: String, required: true },
+    status: { 
+      type: String, 
+      required: true, 
+      enum: ['pending', 'running', 'completed', 'error'] 
+    },
+    currentStep: { type: Number },
+    totalSteps: { type: Number },
+    stepName: { type: String },
+    startTime: { type: Number },
+    endTime: { type: Number },
+    error: { type: String },
+  },
+  { _id: false }
+);
+
+/**
+ * Graph run schema (embedded in Message)
+ */
+const GraphRunSchema = new Schema<IGraphRun>(
+  {
+    graphId: { type: String, required: true },
+    graphName: { type: String },
+    runId: { type: String },
+    status: { 
+      type: String, 
+      required: true, 
+      enum: ['running', 'completed', 'error'] 
+    },
+    executionPath: [{ type: String }],
+    nodeProgress: { type: Schema.Types.Mixed, default: {} },
+    startTime: { type: Number },
+    endTime: { type: Number },
+    duration: { type: Number },
+    error: { type: String },
+  },
+  { _id: false }
+);
+
+/**
  * Message schema (embedded in Conversation)
  */
 const MessageSchema = new Schema<IMessage>(
@@ -128,6 +203,7 @@ const MessageSchema = new Schema<IMessage>(
     timestamp: { type: Date, required: true, default: Date.now },
     thinking: { type: String },
     toolExecutions: [ToolExecutionSchema],
+    graphRun: GraphRunSchema,
     metadata: {
       model: String,
       tokens: {

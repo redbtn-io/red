@@ -77,7 +77,7 @@ export function LoadingStateContainer({
         <div className="max-w-[85%]">
           {/* Single loading box with dynamic status */}
           <div
-            className={`bg-[#1a1a1a] border border-red-500/50 rounded-xl px-4 py-3 shadow-lg space-y-2 animate-pulse overflow-hidden origin-left cursor-pointer hover:bg-[#1f1f1f] transition-colors ${
+            className={`bg-bg-secondary border border-red-500/50 rounded-xl px-4 py-3 shadow-lg space-y-2 animate-pulse overflow-hidden origin-left cursor-pointer hover:bg-bg-secondary transition-colors ${
               skeletonShrinking 
                 ? 'transition-all duration-[800ms] ease-out opacity-0 scale-x-0 -translate-x-4' 
                 : 'transition-all duration-[800ms] ease-out opacity-100 scale-x-100 translate-x-0'
@@ -106,7 +106,7 @@ export function LoadingStateContainer({
 
           {/* Line 2: Router reasoning (if available) */}
           {currentStatus?.reasoning && (
-            <div className="text-xs text-gray-400 italic pl-6">
+            <div className="text-xs text-text-secondary italic pl-6">
               💭 {currentStatus.reasoning}
             </div>
           )}
@@ -130,16 +130,16 @@ export function LoadingStateContainer({
 
         {/* Expanded thinking content (separate box below) */}
         {showThinking && hasThinking && (
-          <div className="bg-[#1a1a1a] border border-purple-500/30 rounded-xl px-4 py-3 shadow-lg mt-3">
+          <div className="bg-bg-secondary border border-purple-500/30 rounded-xl px-4 py-3 shadow-lg mt-3">
             <div className="font-semibold mb-2 text-purple-300 flex items-center justify-between">
               <span>Reasoning:</span>
               <span className="text-xs opacity-60 animate-pulse">streaming...</span>
             </div>
             <div className="prose prose-invert prose-sm max-w-none 
-              prose-p:my-1 prose-p:leading-relaxed prose-p:text-gray-300
+              prose-p:my-1 prose-p:leading-relaxed prose-p:text-text-secondary
               prose-pre:bg-black/30 prose-pre:my-2
-              prose-code:text-white prose-code:bg-black/20 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
-              [&_.katex]:text-white [&_.katex]:text-sm">
+              prose-code:text-text-primary prose-code:bg-black/20 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
+              [&_.katex]:text-text-primary [&_.katex]:text-sm">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeKatex]}

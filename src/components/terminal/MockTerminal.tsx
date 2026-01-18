@@ -197,29 +197,29 @@ export function MockTerminal() {
       case 'input':
         return 'text-green-400';
       case 'output':
-        return 'text-gray-300';
+        return 'text-text-secondary';
       case 'error':
         return 'text-red-400';
       case 'system':
         return 'text-yellow-400';
       default:
-        return 'text-gray-300';
+        return 'text-text-secondary';
     }
   };
 
   return (
     <div 
-      className="h-full flex flex-col bg-[#0a0a0a] rounded-lg border border-[#2a2a2a] overflow-hidden font-mono text-sm"
+      className="h-full flex flex-col bg-bg-primary rounded-lg border border-border overflow-hidden font-mono text-sm"
       onClick={() => inputRef.current?.focus()}
     >
       {/* Terminal Header */}
-      <div className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] border-b border-[#2a2a2a]">
+      <div className="flex items-center gap-2 px-4 py-2 bg-bg-secondary border-b border-border">
         <div className="flex gap-1.5">
           <div className="w-3 h-3 rounded-full bg-red-500/80" />
           <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
           <div className="w-3 h-3 rounded-full bg-green-500/80" />
         </div>
-        <span className="text-gray-500 text-xs ml-2">redbtn ~ terminal</span>
+        <span className="text-text-muted text-xs ml-2">redbtn ~ terminal</span>
       </div>
 
       {/* Terminal Content */}
@@ -239,7 +239,7 @@ export function MockTerminal() {
             >
               {line.type === 'input' ? (
                 <span>
-                  <span className="text-[#ef4444]">❯</span>{' '}
+                  <span className="text-accent-text">❯</span>{' '}
                   {line.content}
                 </span>
               ) : (
@@ -251,7 +251,7 @@ export function MockTerminal() {
 
         {/* Input Line */}
         <div className="flex items-center gap-2">
-          <span className="text-[#ef4444]">❯</span>
+          <span className="text-accent-text">❯</span>
           <input
             ref={inputRef}
             type="text"
@@ -268,7 +268,7 @@ export function MockTerminal() {
       </div>
 
       {/* Status Bar */}
-      <div className="px-4 py-1.5 bg-[#1a1a1a] border-t border-[#2a2a2a] flex items-center justify-between text-xs text-gray-500">
+      <div className="px-4 py-1.5 bg-bg-secondary border-t border-border flex items-center justify-between text-xs text-text-muted">
         <span>redbtn terminal</span>
         <span>{commandHistory.length} commands</span>
       </div>

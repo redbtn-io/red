@@ -1,3 +1,16 @@
+/**
+ * Chat Completions API v2
+ *
+ * Uses the run system with RunPublisher for clean execution.
+ * Responsibilities:
+ * - Store user message before execution
+ * - Start graph execution via run
+ * - Return runId for SSE stream subscription
+ * - Store assistant message and trigger background tasks after completion
+ *
+ * @module api/v1/chat/completions
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getRed } from '@/lib/red';
 import {
@@ -5,19 +18,174 @@ import {
   generateCompletionId,
   extractUserMessage,
   getConversationIdFromBody,
-  generateStableConversationId
+  generateStableConversationId,
 } from '@/lib/api/api-helpers';
 import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
 import { RateLimits } from '@/lib/rate-limit/rate-limit';
 import { verifyAuth } from '@/lib/auth/auth';
-import type { InvokeOptions } from '@redbtn/ai';
+import {
+  run,
+  isStreamingResult,
+  getDatabase,
+  type RunResult,
+  type StreamingRunResult,
+} from '@redbtn/ai';
+
+// =============================================================================
+// Types
+// =============================================================================
+
+interface CompletionResponse {
+  id: string;
+  object: 'chat.completion';
+  created: number;
+  model: string;
+  conversationId: string;
+  runId: string;
+  choices: Array<{
+    index: number;
+    message: {
+      role: 'assistant';
+      content: string;
+    };
+    finish_reason: string;
+  }>;
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
+interface StreamingCompletionResponse {
+  id: string;
+  object: 'chat.completion.stream';
+  created: number;
+  model: string;
+  conversationId: string;
+  runId: string;
+  messageId: string;
+  userMessageId: string;
+  streamUrl: string;
+}
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+function generateMessageId(): string {
+  return `msg_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+}
+
+/**
+ * Store a message to the database
+ */
+async function storeMessage(params: {
+  messageId: string;
+  conversationId: string;
+  userId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  thinking?: string;
+  metadata?: Record<string, unknown>;
+  toolExecutions?: Array<{
+    toolId: string;
+    toolName: string;
+    toolType: string;
+    status: 'running' | 'completed' | 'error';
+    startTime: Date;
+    endTime?: Date;
+    duration?: number;
+    steps?: Array<{ name: string; timestamp: number; data?: unknown }>;
+    result?: unknown;
+    error?: string;
+  }>;
+  graphRun?: {
+    graphId: string;
+    graphName?: string;
+    runId?: string;
+    status: 'completed' | 'error';
+    executionPath: string[];
+    nodeProgress: Record<string, unknown>;
+    startTime?: number;
+    endTime?: number;
+    duration?: number;
+    error?: string;
+  };
+}): Promise<void> {
+  const db = await getDatabase();
+
+  const message: Record<string, unknown> = {
+    messageId: params.messageId,
+    conversationId: params.conversationId,
+    role: params.role,
+    content: params.content,
+    thinking: params.thinking,
+    timestamp: new Date(),
+    metadata: params.metadata || {},
+  };
+
+  // Add tool executions if provided
+  if (params.toolExecutions && params.toolExecutions.length > 0) {
+    message.toolExecutions = params.toolExecutions;
+  }
+
+  // Add graphRun if provided (for graph visualization)
+  if (params.graphRun) {
+    message.graphRun = params.graphRun;
+  }
+
+  await db.storeMessage(message as any, params.userId);
+  console.log(
+    `[Completions-v2] Stored ${params.role} message ${params.messageId} for conversation ${params.conversationId}`
+  );
+}
+
+/**
+ * Trigger background tasks after completion
+ */
+async function triggerBackgroundTasks(params: {
+  conversationId: string;
+  userId: string;
+  messageCount: number;
+}): Promise<void> {
+  const red = await getRed();
+
+  // Get message count for title generation
+  const metadataResult = await red.callMcpTool(
+    'get_conversation_metadata',
+    { conversationId: params.conversationId },
+    { conversationId: params.conversationId }
+  );
+  const actualMessageCount = metadataResult.isError
+    ? params.messageCount
+    : JSON.parse(metadataResult.content?.[0]?.text || '{}').messageCount ||
+      params.messageCount;
+
+  // Trigger title generation for new conversations (first 2-3 messages)
+  if (actualMessageCount <= 3) {
+    console.log(
+      `[Completions-v2] Triggering title generation for ${params.conversationId}`
+    );
+    // Title generation is handled internally by the background module
+  }
+
+  // Summarization is triggered automatically by memory module
+  console.log(
+    `[Completions-v2] Background tasks triggered for ${params.conversationId}`
+  );
+}
+
+// =============================================================================
+// POST Handler
+// =============================================================================
 
 export async function POST(request: NextRequest) {
   // Apply rate limiting (30 requests/minute for chat)
   const rateLimitResult = await rateLimitAPI(request, RateLimits.CHAT);
   if (rateLimitResult) return rateLimitResult;
 
-  // Verify authentication (Phase 0 requirement)
+  // Verify authentication
   const user = await verifyAuth(request);
   if (!user) {
     return NextResponse.json(
@@ -25,8 +193,8 @@ export async function POST(request: NextRequest) {
         error: {
           message: 'Authentication required',
           type: 'authentication_error',
-          code: 'unauthorized'
-        }
+          code: 'unauthorized',
+        },
       },
       { status: 401 }
     );
@@ -35,14 +203,15 @@ export async function POST(request: NextRequest) {
   try {
     const body: ChatCompletionRequest = await request.json();
 
+    // Validate request
     if (!body.messages || body.messages.length === 0) {
       return NextResponse.json(
         {
           error: {
             message: 'messages is required and must not be empty',
             type: 'invalid_request_error',
-            code: 'invalid_messages'
-          }
+            code: 'invalid_messages',
+          },
         },
         { status: 400 }
       );
@@ -53,279 +222,260 @@ export async function POST(request: NextRequest) {
     const modelName = body.model || 'Red';
     const userMessage = extractUserMessage(body.messages);
 
+    // Generate IDs
     const conversationId =
       getConversationIdFromBody(body) ||
       request.headers.get('x-conversation-id') ||
       generateStableConversationId(body.messages);
+    const userMessageId =
+      (body as any).userMessageId || generateMessageId();
+    const assistantMessageId = generateMessageId();
 
-    console.log(`🔗 Using conversation ID: ${conversationId}`);
-
+    // Get Red instance
     const red = await getRed();
 
-  const messageId = body.messageId || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  const userMessageId = typeof body.userMessageId === 'string' ? body.userMessageId : undefined;
+    // Get graph ID
+    const graphId =
+      typeof body.graphId === 'string' ? body.graphId : undefined;
 
-    if (body.stream) {
-      await red.messageQueue.startGeneration(conversationId, messageId);
+    // 1. Store user message BEFORE execution
+    await storeMessage({
+      messageId: userMessageId,
+      conversationId,
+      userId: user.userId,
+      role: 'user',
+      content: userMessage,
+    });
 
-      const encoder = new TextEncoder();
-      
-      let subscriptionReady = false;
-      const subscriptionReadyPromise = new Promise<void>(resolve => {
-        const checkReady = () => {
-          if (subscriptionReady) {
-            resolve();
-          } else {
-            setTimeout(checkReady, 10);
-          }
-        };
-        checkReady();
-      });
-      
-      // Start generation in background
-      (async () => {
-        try {
-          console.log('[Completions] Waiting for subscription to be ready...');
-          await subscriptionReadyPromise;
-          console.log('[Completions] Subscription ready, starting generation for', messageId);
-          
-          console.log('[Completions] User from JWT:', { userId: user.userId, email: user.email });
-          
-          // Extract optional graphId from request (defaults to assistant-search in run.ts)
-          const graphId = typeof body.graphId === 'string' ? body.graphId : undefined;
-          
-          const runOptions: InvokeOptions = {
-            source: { application: 'redChat' },
-            stream: true,  // Always true for streaming endpoint branch
+    // Get runId from request (frontend may pre-generate to connect SSE early)
+    const requestRunId = typeof (body as any).runId === 'string' ? (body as any).runId : undefined;
+    console.log(`[Completions] ${new Date().toISOString()} Starting run with runId=${requestRunId}`);
+
+    // 2. Start run execution
+    const result = await run(red, { message: userMessage }, {
+      userId: user.userId,
+      graphId,
+      conversationId, // Pass conversationId for context loading
+      stream: body.stream ?? true,
+      source: { application: 'redChat' },
+      runId: requestRunId, // Use frontend-provided runId if available
+    });
+    console.log(`[Completions] ${new Date().toISOString()} run returned`);
+
+    // 3. Handle streaming vs non-streaming
+    if (body.stream && isStreamingResult(result)) {
+      const streamingResult = result as StreamingRunResult;
+      console.log(`[Completions-v2] ${new Date().toISOString()} Returning streaming response for runId=${streamingResult.runId}`);
+
+      // Set up completion callback to store assistant message and trigger background tasks
+      streamingResult.completion
+        .then(async (finalResult: RunResult) => {
+          // Map tool executions from RunResult to stored format
+          const toolExecutions = (finalResult.tools || []).map(tool => ({
+            toolId: tool.toolId,
+            toolName: tool.toolName,
+            toolType: tool.toolType,
+            status: tool.status,
+            startTime: new Date(tool.startedAt),
+            endTime: tool.completedAt ? new Date(tool.completedAt) : undefined,
+            duration: tool.duration,
+            steps: tool.steps?.map(step => ({
+              name: step.name,
+              timestamp: step.timestamp,
+              data: step.data,
+            })) || [],
+            result: tool.result,
+            error: tool.error,
+          }));
+
+          // Store assistant message with graph run data and tool executions
+          await storeMessage({
+            messageId: assistantMessageId,
             conversationId,
-            messageId,
-            userMessageId,
-            userId: user.userId,  // Required for per-user model loading (userId from JWT token)
-            graphId  // Optional graph selection (defaults to assistant-search)
-          };
-          
-          console.log('[Completions] Calling run() with options:', { conversationId, userId: runOptions.userId, messageId, graphId });
+            userId: user.userId,
+            role: 'assistant',
+            content: finalResult.content,
+            thinking: finalResult.thinking || undefined,
+            toolExecutions: toolExecutions.length > 0 ? toolExecutions : undefined,
+            metadata: {
+              runId: finalResult.runId,
+              graphId: finalResult.graphId,
+              graphName: finalResult.graphName,
+              model: finalResult.metadata.model,
+              tokens: finalResult.metadata.tokens,
+              executionPath: finalResult.metadata.executionPath,
+              duration: finalResult.metadata.duration,
+            },
+            graphRun: {
+              graphId: finalResult.graphId,
+              graphName: finalResult.graphName,
+              runId: finalResult.runId,
+              status: finalResult.status,
+              executionPath: finalResult.graphTrace.executionPath,
+              nodeProgress: Object.fromEntries(
+                Object.entries(finalResult.graphTrace.nodeProgress).map(([nodeId, progress]) => [
+                  nodeId,
+                  {
+                    nodeId,
+                    status: progress.status,
+                    stepName: progress.nodeName,
+                    startTime: progress.startedAt,
+                    endTime: progress.completedAt,
+                    error: progress.error,
+                  },
+                ])
+              ),
+              startTime: finalResult.graphTrace.startTime,
+              endTime: finalResult.graphTrace.endTime,
+              duration: finalResult.metadata.duration,
+              error: finalResult.error,
+            },
+          });
 
-          const responseStream = await red.run(
-            { message: userMessage },
-            runOptions
+          // Trigger background tasks
+          await triggerBackgroundTasks({
+            conversationId,
+            userId: user.userId,
+            messageCount: body.messages.length + 1,
+          });
+
+          console.log(
+            `[Completions-v2] Run ${streamingResult.runId} completed, assistant message stored`
           );
-
-          for await (const chunk of responseStream) {
-            if (typeof chunk === 'object' && chunk._metadata) continue;
-            
-            if (typeof chunk === 'object' && chunk._status) {
-              await red.messageQueue.publishStatus(messageId, {
-                action: chunk.action,
-                description: chunk.description
-              });
-              continue;
-            }
-            
-            if (typeof chunk === 'object' && chunk._thinkingChunk) {
-              // Thinking chunk already published by respond.ts - skip duplicate
-              continue;
-            }
-            
-            if (typeof chunk === 'object' && chunk._toolStatus) {
-              await red.messageQueue.publishToolStatus(messageId, {
-                status: chunk.status,
-                action: chunk.action
-              });
-              continue;
-            }
-
-            if (typeof chunk === 'string') {
-              await red.messageQueue.appendContent(messageId, chunk);
-            } else {
-              const metadata = {
-                model: chunk.response_metadata?.model,
-                tokens: chunk.usage_metadata ? {
-                  input: chunk.usage_metadata.input_tokens,
-                  output: chunk.usage_metadata.output_tokens,
-                  total: chunk.usage_metadata.total_tokens
-                } : undefined
-              };
-              await red.messageQueue.completeGeneration(messageId, metadata);
-              
-              // Note: Assistant message is already saved by red.memory in respond.ts
-              // No need to save here - the AI package handles all message persistence
-            }
-          }
-        } catch (error) {
-          console.error(`[Completions] Generation failed:`, error);
-          await red.messageQueue.failGeneration(
-            messageId,
-            error instanceof Error ? error.message : String(error)
+        })
+        .catch((error: Error) => {
+          console.error(
+            `[Completions-v2] Run ${streamingResult.runId} failed:`,
+            error
           );
-        }
-      })();
-      
-      const stream = new ReadableStream({
-        async start(controller) {
-          let streamClosed = false;
-          
-          const safeEnqueue = (data: Uint8Array) => {
-            if (streamClosed) {
-              console.log('[Completions] Skipping enqueue - stream already closed');
-              return false;
-            }
-            try {
-              controller.enqueue(data);
-              return true;
-            } catch (error) {
-              if (error instanceof Error && error.message.includes('Controller is already closed')) {
-                console.log('[Completions] Stream closed by client');
-                streamClosed = true;
-                return false;
-              }
-              throw error;
-            }
-          };
-          
-          try {
-            const initEvent = { type: 'init', messageId, conversationId };
-            console.log('[Completions] Sending init event and subscribing to Redis');
-            if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify(initEvent)}\n\n`))) {
-              return;
-            }
+        });
 
-            console.log('[Completions] Subscribing to message queue...');
-            const messageStream = red.messageQueue.subscribeToMessage(messageId);
-            console.log('[Completions] Subscription established, signaling generation to start');
+      // Return immediately with run info for SSE subscription
+      const response: StreamingCompletionResponse = {
+        id: completionId,
+        object: 'chat.completion.stream',
+        created,
+        model: modelName,
+        conversationId,
+        runId: streamingResult.runId,
+        messageId: assistantMessageId,
+        userMessageId,
+        streamUrl: `/api/v1/runs/${streamingResult.runId}/stream`,
+      };
 
-            subscriptionReady = true;
-
-            for await (const event of messageStream) {
-              if (streamClosed) {
-                console.log('[Completions] Stream closed, stopping subscription');
-                break;
-              }
-              
-              if (event.type === 'init' && event.existingContent) {
-                const chunks = event.existingContent.match(/.{1,50}/g) || [];
-                for (const chunk of chunks) {
-                  if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                    type: 'chunk',
-                    content: chunk
-                  })}\n\n`))) break;
-                }
-              } else if (event.type === 'chunk') {
-                // Forward chunk with thinking property if present
-                if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'chunk',
-                  content: event.content,
-                  thinking: event.thinking || false
-                })}\n\n`))) break;
-              } else if (event.type === 'status') {
-                console.log('[Completions] Forwarding status:', event.action);
-                if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'status',
-                  action: event.action,
-                  description: event.description
-                })}\n\n`))) break;
-              } else if (event.type === 'tool_status') {
-                console.log('[Completions] Forwarding tool_status:', event.action);
-                if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'tool_status',
-                  status: event.status,
-                  action: event.action
-                })}\n\n`))) break;
-              } else if (event.type === 'tool_event') {
-                console.log('[Completions] Forwarding tool_event:', event.event?.type);
-                if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'tool_event',
-                  event: event.event
-                })}\n\n`))) break;
-              } else if (event.type === 'complete') {
-                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'complete',
-                  metadata: event.metadata
-                })}\n\n`));
-                break;
-              } else if (event.type === 'error') {
-                safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'error',
-                  error: event.error
-                })}\n\n`));
-                break;
-              }
-            }
-            
-            safeEnqueue(encoder.encode('data: [DONE]\n\n'));
-            if (!streamClosed) controller.close();
-          } catch (error) {
-            console.error(`[Completions] Stream error:`, error);
-            if (!streamClosed) {
-              safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-                type: 'error',
-                error: error instanceof Error ? error.message : String(error)
-              })}\n\n`));
-              controller.close();
-            }
-          }
-        }
-      });
-
-      return new Response(stream, {
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache, no-transform',
-          'Connection': 'keep-alive',
-          'X-Accel-Buffering': 'no'
-        }
-      });
+      return NextResponse.json(response);
     }
 
-    // Phase 2: Extract optional graphId from request (defaults to assistant-search in respond.ts)
-    const graphId = typeof body.graphId === 'string' ? body.graphId : undefined;
-    
-    const runOptions: InvokeOptions = {
-      source: { application: 'redChat' },
+    // Non-streaming: wait for completion
+    const finalResult = result as RunResult;
+
+    // Map tool executions from RunResult to stored format
+    const toolExecutions = (finalResult.tools || []).map(tool => ({
+      toolId: tool.toolId,
+      toolName: tool.toolName,
+      toolType: tool.toolType,
+      status: tool.status,
+      startTime: new Date(tool.startedAt),
+      endTime: tool.completedAt ? new Date(tool.completedAt) : undefined,
+      duration: tool.duration,
+      steps: tool.steps?.map(step => ({
+        name: step.name,
+        timestamp: step.timestamp,
+        data: step.data,
+      })) || [],
+      result: tool.result,
+      error: tool.error,
+    }));
+
+    // Store assistant message with graph run data and tool executions
+    await storeMessage({
+      messageId: assistantMessageId,
       conversationId,
-      userMessageId,
-      userId: user.userId,  // Required for per-user model loading
-      graphId  // Optional graph selection (defaults to assistant-search)
-    };
+      userId: user.userId,
+      role: 'assistant',
+      content: finalResult.content,
+      thinking: finalResult.thinking || undefined,
+      toolExecutions: toolExecutions.length > 0 ? toolExecutions : undefined,
+      metadata: {
+        runId: finalResult.runId,
+        graphId: finalResult.graphId,
+        graphName: finalResult.graphName,
+        model: finalResult.metadata.model,
+        tokens: finalResult.metadata.tokens,
+        executionPath: finalResult.metadata.executionPath,
+        duration: finalResult.metadata.duration,
+      },
+      graphRun: {
+        graphId: finalResult.graphId,
+        graphName: finalResult.graphName,
+        runId: finalResult.runId,
+        status: finalResult.status,
+        executionPath: finalResult.graphTrace.executionPath,
+        nodeProgress: Object.fromEntries(
+          Object.entries(finalResult.graphTrace.nodeProgress).map(([nodeId, progress]) => [
+            nodeId,
+            {
+              nodeId,
+              status: progress.status,
+              stepName: progress.nodeName,
+              startTime: progress.startedAt,
+              endTime: progress.completedAt,
+              error: progress.error,
+            },
+          ])
+        ),
+        startTime: finalResult.graphTrace.startTime,
+        endTime: finalResult.graphTrace.endTime,
+        duration: finalResult.metadata.duration,
+        error: finalResult.error,
+      },
+    });
 
-    const response = await red.run(
-      { message: userMessage },
-      runOptions
-    );
+    // Trigger background tasks
+    await triggerBackgroundTasks({
+      conversationId,
+      userId: user.userId,
+      messageCount: body.messages.length + 1,
+    });
 
-    const completion = {
+    // Return complete response
+    const response: CompletionResponse = {
       id: completionId,
       object: 'chat.completion',
       created,
       model: modelName,
-      conversationId: response.conversationId || conversationId,
+      conversationId,
+      runId: finalResult.runId,
       choices: [
         {
           index: 0,
           message: {
             role: 'assistant',
-            content: typeof response.content === 'string' ? response.content : JSON.stringify(response.content)
+            content: finalResult.content,
           },
-          finish_reason: 'stop'
-        }
+          finish_reason: finalResult.status === 'completed' ? 'stop' : 'error',
+        },
       ],
       usage: {
-        prompt_tokens: 0,
-        completion_tokens: 0,
-        total_tokens: 0
-      }
+        prompt_tokens: finalResult.metadata.tokens?.input || 0,
+        completion_tokens: finalResult.metadata.tokens?.output || 0,
+        total_tokens: finalResult.metadata.tokens?.total || 0,
+      },
     };
 
-    return NextResponse.json(completion);
+    return NextResponse.json(response);
   } catch (error: unknown) {
-    console.error('Completion error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('[Completions-v2] Error:', error);
+
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+
     return NextResponse.json(
       {
         error: {
           message: errorMessage,
-          type: 'internal_error'
-        }
+          type: 'internal_error',
+        },
       },
       { status: 500 }
     );

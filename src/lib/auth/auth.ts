@@ -1,10 +1,19 @@
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { NextRequest } from 'next/server';
 import { AccountLevel } from '../database/models/auth/User';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-console.log('[Auth] JWT_SECRET used:', JWT_SECRET);
+// SECURITY: JWT_SECRET must be set in production - no fallback
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('[Auth] FATAL: JWT_SECRET environment variable is not set!');
+  // In production, you may want to throw here: throw new Error('JWT_SECRET is required');
+}
 const JWT_EXPIRY = '7d'; // 7 days
+
+// Internal service key for service-to-service calls (AI library -> webapp)
+// Must be set in environment and match between services
+const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY || '';
 
 export interface JWTPayload {
   userId: string;
@@ -16,6 +25,9 @@ export interface JWTPayload {
  * Generate a JWT token for a user
  */
 export function generateToken(payload: JWTPayload): string {
+  if (!JWT_SECRET) {
+    throw new Error('Cannot generate token: JWT_SECRET not configured');
+  }
   return jwt.sign(payload, JWT_SECRET, {
     expiresIn: JWT_EXPIRY,
   });
@@ -25,7 +37,10 @@ export function generateToken(payload: JWTPayload): string {
  * Verify and decode a JWT token
  */
 export function verifyToken(token: string): JWTPayload | null {
-  console.log('[Auth] Verifying token with secret:', JWT_SECRET);
+  if (!JWT_SECRET) {
+    console.error('[Auth] Cannot verify token: JWT_SECRET not configured');
+    return null;
+  }
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
     return decoded;
@@ -36,7 +51,13 @@ export function verifyToken(token: string): JWTPayload | null {
 }
 
 /**
- * Extract user from Authorization header or cookie
+ * Extract user from Authorization header, cookie, or internal service header
+ * 
+ * Authentication methods (in order of priority):
+ * 1. Authorization: Bearer <JWT> header
+ * 2. auth_token cookie
+ * 3. X-User-Id + X-Internal-Key headers (for internal service-to-service calls)
+ *    SECURITY: Requires matching INTERNAL_SERVICE_KEY to prevent spoofing
  */
 export function getUserFromRequest(request: NextRequest): JWTPayload | null {
   // Try Authorization header first
@@ -50,6 +71,33 @@ export function getUserFromRequest(request: NextRequest): JWTPayload | null {
   const token = request.cookies.get('auth_token')?.value;
   if (token) {
     return verifyToken(token);
+  }
+
+  // For internal service-to-service calls, accept X-User-Id header
+  // ONLY if the correct internal service key is provided
+  // SECURITY: Uses timing-safe comparison to prevent timing attacks
+  const internalUserId = request.headers.get('x-user-id');
+  const internalKey = request.headers.get('x-internal-key');
+  
+  if (internalUserId && internalKey && INTERNAL_SERVICE_KEY) {
+    // Use timing-safe comparison to prevent timing attacks
+    try {
+      const keyBuffer = Buffer.from(internalKey, 'utf8');
+      const secretBuffer = Buffer.from(INTERNAL_SERVICE_KEY, 'utf8');
+      
+      // Must be same length for timingSafeEqual
+      if (keyBuffer.length === secretBuffer.length && 
+          crypto.timingSafeEqual(keyBuffer, secretBuffer)) {
+        return {
+          userId: internalUserId,
+          email: 'internal@redbtn.io',
+          accountLevel: AccountLevel.ADMIN,
+        };
+      }
+    } catch {
+      // Comparison failed
+    }
+    console.warn('[Auth] Invalid internal service key attempted');
   }
 
   return null;

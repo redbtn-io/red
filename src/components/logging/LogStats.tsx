@@ -105,7 +105,7 @@ export function LogStats({ conversationId }: LogStatsProps) {
               error: '❌',
             };
             const colors: Record<string, string> = {
-              debug: 'text-gray-500',
+              debug: 'text-text-muted',
               info: 'text-blue-400',
               success: 'text-green-400',
               warn: 'text-yellow-400',
@@ -115,7 +115,7 @@ export function LogStats({ conversationId }: LogStatsProps) {
             
             // Fallback for unexpected levels
             const icon = icons[level] || '📝';
-            const color = colors[level] || 'text-gray-400';
+            const color = colors[level] || 'text-text-secondary';
             
             const percentage = stats.totalLogs > 0 ? (count / stats.totalLogs) * 100 : 0;
             

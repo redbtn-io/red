@@ -6,7 +6,8 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getRed } from '@/lib/red';
+import { getRed, getDatabase } from '@/lib/red';
+import { verifyAuth } from '@/lib/auth/auth';
 
 export const runtime = 'nodejs';
 
@@ -14,10 +15,23 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Verify authentication
+  const user = await verifyAuth(request);
+  if (!user) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   const { id: conversationId } = await params;
   
   if (!conversationId) {
     return new Response('conversationId is required', { status: 400 });
+  }
+
+  // Verify ownership
+  const db = getDatabase();
+  const conversation = await db.getConversation(conversationId);
+  if (conversation?.userId && conversation.userId !== user.userId) {
+    return new Response('Forbidden', { status: 403 });
   }
 
   const red = await getRed();

@@ -64,6 +64,7 @@ export async function POST(
         userId: { type: String, required: true, index: true },
         isSystem: { type: Boolean, default: false },
         isImmutable: { type: Boolean, default: false },
+        isPublic: { type: Boolean, default: true },
         parentNodeId: { type: String, default: null },
         version: { type: Number, default: 1 },
         steps: [mongoose.Schema.Types.Mixed],
@@ -126,6 +127,7 @@ export async function POST(
       status: 'active',
       isSystem: false,
       isImmutable: false,
+      isPublic: true, // Forks default to public (user can change later if they have paid tier)
       parentNodeId: nodeId,
       version: 1,
       steps: sourceNode.steps,

@@ -270,11 +270,17 @@ export async function POST(request: NextRequest) {
     // Generate neuronId
     const neuronId = `user-${user.userId}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
 
-    // Get or create Neuron model
-    const Neuron = mongoose.models.Neuron || mongoose.model('Neuron', NeuronSchema);
+    // Prefer raw collection operations to avoid conflicts with previously-registered schemas
+    const db = mongoose.connection.db;
+    if (!db) {
+      return NextResponse.json(
+        { error: 'Database connection not available' },
+        { status: 500 }
+      );
+    }
 
     // Check neuron limit (20 custom neurons per user)
-    const userNeuronCount = await Neuron.countDocuments({ userId: user.userId });
+    const userNeuronCount = await db.collection('neurons').countDocuments({ userId: user.userId });
     if (userNeuronCount >= 20) {
       return NextResponse.json(
         { error: 'Neuron limit reached (maximum 20 custom neurons per user)' },
@@ -282,7 +288,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create neuron document
+    // Create neuron document (endpoint and apiKey are optional)
     const neuronDoc = {
       neuronId,
       userId: user.userId,
@@ -300,15 +306,25 @@ export async function POST(request: NextRequest) {
       isDefault: false
     };
 
-    const neuron = await Neuron.create(neuronDoc);
+    // Insert using raw MongoDB to bypass strict schema variations
+    await db.collection('neurons').insertOne({
+      ...neuronDoc,
+      status: 'active',
+      creatorId: user.userId,
+      isSystem: false,
+      isImmutable: false,
+      usageCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
 
     return NextResponse.json({
-      neuronId: neuron.neuronId,
-      name: neuron.name,
-      provider: neuron.provider,
-      model: neuron.model,
-      role: neuron.role,
-      createdAt: neuron.createdAt
+      neuronId: neuronDoc.neuronId,
+      name: neuronDoc.name,
+      provider: neuronDoc.provider,
+      model: neuronDoc.model,
+      role: neuronDoc.role,
+      createdAt: new Date()
     }, { status: 201 });
 
   } catch (error: unknown) {
