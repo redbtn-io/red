@@ -11,7 +11,6 @@ import {
   AlertCircle,
   Clock,
   GitFork,
-  Star,
   MoreHorizontal,
   Pencil,
   Trash2,

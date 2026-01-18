@@ -17,10 +17,7 @@ import {
   Lock,
   Users,
   Eye,
-  MoreVertical,
   FolderOpen,
-  HardDrive,
-  Clock,
   Settings,
   Archive,
   X,
@@ -29,7 +26,6 @@ import {
   Type,
   Download,
   ExternalLink,
-  ChevronDown,
   Check,
   Copy,
   ChevronLeft,
@@ -290,7 +286,7 @@ export default function LibraryDetailPage() {
     }
 
     let content = '';
-    let sourceType: 'text' | 'url' | 'file' = addMode;
+    const sourceType: 'text' | 'url' | 'file' = addMode;
     let source: string | undefined;
 
     if (addMode === 'text') {

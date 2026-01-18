@@ -15,7 +15,7 @@ import ReactFlow, {
   EdgeLabelRenderer,
   SelectionMode,
 } from 'reactflow';
-import { X, MousePointer2, Move, Maximize, Trash2, Copy, ClipboardPaste } from 'lucide-react';
+import { X, MousePointer2, Maximize, Copy, ClipboardPaste } from 'lucide-react';
 import { useGraphStore, StudioNodeData, StudioEdgeData } from '@/lib/stores/graphStore';
 import StudioNode from './nodes/StudioNode';
 import StartNode from './nodes/StartNode';

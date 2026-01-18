@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
-import { X, ChevronDown, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
+import { X, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
 import { GraphRunViewer, GraphDefinition, GraphRunState } from './GraphRunViewer';
 
 // ============================================================================

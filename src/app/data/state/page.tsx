@@ -13,12 +13,10 @@ import {
   Database,
   MoreVertical,
   Clock,
-  Settings,
   X,
   Trash2,
   ExternalLink,
   Key,
-  Hash,
 } from 'lucide-react';
 import { pageVariants, staggerContainerVariants, staggerItemVariants, scaleVariants } from '@/lib/animations';
 

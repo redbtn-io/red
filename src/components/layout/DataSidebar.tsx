@@ -12,7 +12,6 @@ import {
   Eye, 
   Loader2,
   FolderOpen,
-  Settings,
   Globe
 } from 'lucide-react';
 import { AppSidebar } from '@/components/layout/AppSidebar';

@@ -6,7 +6,6 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { 
-  Zap, 
   ArrowLeft,
   Play,
   Pause,
@@ -16,8 +15,6 @@ import {
   MousePointer,
   Radio,
   Settings,
-  CheckCircle2,
-  XCircle,
   Clock,
   BarChart3,
   Copy,
@@ -27,7 +24,7 @@ import {
 } from 'lucide-react';
 import { StudioSidebar } from '@/components/layout/StudioSidebar';
 import { StudioHeader } from '@/components/layout/StudioHeader';
-import { GraphRunViewer, type GraphDefinition, type GraphRunState } from '@/components/graph';
+import { GraphRunViewer, type GraphDefinition } from '@/components/graph';
 import { useGraphRunState, type GraphEvent } from '@/hooks/useGraphRunState';
 import { pageVariants, fadeUpVariants, staggerContainerVariants, staggerItemVariants } from '@/lib/animations';
 import type { Automation, AutomationRun, TriggerType } from '@/types/automation';

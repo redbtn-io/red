@@ -601,7 +601,7 @@ export async function PATCH(
       }
 
       // Check if clone already exists
-      let existingClone = await NodeModel.findOne({ nodeId: clonedNodeId, userId: user.userId });
+      const existingClone = await NodeModel.findOne({ nodeId: clonedNodeId, userId: user.userId });
       
       if (existingClone) {
         // Update existing clone

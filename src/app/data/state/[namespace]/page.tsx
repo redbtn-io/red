@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,11 +10,7 @@ import {
   Loader2, 
   AlertCircle,
   Plus,
-  Database,
   Trash2,
-  MoreVertical,
-  Clock,
-  Settings,
   X,
   Key,
   Copy,
@@ -25,7 +21,7 @@ import {
   ChevronRight,
   Code,
 } from 'lucide-react';
-import { pageVariants, staggerContainerVariants, staggerItemVariants } from '@/lib/animations';
+import { pageVariants } from '@/lib/animations';
 
 interface StateEntry {
   key: string;

@@ -112,7 +112,7 @@ export function ToolExecutionSection({
                 {typeof execution.currentStep === 'string' 
                   ? execution.currentStep 
                   : typeof execution.currentStep === 'object' && 'step' in execution.currentStep
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                     
                     ? String((execution.currentStep as any).step)
                     : String(execution.currentStep)}
               </p>

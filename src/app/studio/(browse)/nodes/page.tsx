@@ -38,13 +38,11 @@ import {
   Star,
   Bookmark,
   Clock,
-  TrendingUp,
   Filter,
   SortAsc,
   SortDesc,
   X,
   Settings,
-  Heart,
   Archive,
   Trash2,
 } from 'lucide-react';

@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Play,
   AlertCircle,
   RefreshCw,
 } from 'lucide-react';

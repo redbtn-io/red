@@ -17,7 +17,6 @@ import {
   Check,
   ExternalLink,
   X,
-  FileImage,
   File,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -487,7 +486,7 @@ export default function FullDocumentPage() {
             )}
             {document.format === 'image' && (
               <div className="bg-bg-elevated border border-border rounded-xl p-4 flex items-center justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+                { }
                 <img
                   src={`/api/v1/libraries/${libraryId}/documents/${documentId}/file`}
                   alt={document.title}
@@ -578,7 +577,7 @@ export default function FullDocumentPage() {
                     remarkPlugins={[remarkGfm]}
                     components={{
                       img: ({ src, alt, ...props }) => (
-                        // eslint-disable-next-line @next/next/no-img-element
+                         
                         <img
                           src={src}
                           alt={alt || 'Document image'}

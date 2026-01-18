@@ -1,4 +1,4 @@
-import { MessageSquare, Brain, Wrench, Loader2 } from 'lucide-react';
+import { MessageSquare, Loader2 } from 'lucide-react';
 import { type Message } from '@/lib/storage/conversation';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';

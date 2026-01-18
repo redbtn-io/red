@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Library, Search, FileText, FolderOpen, Lock, Users, Eye, Loader2 } from 'lucide-react';
+import { Plus, Library, FolderOpen, Lock, Users, Eye, Loader2 } from 'lucide-react';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 
 interface KnowledgeSidebarProps {

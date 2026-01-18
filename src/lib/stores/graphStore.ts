@@ -464,7 +464,7 @@ export const useGraphStore = create<GraphStoreState & GraphStoreActions>()(
           const nodeWidth = 120;
           const nodeHeight = 100;
           
-          let layoutPositions: Record<string, { x: number; y: number }> = {};
+          const layoutPositions: Record<string, { x: number; y: number }> = {};
           
           if (!hasLayout) {
             // Create dagre graph

@@ -13,7 +13,6 @@ import {
   CheckCircle2, 
   XCircle,
   Loader2,
-  ArrowRight,
   Calendar,
   Webhook,
   MousePointer,
@@ -27,7 +26,7 @@ import {
 import { StudioSidebar } from '@/components/layout/StudioSidebar';
 import { StudioHeader } from '@/components/layout/StudioHeader';
 import { ConfirmModal } from '@/components/ui/Modal';
-import { GraphRunDrawer, GraphRunViewer, type GraphDefinition, type GraphRunState } from '@/components/graph';
+import { GraphRunDrawer, type GraphDefinition } from '@/components/graph';
 import { 
   pageVariants, 
   staggerContainerVariants, 

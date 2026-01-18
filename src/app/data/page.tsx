@@ -9,7 +9,6 @@ import {
   FileText, 
   Key,
   ArrowRight,
-  TrendingUp,
   Clock,
   Loader2,
   Plus,

@@ -8,7 +8,7 @@
 'use client';
 
 import React, { createContext, useContext, useCallback, useState, ReactNode } from 'react';
-import { useGraphRun, GraphRunState, NodeState, StartRunOptions } from './useGraphRun';
+import { useGraphRun, GraphRunState, StartRunOptions } from './useGraphRun';
 
 // =============================================================================
 // Types

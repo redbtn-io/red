@@ -36,13 +36,11 @@ import {
   Star,
   Bookmark,
   Clock,
-  TrendingUp,
   Filter,
   SortAsc,
   SortDesc,
   X,
   Settings,
-  Heart,
 } from 'lucide-react';
 import { pageVariants, staggerContainerVariants, staggerItemVariants, scaleVariants } from '@/lib/animations';
 

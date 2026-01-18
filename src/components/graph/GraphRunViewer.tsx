@@ -4,13 +4,9 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   CheckCircle2, 
-  Loader2, 
-  ChevronDown,
-  ChevronUp,
+  Loader2,
   AlertCircle,
   GitBranch,
-  Clock,
-  Activity,
   X,
   Box,
   MessageSquare,

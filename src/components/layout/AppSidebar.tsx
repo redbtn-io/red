@@ -8,7 +8,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MessageSquare, 
   Workflow, 
-  Compass, 
   Terminal,
   Library,
   Zap,
