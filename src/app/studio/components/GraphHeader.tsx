@@ -4,31 +4,29 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-  Save,
-  Undo2,
-  Redo2,
-  Play,
-  Settings,
-  Share2,
-  Download,
-  Upload,
-  AlertCircle,
-  CheckCircle,
-  Loader2,
-  MoreHorizontal,
-  GitFork,
-  Trash2,
-  Eye,
-  EyeOff,
-  PanelLeft,
-  PanelRight,
-  Blocks,
-  Plus,
-  MessageSquare,
-  Workflow,
-  Database,
+    Save,
+    Undo2,
+    Redo2,
+    Play,
+    Settings,
+    Share2,
+    Download,
+    Upload,
+    AlertCircle,
+    CheckCircle,
+    Loader2,
+    MoreHorizontal,
+    GitFork,
+    Trash2,
+    Eye,
+    EyeOff, PanelRight,
+    Blocks,
+    Plus,
+    MessageSquare,
+    Workflow,
+    Database
 } from 'lucide-react';
 import { useGraphStore } from '@/lib/stores/graphStore';
 import { ConfirmModal } from '@/components/ui/Modal';
