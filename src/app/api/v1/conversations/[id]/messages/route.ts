@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase } from '@redbtn/ai';
+import { getDatabase } from '@redbtn/redbtn';
 import { verifyAuth } from '@/lib/auth/auth';
 
 interface DbMessage {

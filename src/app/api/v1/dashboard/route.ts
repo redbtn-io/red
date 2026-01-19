@@ -3,7 +3,7 @@ import { verifyAuth } from '@/lib/auth/auth';
 import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
 import { RateLimits } from '@/lib/rate-limit/rate-limit';
 import connectToDatabase from '@/lib/database/mongodb';
-import { Graph } from '@redbtn/ai';
+import { Graph } from '@redbtn/redbtn';
 import { Conversation } from '@/lib/database/models/conversation';
 import { Automation, AutomationRun } from '@/lib/database/models/automation';
 import User from '@/lib/database/models/auth/User';

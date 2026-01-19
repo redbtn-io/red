@@ -1,7 +1,7 @@
 /**
  * redbtn instance initialization for Next.js API routes
  */
-import { Red, RedConfig, getDatabase } from '@redbtn/ai';
+import { Red, RedConfig, getDatabase } from '@redbtn/redbtn';
 
 // Re-export getDatabase for convenience
 export { getDatabase };

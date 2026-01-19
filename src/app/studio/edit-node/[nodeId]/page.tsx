@@ -1005,25 +1005,28 @@ export default function EditNodePage({ params }: { params: Promise<{ nodeId: str
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="block text-xs font-medium text-text-muted mb-1.5">Type</label>
-                            <select
-                              value={param.type}
-                              onChange={(e) => {
-                                const newType = e.target.value as ParameterDefinition['type'];
-                                updateParameter(key, {
-                                  type: newType,
-                                  default: getDefaultForType(newType),
-                                  enum: newType === 'select' ? [] : null,
-                                  min: newType === 'number' ? null : undefined,
-                                  max: newType === 'number' ? null : undefined,
-                                });
-                              }}
-                              disabled={notEditable}
-                              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent disabled:opacity-50"
-                            >
-                              {PARAMETER_TYPES.map((t) => (
-                                <option key={t.type} value={t.type}>{t.label} - {t.description}</option>
-                              ))}
-                            </select>
+                            <div className="relative">
+                              <select
+                                value={param.type}
+                                onChange={(e) => {
+                                  const newType = e.target.value as ParameterDefinition['type'];
+                                  updateParameter(key, {
+                                    type: newType,
+                                    default: getDefaultForType(newType),
+                                    enum: newType === 'select' ? [] : null,
+                                    min: newType === 'number' ? null : undefined,
+                                    max: newType === 'number' ? null : undefined,
+                                  });
+                                }}
+                                disabled={notEditable}
+                                className="w-full appearance-none bg-bg-primary border border-border rounded-lg px-3 py-2 pr-8 text-sm text-text-primary focus:outline-none focus:border-accent disabled:opacity-50"
+                              >
+                                {PARAMETER_TYPES.map((t) => (
+                                  <option key={t.type} value={t.type}>{t.label} - {t.description}</option>
+                                ))}
+                              </select>
+                              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+                            </div>
                           </div>
                           <div>
                             <label className="block text-xs font-medium text-text-muted mb-1.5">Default Value</label>
@@ -1043,17 +1046,20 @@ export default function EditNodePage({ params }: { params: Promise<{ nodeId: str
                                 />
                               </button>
                             ) : param.type === 'select' && param.enum && param.enum.length > 0 ? (
-                              <select
-                                value={String(param.default || '')}
-                                onChange={(e) => updateParameter(key, { default: e.target.value })}
-                                disabled={notEditable}
-                                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent disabled:opacity-50"
-                              >
-                                <option value="">Select default...</option>
-                                {param.enum.map((opt, i) => (
-                                  <option key={i} value={String(opt)}>{String(opt)}</option>
-                                ))}
-                              </select>
+                              <div className="relative">
+                                <select
+                                  value={String(param.default || '')}
+                                  onChange={(e) => updateParameter(key, { default: e.target.value })}
+                                  disabled={notEditable}
+                                  className="w-full appearance-none bg-bg-primary border border-border rounded-lg px-3 py-2 pr-8 text-sm text-text-primary focus:outline-none focus:border-accent disabled:opacity-50"
+                                >
+                                  <option value="">Select default...</option>
+                                  {param.enum.map((opt, i) => (
+                                    <option key={i} value={String(opt)}>{String(opt)}</option>
+                                  ))}
+                                </select>
+                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+                              </div>
                             ) : param.type === 'number' ? (
                               <input
                                 type="number"
@@ -1280,26 +1286,26 @@ function StepEditor({
 
   return (
     <div className="border border-border rounded-lg overflow-hidden bg-bg-elevated">
-      <div className="flex items-center gap-2 px-3 py-2 bg-bg-primary border-b border-border">
+      <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 bg-bg-primary border-b border-border">
         <button
-          className="p-1 text-text-disabled hover:text-text-secondary cursor-grab"
+          className="hidden sm:block p-1 text-text-disabled hover:text-text-secondary cursor-grab"
           title="Drag to reorder"
           disabled={disabled}
         >
           <GripVertical className="w-4 h-4" />
         </button>
-        <span className="text-xs text-text-muted font-mono w-5">{index + 1}</span>
-        <div className={`p-1.5 rounded ${stepInfo.bgColor}`}>
+        <span className="text-xs text-text-muted font-mono w-5 flex-shrink-0">{index + 1}</span>
+        <div className={`p-1.5 rounded flex-shrink-0 ${stepInfo.bgColor}`}>
           <Icon className={`w-4 h-4 ${stepInfo.color}`} />
         </div>
         <button
           onClick={onToggle}
-          className="flex-1 flex items-center gap-2 text-left"
+          className="flex-1 min-w-0 flex items-center gap-2 text-left"
         >
-          <span className="text-sm font-medium text-text-secondary">{stepInfo.label}</span>
-          <span className="text-xs text-text-disabled">{stepInfo.description}</span>
+          <span className="text-sm font-medium text-text-secondary truncate">{stepInfo.label}</span>
+          <span className="hidden sm:inline text-xs text-text-disabled truncate">{stepInfo.description}</span>
         </button>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center flex-shrink-0">
           <button
             onClick={() => onMove('up')}
             disabled={index === 0 || disabled}
@@ -1335,19 +1341,22 @@ function StepEditor({
           {step.type === 'neuron' && (
             <>
               <Field label="Neuron">
-                <select
-                  value={String(config.neuronId || '')}
-                  onChange={(e) => onUpdate('neuronId', e.target.value)}
-                  disabled={disabled}
-                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-purple-500 disabled:opacity-50"
-                >
-                  <option value="">Select a neuron...</option>
-                  {neurons.map((n) => (
-                    <option key={n.neuronId} value={n.neuronId}>
-                      {n.name} ({n.model})
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={String(config.neuronId || '')}
+                    onChange={(e) => onUpdate('neuronId', e.target.value)}
+                    disabled={disabled}
+                    className="w-full appearance-none bg-bg-primary border border-border rounded-lg px-3 py-2 pr-8 text-sm text-text-primary focus:outline-none focus:border-purple-500 disabled:opacity-50"
+                  >
+                    <option value="">Select a neuron...</option>
+                    {neurons.map((n) => (
+                      <option key={n.neuronId} value={n.neuronId}>
+                        {n.name} ({n.model})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+                </div>
               </Field>
               <Field label="System Prompt">
                 <SmartInput
@@ -1404,7 +1413,7 @@ function StepEditor({
                   />
                 </Field>
                 <Field label="Stream">
-                  <div className="flex items-center h-full pt-1">
+                  <div className="flex items-center h-full pt-1 gap-2">
                     <button
                       type="button"
                       onClick={() => !disabled && onUpdate('stream', !config.stream)}
@@ -1419,9 +1428,61 @@ function StepEditor({
                         }`}
                       />
                     </button>
+                    <span className="text-xs text-text-muted">
+                      {config.stream ? 'To user' : 'Silent'}
+                    </span>
                   </div>
                 </Field>
               </div>
+              <Field label="Structured Output">
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (disabled) return;
+                      if (config.structuredOutput) {
+                        onUpdate('structuredOutput', undefined);
+                      } else {
+                        onUpdate('structuredOutput', {
+                          schema: { type: 'object', properties: {}, required: [] }
+                        });
+                      }
+                    }}
+                    disabled={disabled}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+                      config.structuredOutput ? 'bg-purple-500' : 'bg-gray-700'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        config.structuredOutput ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                  <span className="text-xs text-text-muted">
+                    {config.structuredOutput ? 'JSON Schema' : 'Freeform text'}
+                  </span>
+                </div>
+                {Boolean(config.structuredOutput) && (
+                  <textarea
+                    value={
+                      typeof config.structuredOutput === 'object'
+                        ? JSON.stringify((config.structuredOutput as { schema?: unknown }).schema || config.structuredOutput, null, 2)
+                        : ''
+                    }
+                    onChange={(e) => {
+                      try {
+                        const schema = JSON.parse(e.target.value);
+                        onUpdate('structuredOutput', { schema });
+                      } catch { /* Allow invalid JSON while typing */ }
+                    }}
+                    disabled={disabled}
+                    rows={5}
+                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-xs text-text-primary focus:outline-none focus:border-purple-500 resize-none font-mono disabled:opacity-50"
+                    placeholder='{"type": "object", "properties": {...}}'
+                  />
+                )}
+              </Field>
             </>
           )}
 
@@ -1434,52 +1495,7 @@ function StepEditor({
           )}
 
           {step.type === 'transform' && (
-            <>
-              <Field label="Operation">
-                <select
-                  value={String(config.operation || 'set')}
-                  onChange={(e) => onUpdate('operation', e.target.value)}
-                  disabled={disabled}
-                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500 disabled:opacity-50"
-                >
-                  {['set', 'map', 'filter', 'select', 'parse-json', 'append', 'concat'].map((op) => (
-                    <option key={op} value={op}>{op}</option>
-                  ))}
-                </select>
-              </Field>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Input Field">
-                  <SmartInput
-                    value={String(config.inputField || '')}
-                    onChange={(val) => onUpdate('inputField', val)}
-                    singleLine
-                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500 disabled:opacity-50"
-                    placeholder="{{state.data.field}}"
-                  />
-                </Field>
-                <Field label="Output Field">
-                  <SmartInput
-                    value={String(config.outputField || '')}
-                    onChange={(val) => onUpdate('outputField', val)}
-                    singleLine
-                    isOutput
-                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500 disabled:opacity-50"
-                    placeholder="data.result or globalState.namespace.key"
-                  />
-                </Field>
-              </div>
-              {config.operation === 'set' && (
-                <Field label="Value">
-                  <SmartInput
-                    value={String(config.value || '')}
-                    onChange={(val) => onUpdate('value', val)}
-                    singleLine
-                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500 disabled:opacity-50"
-                    placeholder="{{state.variable}}"
-                  />
-                </Field>
-              )}
-            </>
+            <TransformStepEditorEdit config={config} onUpdate={onUpdate} disabled={disabled} />
           )}
 
           {step.type === 'conditional' && (
@@ -1525,40 +1541,11 @@ function StepEditor({
           )}
 
           {step.type === 'loop' && (
-            <>
-              <Field label="Iterator Field">
-                <SmartInput
-                  value={String(config.iteratorField || '')}
-                  onChange={(val) => onUpdate('iteratorField', val)}
-                  singleLine
-                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-cyan-500 disabled:opacity-50"
-                  placeholder="{{state.items}}"
-                />
-              </Field>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Max Iterations">
-                  <input
-                    type="number"
-                    value={config.maxIterations !== undefined ? Number(config.maxIterations) : 10}
-                    onChange={(e) => onUpdate('maxIterations', parseInt(e.target.value))}
-                    disabled={disabled}
-                    min={1}
-                    max={100}
-                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-cyan-500 disabled:opacity-50"
-                  />
-                </Field>
-                <Field label="Output Field">
-                  <SmartInput
-                    value={String(config.outputField || '')}
-                    onChange={(val) => onUpdate('outputField', val)}
-                    singleLine
-                    isOutput
-                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-cyan-500 disabled:opacity-50"
-                    placeholder="loopResults"
-                  />
-                </Field>
-              </div>
-            </>
+            <LoopStepEditorFull
+              config={config}
+              onUpdate={onUpdate}
+              disabled={disabled}
+            />
           )}
 
           {/* Parameter Hint */}
@@ -1724,17 +1711,20 @@ function ToolStepEditorInline({
                     <p className="text-xs text-text-muted leading-relaxed">{paramSchema.description}</p>
                   )}
                   {paramSchema.enum ? (
-                    <select
-                      value={inputMappings[param] || ''}
-                      onChange={(e) => updateMapping(param, e.target.value)}
-                      disabled={disabled}
-                      className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent disabled:opacity-50"
-                    >
-                      <option value="">Select or use template...</option>
-                      {paramSchema.enum.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={inputMappings[param] || ''}
+                        onChange={(e) => updateMapping(param, e.target.value)}
+                        disabled={disabled}
+                        className="w-full appearance-none bg-bg-primary border border-border rounded-lg px-3 py-2 pr-8 text-sm text-text-primary focus:outline-none focus:border-accent disabled:opacity-50"
+                      >
+                        <option value="">Select or use template...</option>
+                        {paramSchema.enum.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+                    </div>
                   ) : (
                     <input
                       type="text"
@@ -1754,19 +1744,9 @@ function ToolStepEditorInline({
           </p>
         </Field>
       ) : (
-        <Field label="Input Mapping">
-          <input
-            type="text"
-            value={typeof config.inputMapping === 'string' ? config.inputMapping : JSON.stringify(config.inputMapping || '')}
-            onChange={(e) => onUpdate('inputMapping', e.target.value)}
-            disabled={disabled}
-            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-blue-500 disabled:opacity-50"
-            placeholder="{{state.searchQuery}}"
-          />
-          <p className="mt-1 text-xs text-text-disabled">
-            Select a tool above to see its parameters
-          </p>
-        </Field>
+        <p className="text-sm text-text-disabled italic">
+          Select a tool above to configure its parameters
+        </p>
       )}
 
       <Field label="Output Field">
@@ -1781,4 +1761,531 @@ function ToolStepEditorInline({
       </Field>
     </>
   );
+}
+
+// Full Transform Step Editor with all operations
+const TRANSFORM_OPERATIONS_EDIT = [
+  { value: 'set', label: 'set', description: 'Set a value (use globalState.namespace.key for persistence)' },
+  { value: 'map', label: 'map', description: 'Transform each array item' },
+  { value: 'filter', label: 'filter', description: 'Keep items matching condition' },
+  { value: 'select', label: 'select', description: 'Extract nested property' },
+  { value: 'json', label: 'json', description: 'Convert: string ↔ object/array' },
+  { value: 'append', label: 'append', description: 'Add item to array' },
+  { value: 'concat', label: 'concat', description: 'Concatenate two arrays' },
+  { value: 'increment', label: 'increment', description: 'Add 1 (or custom amount) to number' },
+  { value: 'decrement', label: 'decrement', description: 'Subtract 1 (or custom amount) from number' },
+];
+
+function TransformStepEditorEdit({
+  config,
+  onUpdate,
+  disabled,
+}: {
+  config: Record<string, unknown>;
+  onUpdate: (field: string, value: unknown) => void;
+  disabled?: boolean;
+}) {
+  const operation = String(config.operation || 'set');
+
+  return (
+    <>
+      <Field label="Operation">
+        <div className="relative">
+          <select
+            value={operation}
+            onChange={(e) => onUpdate('operation', e.target.value)}
+            disabled={disabled}
+            className="w-full appearance-none bg-bg-primary border border-border rounded-lg px-3 py-2 pr-8 text-sm text-text-primary focus:outline-none focus:border-amber-500 disabled:opacity-50"
+          >
+            {TRANSFORM_OPERATIONS_EDIT.map((op) => (
+              <option key={op.value} value={op.value}>{op.label}</option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+        </div>
+        <p className="mt-1 text-xs text-text-muted">
+          {TRANSFORM_OPERATIONS_EDIT.find(o => o.value === operation)?.description}
+        </p>
+      </Field>
+
+      <Field label="Input Field">
+        <SmartInput
+          value={String(config.inputField || '')}
+          onChange={(val) => onUpdate('inputField', val)}
+          singleLine
+          className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500 disabled:opacity-50"
+          placeholder="state.data or globalState.namespace.key"
+        />
+      </Field>
+
+      <Field label="Output Field">
+        <SmartInput
+          value={String(config.outputField || '')}
+          onChange={(val) => onUpdate('outputField', val)}
+          singleLine
+          isOutput
+          className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500 disabled:opacity-50"
+          placeholder="data.result or globalState.namespace.key"
+        />
+      </Field>
+
+      {['set', 'append'].includes(operation) && (
+        <Field label="Value">
+          <SmartInput
+            value={String(config.value || '')}
+            onChange={(val) => onUpdate('value', val)}
+            singleLine
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500 disabled:opacity-50"
+            placeholder="{{state.variable}}"
+          />
+        </Field>
+      )}
+
+      {['map', 'select'].includes(operation) && (
+        <Field label={operation === 'map' ? 'Transform Template' : 'Property Path'}>
+          <SmartInput
+            value={String(config.transform || '')}
+            onChange={(val) => onUpdate('transform', val)}
+            singleLine
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500 disabled:opacity-50"
+            placeholder={operation === 'map' ? '{{item.url}}' : 'results.items'}
+          />
+          {operation === 'map' && (
+            <p className="mt-1 text-xs text-text-muted">
+              Use <code className="px-1 bg-bg-tertiary rounded">{'{{item}}'}</code> and <code className="px-1 bg-bg-tertiary rounded">{'{{index}}'}</code>
+            </p>
+          )}
+        </Field>
+      )}
+
+      {operation === 'filter' && (
+        <Field label="Filter Condition">
+          <SmartInput
+            value={String(config.filterCondition || '')}
+            onChange={(val) => onUpdate('filterCondition', val)}
+            singleLine
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500 disabled:opacity-50"
+            placeholder="{{item.score}} > 0.5"
+          />
+          <p className="mt-1 text-xs text-text-muted">
+            Use <code className="px-1 bg-bg-tertiary rounded">{'{{item}}'}</code> for current element
+          </p>
+        </Field>
+      )}
+
+      {operation === 'append' && (
+        <Field label="Condition (optional)">
+          <SmartInput
+            value={String(config.condition || '')}
+            onChange={(val) => onUpdate('condition', val)}
+            singleLine
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500 disabled:opacity-50"
+            placeholder="{{state.shouldAppend}}"
+          />
+        </Field>
+      )}
+
+      {operation === 'concat' && (
+        <Field label="Second Array Field">
+          <SmartInput
+            value={String(config.value || '')}
+            onChange={(val) => onUpdate('value', val)}
+            singleLine
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500 disabled:opacity-50"
+            placeholder="state.otherArray"
+          />
+        </Field>
+      )}
+
+      {(operation === 'increment' || operation === 'decrement') && (
+        <Field label={`${operation === 'increment' ? 'Increment' : 'Decrement'} Amount (optional)`}>
+          <SmartInput
+            value={String(config.value !== undefined ? config.value : '')}
+            onChange={(val) => onUpdate('value', val === '' ? undefined : val)}
+            singleLine
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500 disabled:opacity-50"
+            placeholder="1"
+          />
+          <p className="mt-1 text-xs text-text-muted">
+            Leave empty for default (1). If inputField is undefined, initializes to 0.
+          </p>
+        </Field>
+      )}
+    </>
+  );
+}
+
+// Nested step types available inside loops
+const LOOP_NESTED_STEP_TYPES = [
+  { type: 'neuron', label: 'Neuron', icon: Brain, color: 'text-purple-400', bgColor: 'bg-purple-500/20 border-purple-500/30' },
+  { type: 'tool', label: 'Tool', icon: Wrench, color: 'text-blue-400', bgColor: 'bg-blue-500/20 border-blue-500/30' },
+  { type: 'transform', label: 'Transform', icon: Shuffle, color: 'text-amber-400', bgColor: 'bg-amber-500/20 border-amber-500/30' },
+  { type: 'conditional', label: 'Conditional', icon: GitBranch, color: 'text-green-400', bgColor: 'bg-green-500/20 border-green-500/30' },
+] as const;
+
+// Full Loop Step Editor with nested steps
+function LoopStepEditorFull({
+  config,
+  onUpdate,
+  disabled,
+}: {
+  config: Record<string, unknown>;
+  onUpdate: (field: string, value: unknown) => void;
+  disabled?: boolean;
+}) {
+  const [showAddStep, setShowAddStep] = useState(false);
+  const [expandedNestedSteps, setExpandedNestedSteps] = useState<Set<number>>(new Set());
+  
+  const nestedSteps = (config.steps as Array<{ type: string; config: Record<string, unknown> }>) || [];
+  
+  const addNestedStep = (type: string) => {
+    if (disabled) return;
+    const newStep = { type, config: {} };
+    onUpdate('steps', [...nestedSteps, newStep]);
+    setShowAddStep(false);
+    setExpandedNestedSteps(prev => new Set([...prev, nestedSteps.length]));
+  };
+  
+  const removeNestedStep = (index: number) => {
+    if (disabled) return;
+    const updated = nestedSteps.filter((_, i) => i !== index);
+    onUpdate('steps', updated);
+  };
+  
+  const updateNestedStepConfig = (index: number, field: string, value: unknown) => {
+    const updated = nestedSteps.map((step, i) => {
+      if (i !== index) return step;
+      return { ...step, config: { ...step.config, [field]: value } };
+    });
+    onUpdate('steps', updated);
+  };
+  
+  const toggleNestedStep = (index: number) => {
+    setExpandedNestedSteps(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  return (
+    <>
+      <Field label="Exit Condition">
+        <SmartInput
+          value={String(config.exitCondition || '')}
+          onChange={(val) => onUpdate('exitCondition', val)}
+          singleLine
+          className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-cyan-500 font-mono disabled:opacity-50"
+          placeholder="state.searchComplete === true"
+        />
+        <p className="mt-1 text-xs text-text-disabled">
+          Loop exits when this evaluates to true. Use <code className="px-1 py-0.5 bg-bg-secondary rounded">state.loopIteration</code> for count.
+        </p>
+      </Field>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="Max Iterations">
+          <input
+            type="number"
+            value={config.maxIterations !== undefined ? Number(config.maxIterations) : 5}
+            onChange={(e) => onUpdate('maxIterations', parseInt(e.target.value) || 5)}
+            disabled={disabled}
+            min={1}
+            max={100}
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-cyan-500 disabled:opacity-50"
+          />
+        </Field>
+        <Field label="Accumulator Field (Optional)">
+          <SmartInput
+            value={String(config.accumulatorField || '')}
+            onChange={(val) => onUpdate('accumulatorField', val)}
+            singleLine
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-cyan-500 disabled:opacity-50"
+            placeholder="result"
+          />
+        </Field>
+      </div>
+      
+      {/* Nested Steps */}
+      <div className="mt-4 pt-4 border-t border-border">
+        <div className="flex items-center justify-between mb-3">
+          <label className="text-xs font-medium text-text-muted">Loop Steps (run each iteration)</label>
+          {!disabled && (
+            <button
+              onClick={() => setShowAddStep(!showAddStep)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-cyan-400 hover:text-cyan-300 bg-cyan-900/20 hover:bg-cyan-900/30 border border-cyan-500/30 rounded-lg transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add Step
+            </button>
+          )}
+        </div>
+        
+        {showAddStep && !disabled && (
+          <div className="mb-3 p-3 bg-bg-secondary border border-border rounded-lg">
+            <p className="text-xs text-text-muted mb-2">Select step type:</p>
+            <div className="grid grid-cols-2 gap-2">
+              {LOOP_NESTED_STEP_TYPES.map((stepType) => {
+                const Icon = stepType.icon;
+                return (
+                  <button
+                    key={stepType.type}
+                    onClick={() => addNestedStep(stepType.type)}
+                    className={`flex items-center gap-2 p-2.5 rounded-lg border ${stepType.bgColor} hover:opacity-80 transition-opacity`}
+                  >
+                    <Icon className={`w-4 h-4 ${stepType.color}`} />
+                    <span className="text-xs text-text-secondary">{stepType.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        
+        {nestedSteps.length === 0 ? (
+          <div className="text-center py-6 text-xs text-text-disabled border border-dashed border-border rounded-lg">
+            No steps yet. Add steps to run in each iteration.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {nestedSteps.map((nestedStep, idx) => {
+              const typeInfo = LOOP_NESTED_STEP_TYPES.find(t => t.type === nestedStep.type) || 
+                { icon: Info, color: 'text-text-secondary', bgColor: 'bg-gray-500/20 border-gray-500/30', label: nestedStep.type };
+              const Icon = typeInfo.icon;
+              const isExpanded = expandedNestedSteps.has(idx);
+              
+              return (
+                <div key={idx} className={`border rounded-lg overflow-hidden ${typeInfo.bgColor}`}>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-bg-primary/50">
+                    <span className="text-xs text-text-muted font-mono w-5">{idx + 1}</span>
+                    <div className="p-1.5 rounded bg-bg-secondary">
+                      <Icon className={`w-4 h-4 ${typeInfo.color}`} />
+                    </div>
+                    <button
+                      onClick={() => toggleNestedStep(idx)}
+                      className="flex-1 text-left text-sm text-text-secondary hover:text-text-primary"
+                    >
+                      {typeInfo.label}
+                    </button>
+                    {!disabled && (
+                      <button
+                        onClick={() => removeNestedStep(idx)}
+                        className="p-1.5 text-text-disabled hover:text-red-400 transition-colors"
+                        title="Remove step"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button onClick={() => toggleNestedStep(idx)} className="p-1.5 text-text-muted">
+                      {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  
+                  {isExpanded && (
+                    <div className="p-3 bg-bg-primary space-y-3 border-t border-border">
+                      <NestedStepConfigEdit
+                        type={nestedStep.type}
+                        config={nestedStep.config || {}}
+                        onUpdate={(field, value) => updateNestedStepConfig(idx, field, value)}
+                        disabled={disabled}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// Nested step config editor for edit-node page
+function NestedStepConfigEdit({
+  type,
+  config,
+  onUpdate,
+  disabled,
+}: {
+  type: string;
+  config: Record<string, unknown>;
+  onUpdate: (field: string, value: unknown) => void;
+  disabled?: boolean;
+}) {
+  switch (type) {
+    case 'neuron':
+      return (
+        <>
+          <Field label="System Prompt">
+            <SmartInput
+              value={String(config.systemPrompt || '')}
+              onChange={(val) => onUpdate('systemPrompt', val)}
+              rows={2}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary resize-none disabled:opacity-50"
+              placeholder="Instructions for the AI..."
+            />
+          </Field>
+          <Field label="User Prompt">
+            <SmartInput
+              value={String(config.userPrompt || '')}
+              onChange={(val) => onUpdate('userPrompt', val)}
+              rows={2}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary resize-none disabled:opacity-50"
+              placeholder="{{state.loopIteration}}: Process item..."
+            />
+          </Field>
+          <Field label="Output Field">
+            <input
+              type="text"
+              value={String(config.outputField || '')}
+              onChange={(e) => onUpdate('outputField', e.target.value)}
+              disabled={disabled}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary disabled:opacity-50"
+              placeholder="response"
+            />
+          </Field>
+        </>
+      );
+      
+    case 'tool':
+      return (
+        <>
+          <Field label="Tool Name">
+            <input
+              type="text"
+              value={String(config.toolName || '')}
+              onChange={(e) => onUpdate('toolName', e.target.value)}
+              disabled={disabled}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary disabled:opacity-50"
+              placeholder="web_search"
+            />
+          </Field>
+          <Field label="Input Mapping (JSON)">
+            <SmartInput
+              value={typeof config.inputMapping === 'string' ? config.inputMapping : JSON.stringify(config.inputMapping || {}, null, 2)}
+              onChange={(val) => {
+                try { onUpdate('inputMapping', JSON.parse(val)); }
+                catch { onUpdate('inputMapping', val); }
+              }}
+              rows={3}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary font-mono resize-none disabled:opacity-50"
+              placeholder='{"query": "{{state.searchQuery}}"}'
+            />
+          </Field>
+          <Field label="Output Field">
+            <input
+              type="text"
+              value={String(config.outputField || '')}
+              onChange={(e) => onUpdate('outputField', e.target.value)}
+              disabled={disabled}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary disabled:opacity-50"
+              placeholder="toolResult"
+            />
+          </Field>
+        </>
+      );
+      
+    case 'transform':
+      return (
+        <>
+          <Field label="Operation">
+            <div className="relative">
+              <select
+                value={String(config.operation || 'set')}
+                onChange={(e) => onUpdate('operation', e.target.value)}
+                disabled={disabled}
+                className="w-full appearance-none bg-bg-primary border border-border rounded-lg px-3 py-2 pr-8 text-sm text-text-primary disabled:opacity-50"
+              >
+                {['set', 'map', 'filter', 'select', 'parse-json', 'append', 'concat'].map((op) => (
+                  <option key={op} value={op}>{op}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+            </div>
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Input Field">
+              <SmartInput
+                value={String(config.inputField || '')}
+                onChange={(val) => onUpdate('inputField', val)}
+                singleLine
+                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary disabled:opacity-50"
+                placeholder="state.data"
+              />
+            </Field>
+            <Field label="Output Field">
+              <SmartInput
+                value={String(config.outputField || '')}
+                onChange={(val) => onUpdate('outputField', val)}
+                singleLine
+                isOutput
+                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary disabled:opacity-50"
+                placeholder="result"
+              />
+            </Field>
+          </div>
+          {config.operation === 'set' && (
+            <Field label="Value">
+              <SmartInput
+                value={String(config.value || '')}
+                onChange={(val) => onUpdate('value', val)}
+                singleLine
+                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary disabled:opacity-50"
+                placeholder="{{state.item}}"
+              />
+            </Field>
+          )}
+        </>
+      );
+      
+    case 'conditional':
+      return (
+        <>
+          <Field label="Condition">
+            <SmartInput
+              value={String(config.condition || '')}
+              onChange={(val) => onUpdate('condition', val)}
+              singleLine
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary font-mono disabled:opacity-50"
+              placeholder="state.value > 0"
+            />
+          </Field>
+          <Field label="Set Field">
+            <SmartInput
+              value={String(config.setField || '')}
+              onChange={(val) => onUpdate('setField', val)}
+              singleLine
+              isOutput
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary disabled:opacity-50"
+              placeholder="result"
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="True Value">
+              <SmartInput
+                value={String(config.trueValue || '')}
+                onChange={(val) => onUpdate('trueValue', val)}
+                singleLine
+                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary disabled:opacity-50"
+                placeholder="yes"
+              />
+            </Field>
+            <Field label="False Value">
+              <SmartInput
+                value={String(config.falseValue || '')}
+                onChange={(val) => onUpdate('falseValue', val)}
+                singleLine
+                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary disabled:opacity-50"
+                placeholder="no"
+              />
+            </Field>
+          </div>
+        </>
+      );
+      
+    default:
+      return <p className="text-xs text-text-disabled">Unknown step type: {type}</p>;
+  }
 }

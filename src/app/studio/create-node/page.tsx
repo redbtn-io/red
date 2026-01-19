@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AvailableToolsBrowser } from '@/components/tools/AvailableToolsBrowser';
+import { useAvailableTools } from '@/hooks/useAvailableTools';
 import SmartInput from '../components/SmartInput';
 import {
     ArrowLeft,
@@ -1176,25 +1176,25 @@ function StepEditor({
 
   return (
     <div className="border border-border rounded-lg overflow-hidden bg-bg-elevated">
-      <div className="flex items-center gap-2 px-3 py-2 bg-bg-primary border-b border-border">
+      <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 bg-bg-primary border-b border-border">
         <button
-          className="p-1 text-text-disabled hover:text-text-secondary cursor-grab"
+          className="hidden sm:block p-1 text-text-disabled hover:text-text-secondary cursor-grab"
           title="Drag to reorder"
         >
           <GripVertical className="w-4 h-4" />
         </button>
-        <span className="text-xs text-text-muted font-mono w-5">{index + 1}</span>
-        <div className={`p-1.5 rounded ${stepInfo.bgColor}`}>
+        <span className="text-xs text-text-muted font-mono w-5 flex-shrink-0">{index + 1}</span>
+        <div className={`p-1.5 rounded flex-shrink-0 ${stepInfo.bgColor}`}>
           <Icon className={`w-4 h-4 ${stepInfo.color}`} />
         </div>
         <button
           onClick={onToggle}
-          className="flex-1 flex items-center gap-2 text-left"
+          className="flex-1 min-w-0 flex items-center gap-2 text-left"
         >
-          <span className="text-sm font-medium text-text-secondary">{stepInfo.label}</span>
-          <span className="text-xs text-text-disabled">{stepInfo.description}</span>
+          <span className="text-sm font-medium text-text-secondary truncate">{stepInfo.label}</span>
+          <span className="hidden sm:inline text-xs text-text-disabled truncate">{stepInfo.description}</span>
         </button>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center flex-shrink-0">
           <button
             onClick={() => onMove('up')}
             disabled={index === 0}
@@ -1229,18 +1229,21 @@ function StepEditor({
           {step.type === 'neuron' && (
             <>
               <Field label="Neuron">
-                <select
-                  value={String(config.neuronId || '')}
-                  onChange={(e) => onUpdate('neuronId', e.target.value)}
-                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-purple-500"
-                >
-                  <option value="">Select a neuron...</option>
-                  {neurons.map((n) => (
-                    <option key={n.neuronId} value={n.neuronId}>
-                      {n.name} ({n.model})
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={String(config.neuronId || '')}
+                    onChange={(e) => onUpdate('neuronId', e.target.value)}
+                    className="w-full appearance-none bg-bg-primary border border-border rounded-lg px-3 py-2 pr-8 text-sm text-text-primary focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="">Select a neuron...</option>
+                    {neurons.map((n) => (
+                      <option key={n.neuronId} value={n.neuronId}>
+                        {n.name} ({n.model})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+                </div>
               </Field>
               <Field label="System Prompt">
                 <SmartInput
@@ -1294,7 +1297,7 @@ function StepEditor({
                   />
                 </Field>
                 <Field label="Stream">
-                  <div className="flex items-center h-full pt-1">
+                  <div className="flex items-center h-full pt-1 gap-2">
                     <button
                       type="button"
                       onClick={() => onUpdate('stream', !config.stream)}
@@ -1308,9 +1311,58 @@ function StepEditor({
                         }`}
                       />
                     </button>
+                    <span className="text-xs text-text-muted">
+                      {config.stream ? 'To user' : 'Silent'}
+                    </span>
                   </div>
                 </Field>
               </div>
+              <Field label="Structured Output">
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (config.structuredOutput) {
+                        onUpdate('structuredOutput', undefined);
+                      } else {
+                        onUpdate('structuredOutput', {
+                          schema: { type: 'object', properties: {}, required: [] }
+                        });
+                      }
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      config.structuredOutput ? 'bg-purple-500' : 'bg-gray-700'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        config.structuredOutput ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                  <span className="text-xs text-text-muted">
+                    {config.structuredOutput ? 'JSON Schema' : 'Freeform text'}
+                  </span>
+                </div>
+                {Boolean(config.structuredOutput) && (
+                  <textarea
+                    value={
+                      typeof config.structuredOutput === 'object'
+                        ? JSON.stringify((config.structuredOutput as { schema?: unknown }).schema || config.structuredOutput, null, 2)
+                        : ''
+                    }
+                    onChange={(e) => {
+                      try {
+                        const schema = JSON.parse(e.target.value);
+                        onUpdate('structuredOutput', { schema });
+                      } catch { /* Allow invalid JSON while typing */ }
+                    }}
+                    rows={5}
+                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-xs text-text-primary focus:outline-none focus:border-purple-500 resize-none font-mono"
+                    placeholder='{"type": "object", "properties": {...}}'
+                  />
+                )}
+              </Field>
             </>
           )}
 
@@ -1324,51 +1376,7 @@ function StepEditor({
           )}
 
           {step.type === 'transform' && (
-            <>
-              <Field label="Operation">
-                <select
-                  value={String(config.operation || 'set')}
-                  onChange={(e) => onUpdate('operation', e.target.value)}
-                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500"
-                >
-                  {['set', 'map', 'filter', 'select', 'parse-json', 'append', 'concat'].map((op) => (
-                    <option key={op} value={op}>{op}</option>
-                  ))}
-                </select>
-              </Field>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Input Field">
-                  <SmartInput
-                    value={String(config.inputField || '')}
-                    onChange={(val) => onUpdate('inputField', val)}
-                    singleLine
-                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500"
-                    placeholder="{{state.data.field}}"
-                  />
-                </Field>
-                <Field label="Output Field">
-                  <SmartInput
-                    value={String(config.outputField || '')}
-                    onChange={(val) => onUpdate('outputField', val)}
-                    singleLine
-                    isOutput
-                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500"
-                    placeholder="data.result or globalState.namespace.key"
-                  />
-                </Field>
-              </div>
-              {config.operation === 'set' && (
-                <Field label="Value">
-                  <SmartInput
-                    value={String(config.value || '')}
-                    onChange={(val) => onUpdate('value', val)}
-                    singleLine
-                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500"
-                    placeholder="{{state.variable}}"
-                  />
-                </Field>
-              )}
-            </>
+            <TransformStepEditorFull config={config} onUpdate={onUpdate} />
           )}
 
           {step.type === 'conditional' && (
@@ -1414,39 +1422,10 @@ function StepEditor({
           )}
 
           {step.type === 'loop' && (
-            <>
-              <Field label="Iterator Field">
-                <SmartInput
-                  value={String(config.iteratorField || '')}
-                  onChange={(val) => onUpdate('iteratorField', val)}
-                  singleLine
-                  className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-cyan-500"
-                  placeholder="{{state.items}}"
-                />
-              </Field>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Max Iterations">
-                  <input
-                    type="number"
-                    value={config.maxIterations !== undefined ? Number(config.maxIterations) : 10}
-                    onChange={(e) => onUpdate('maxIterations', parseInt(e.target.value))}
-                    min={1}
-                    max={100}
-                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-cyan-500"
-                  />
-                </Field>
-                <Field label="Output Field">
-                  <SmartInput
-                    value={String(config.outputField || '')}
-                    onChange={(val) => onUpdate('outputField', val)}
-                    singleLine
-                    isOutput
-                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-cyan-500"
-                    placeholder="loopResults"
-                  />
-                </Field>
-              </div>
-            </>
+            <LoopStepEditorFull
+              config={config}
+              onUpdate={onUpdate}
+            />
           )}
 
           {/* Parameter Hint */}
@@ -1474,11 +1453,18 @@ function ToolStepEditor({
   config: Record<string, unknown>;
   onUpdate: (field: string, value: unknown) => void;
 }) {
-  const [showBrowser, setShowBrowser] = useState(false);
-  const [selectedToolSchema, setSelectedToolSchema] = useState<{
-    properties: Record<string, { type?: string; description?: string; enum?: string[] }>;
-    required?: string[];
-  } | null>(null);
+  const { tools } = useAvailableTools();
+  const [isOpen, setIsOpen] = useState(false);
+  const [inputValue, setInputValue] = useState(String(config.toolName || ''));
+  const [displayCount, setDisplayCount] = useState(5);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Find the selected tool's schema
+  const selectedTool = tools.find(t => t.name === config.toolName);
+  const schemaProperties = selectedTool?.inputSchema?.properties || {};
+  const requiredParams = selectedTool?.inputSchema?.required || [];
+  const hasSchema = Object.keys(schemaProperties).length > 0;
 
   // Parse existing parameters or inputMapping (for migration)
   const getInputMappings = (): Record<string, string> => {
@@ -1487,7 +1473,6 @@ function ToolStepEditor({
       return mapping as Record<string, string>;
     }
     if (typeof mapping === 'string' && mapping.trim()) {
-      // Legacy single string format - try to preserve it
       return { _legacy: mapping };
     }
     return {};
@@ -1495,19 +1480,54 @@ function ToolStepEditor({
 
   const [inputMappings, setInputMappings] = useState<Record<string, string>>(getInputMappings());
 
-  const handleSelectTool = (toolName: string, toolInfo: any) => {
-    onUpdate('toolName', toolName);
-    if (toolInfo?.inputSchema) {
-      setSelectedToolSchema(toolInfo.inputSchema);
-      // Initialize empty mappings for each property
+  // Sync input value with config
+  useEffect(() => {
+    if (!isOpen) {
+      setInputValue(String(config.toolName || ''));
+    }
+  }, [config.toolName, isOpen]);
+
+  // Update mappings when tool changes
+  useEffect(() => {
+    if (hasSchema) {
       const newMappings: Record<string, string> = {};
-      Object.keys(toolInfo.inputSchema.properties || {}).forEach(key => {
+      Object.keys(schemaProperties).forEach(key => {
         newMappings[key] = inputMappings[key] || '';
       });
       setInputMappings(newMappings);
       onUpdate('parameters', newMappings);
     }
-    setShowBrowser(false);
+  }, [config.toolName]);
+
+  // Reset display count when input changes
+  useEffect(() => {
+    setDisplayCount(5);
+  }, [inputValue]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+          inputRef.current && !inputRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        setInputValue(String(config.toolName || ''));
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [config.toolName]);
+
+  const handleSelectTool = (toolName: string) => {
+    onUpdate('toolName', toolName);
+    setInputValue(toolName);
+    setIsOpen(false);
+    setDisplayCount(5);
+  };
+
+  const handleInputChange = (value: string) => {
+    setInputValue(value);
+    setIsOpen(true);
+    onUpdate('toolName', value);
   };
 
   const updateMapping = (param: string, value: string) => {
@@ -1516,42 +1536,143 @@ function ToolStepEditor({
     onUpdate('parameters', newMappings);
   };
 
-  const schemaProperties = selectedToolSchema?.properties || {};
-  const requiredParams = selectedToolSchema?.required || [];
-  const hasSchema = Object.keys(schemaProperties).length > 0;
+  // Score a tool based on how well it matches the search query
+  const getToolScore = (tool: typeof tools[0], query: string): number => {
+    if (!query) return 0;
+    const q = query.toLowerCase();
+    const name = tool.name.toLowerCase();
+    const desc = tool.description.toLowerCase();
+    const server = tool.server.toLowerCase();
+    
+    let score = 0;
+    
+    // Exact name match = highest
+    if (name === q) score += 1000;
+    // Name starts with query
+    else if (name.startsWith(q)) score += 500;
+    // Name contains query as word boundary (e.g., "web_search" matches "web" or "search")
+    else if (name.includes('_' + q) || name.includes(q + '_') || name.split('_').includes(q)) score += 300;
+    // Name contains query
+    else if (name.includes(q)) score += 200;
+    
+    // Server name match
+    if (server === q) score += 150;
+    else if (server.toLowerCase().includes(q)) score += 50;
+    
+    // Description contains query
+    if (desc.includes(q)) score += 25;
+    
+    // Boost custom tools slightly
+    if (tool.source === 'custom') score += 10;
+    
+    return score;
+  };
+
+  // Filter and sort tools by relevance score
+  const sortedAndFilteredTools = tools
+    .map(tool => ({ tool, score: getToolScore(tool, inputValue) }))
+    .filter(({ tool, score }) => {
+      if (!inputValue) return true; // Show all when no query
+      // Include if score > 0 OR matches any field
+      return score > 0 || 
+        tool.name.toLowerCase().includes(inputValue.toLowerCase()) ||
+        tool.description.toLowerCase().includes(inputValue.toLowerCase()) ||
+        tool.server.toLowerCase().includes(inputValue.toLowerCase());
+    })
+    .sort((a, b) => {
+      // Sort by score descending
+      if (b.score !== a.score) return b.score - a.score;
+      // Then custom tools first
+      if (a.tool.source === 'custom' && b.tool.source !== 'custom') return -1;
+      if (a.tool.source !== 'custom' && b.tool.source === 'custom') return 1;
+      return a.tool.name.localeCompare(b.tool.name);
+    })
+    .map(({ tool }) => tool); // Extract just the tool
+
+  // Handle infinite scroll
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 20 && displayCount < sortedAndFilteredTools.length) {
+      setDisplayCount(prev => Math.min(prev + 5, sortedAndFilteredTools.length));
+    }
+  };
+
+  const displayedTools = sortedAndFilteredTools.slice(0, displayCount);
 
   return (
     <>
       <div className="space-y-4">
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-xs font-medium text-text-muted">Tool Name</label>
-            <button
-              type="button"
-              onClick={() => setShowBrowser(!showBrowser)}
-              className="text-xs text-accent hover:text-accent-hover transition-colors"
-            >
-              {showBrowser ? '← Collapse' : 'Browse Available →'}
-            </button>
+          <label className="block text-xs font-medium text-text-muted mb-2">Tool Name</label>
+          <div className="relative">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputValue}
+                onChange={(e) => handleInputChange(e.target.value)}
+                onFocus={() => setIsOpen(true)}
+                className="w-full pl-9 pr-3 py-2 bg-bg-primary border border-border rounded-lg text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent font-mono"
+                placeholder="Search or type tool name..."
+              />
+              {selectedTool && !isOpen && (
+                <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[10px] px-1.5 py-0.5 rounded ${
+                  selectedTool.source === 'custom' 
+                    ? 'bg-emerald-500/20 text-emerald-400' 
+                    : 'bg-blue-500/20 text-blue-400'
+                }`}>
+                  {selectedTool.server}
+                </span>
+              )}
+            </div>
+            
+            {/* Dropdown */}
+            {isOpen && (
+              <div 
+                ref={dropdownRef}
+                className="absolute z-50 w-full mt-1 bg-bg-primary border border-border rounded-lg shadow-lg"
+              >
+                <div 
+                  className="max-h-64 overflow-y-auto"
+                  onScroll={handleScroll}
+                >
+                  {displayedTools.map(tool => (
+                    <div
+                      key={`${tool.server}:${tool.name}`}
+                      onClick={() => handleSelectTool(tool.name)}
+                      className={`px-3 py-2 cursor-pointer hover:bg-bg-hover ${
+                        tool.name === config.toolName ? 'bg-bg-secondary' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm text-accent-text">{tool.name}</span>
+                        <span className={`text-[10px] px-1.5 rounded ${
+                          tool.source === 'custom' 
+                            ? 'bg-emerald-500/20 text-emerald-400' 
+                            : 'bg-blue-500/20 text-blue-400'
+                        }`}>
+                          {tool.server}
+                        </span>
+                      </div>
+                      <div className="text-xs text-text-muted truncate">{tool.description}</div>
+                    </div>
+                  ))}
+                  {displayCount < sortedAndFilteredTools.length && (
+                    <div className="text-center py-2 text-xs text-text-disabled border-t border-border">
+                      Scroll for more ({sortedAndFilteredTools.length - displayCount} remaining)
+                    </div>
+                  )}
+                  {sortedAndFilteredTools.length === 0 && (
+                    <div className="text-center py-4 text-sm text-text-muted">
+                      {inputValue ? `No tools matching "${inputValue}"` : 'No tools available'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-          <input
-            type="text"
-            value={String(config.toolName || '')}
-            onChange={(e) => onUpdate('toolName', e.target.value)}
-            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-blue-500"
-            placeholder="mcp-tool-name"
-          />
         </div>
-
-        {/* Available Tools Browser */}
-        {showBrowser && (
-          <div className="p-4 bg-bg-primary border border-border rounded-lg">
-            <AvailableToolsBrowser
-              onSelectTool={handleSelectTool}
-              compact={true}
-            />
-          </div>
-        )}
       </div>
 
       {/* Tool Parameters - show schema-based inputs when available */}
@@ -1613,18 +1734,9 @@ function ToolStepEditor({
           </p>
         </div>
       ) : (
-        <Field label="Input Mapping">
-          <input
-            type="text"
-            value={typeof config.inputMapping === 'string' ? config.inputMapping : JSON.stringify(config.inputMapping || '')}
-            onChange={(e) => onUpdate('inputMapping', e.target.value)}
-            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-blue-500"
-            placeholder="{{state.searchQuery}}"
-          />
-          <p className="mt-1 text-xs text-text-disabled">
-            Select a tool above to see its parameters
-          </p>
-        </Field>
+        <p className="text-sm text-text-disabled italic">
+          Select a tool above to configure its parameters
+        </p>
       )}
 
       <Field label="Output Field">
@@ -1648,4 +1760,512 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   );
+}
+
+// Full Transform Step Editor with all operations
+const TRANSFORM_OPERATIONS = [
+  { value: 'set', label: 'set', description: 'Set a value (use globalState.namespace.key for persistence)' },
+  { value: 'map', label: 'map', description: 'Transform each array item' },
+  { value: 'filter', label: 'filter', description: 'Keep items matching condition' },
+  { value: 'select', label: 'select', description: 'Extract nested property' },
+  { value: 'json', label: 'json', description: 'Convert: string ↔ object/array' },
+  { value: 'append', label: 'append', description: 'Add item to array' },
+  { value: 'concat', label: 'concat', description: 'Concatenate two arrays' },
+  { value: 'increment', label: 'increment', description: 'Add 1 (or custom amount) to number' },
+  { value: 'decrement', label: 'decrement', description: 'Subtract 1 (or custom amount) from number' },
+];
+
+function TransformStepEditorFull({
+  config,
+  onUpdate,
+}: {
+  config: Record<string, unknown>;
+  onUpdate: (field: string, value: unknown) => void;
+}) {
+  const operation = String(config.operation || 'set');
+
+  return (
+    <>
+      <Field label="Operation">
+        <div className="relative">
+          <select
+            value={operation}
+            onChange={(e) => onUpdate('operation', e.target.value)}
+            className="w-full appearance-none bg-bg-primary border border-border rounded-lg px-3 py-2 pr-8 text-sm text-text-primary focus:outline-none focus:border-amber-500"
+          >
+            {TRANSFORM_OPERATIONS.map((op) => (
+              <option key={op.value} value={op.value}>{op.label}</option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+        </div>
+        <p className="mt-1 text-xs text-text-muted">
+          {TRANSFORM_OPERATIONS.find(o => o.value === operation)?.description}
+        </p>
+      </Field>
+
+      <Field label="Input Field">
+        <SmartInput
+          value={String(config.inputField || '')}
+          onChange={(val) => onUpdate('inputField', val)}
+          singleLine
+          className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500"
+          placeholder="state.data or globalState.namespace.key"
+        />
+      </Field>
+
+      <Field label="Output Field">
+        <SmartInput
+          value={String(config.outputField || '')}
+          onChange={(val) => onUpdate('outputField', val)}
+          singleLine
+          isOutput
+          className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500"
+          placeholder="data.result or globalState.namespace.key"
+        />
+      </Field>
+
+      {['set', 'append'].includes(operation) && (
+        <Field label="Value">
+          <SmartInput
+            value={String(config.value || '')}
+            onChange={(val) => onUpdate('value', val)}
+            singleLine
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500"
+            placeholder="{{state.variable}}"
+          />
+        </Field>
+      )}
+
+      {['map', 'select'].includes(operation) && (
+        <Field label={operation === 'map' ? 'Transform Template' : 'Property Path'}>
+          <SmartInput
+            value={String(config.transform || '')}
+            onChange={(val) => onUpdate('transform', val)}
+            singleLine
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500"
+            placeholder={operation === 'map' ? '{{item.url}}' : 'results.items'}
+          />
+          {operation === 'map' && (
+            <p className="mt-1 text-xs text-text-muted">
+              Use <code className="px-1 bg-bg-tertiary rounded">{'{{item}}'}</code> and <code className="px-1 bg-bg-tertiary rounded">{'{{index}}'}</code>
+            </p>
+          )}
+        </Field>
+      )}
+
+      {operation === 'filter' && (
+        <Field label="Filter Condition">
+          <SmartInput
+            value={String(config.filterCondition || '')}
+            onChange={(val) => onUpdate('filterCondition', val)}
+            singleLine
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500"
+            placeholder="{{item.score}} > 0.5"
+          />
+          <p className="mt-1 text-xs text-text-muted">
+            Use <code className="px-1 bg-bg-tertiary rounded">{'{{item}}'}</code> for current element
+          </p>
+        </Field>
+      )}
+
+      {operation === 'append' && (
+        <Field label="Condition (optional)">
+          <SmartInput
+            value={String(config.condition || '')}
+            onChange={(val) => onUpdate('condition', val)}
+            singleLine
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500"
+            placeholder="{{state.shouldAppend}}"
+          />
+        </Field>
+      )}
+
+      {operation === 'concat' && (
+        <Field label="Second Array Field">
+          <SmartInput
+            value={String(config.value || '')}
+            onChange={(val) => onUpdate('value', val)}
+            singleLine
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500"
+            placeholder="state.otherArray"
+          />
+        </Field>
+      )}
+
+      {(operation === 'increment' || operation === 'decrement') && (
+        <Field label={`${operation === 'increment' ? 'Increment' : 'Decrement'} Amount (optional)`}>
+          <SmartInput
+            value={String(config.value !== undefined ? config.value : '')}
+            onChange={(val) => onUpdate('value', val === '' ? undefined : val)}
+            singleLine
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-amber-500"
+            placeholder="1"
+          />
+          <p className="mt-1 text-xs text-text-muted">
+            Leave empty for default (1). If inputField is undefined, initializes to 0.
+          </p>
+        </Field>
+      )}
+    </>
+  );
+}
+
+// Nested step types available inside loops
+const LOOP_NESTED_STEP_TYPES = [
+  { type: 'neuron', label: 'Neuron', icon: Brain, color: 'text-purple-400', bgColor: 'bg-purple-500/20 border-purple-500/30' },
+  { type: 'tool', label: 'Tool', icon: Wrench, color: 'text-blue-400', bgColor: 'bg-blue-500/20 border-blue-500/30' },
+  { type: 'transform', label: 'Transform', icon: Shuffle, color: 'text-amber-400', bgColor: 'bg-amber-500/20 border-amber-500/30' },
+  { type: 'conditional', label: 'Conditional', icon: GitBranch, color: 'text-green-400', bgColor: 'bg-green-500/20 border-green-500/30' },
+] as const;
+
+// Full Loop Step Editor with nested steps
+function LoopStepEditorFull({
+  config,
+  onUpdate,
+}: {
+  config: Record<string, unknown>;
+  onUpdate: (field: string, value: unknown) => void;
+}) {
+  const [showAddStep, setShowAddStep] = useState(false);
+  const [expandedNestedSteps, setExpandedNestedSteps] = useState<Set<number>>(new Set());
+  
+  const nestedSteps = (config.steps as Array<{ type: string; config: Record<string, unknown> }>) || [];
+  
+  const addNestedStep = (type: string) => {
+    const newStep = { type, config: {} };
+    onUpdate('steps', [...nestedSteps, newStep]);
+    setShowAddStep(false);
+    setExpandedNestedSteps(prev => new Set([...prev, nestedSteps.length]));
+  };
+  
+  const removeNestedStep = (index: number) => {
+    const updated = nestedSteps.filter((_, i) => i !== index);
+    onUpdate('steps', updated);
+  };
+  
+  const updateNestedStepConfig = (index: number, field: string, value: unknown) => {
+    const updated = nestedSteps.map((step, i) => {
+      if (i !== index) return step;
+      return { ...step, config: { ...step.config, [field]: value } };
+    });
+    onUpdate('steps', updated);
+  };
+  
+  const toggleNestedStep = (index: number) => {
+    setExpandedNestedSteps(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  return (
+    <>
+      <Field label="Exit Condition">
+        <SmartInput
+          value={String(config.exitCondition || '')}
+          onChange={(val) => onUpdate('exitCondition', val)}
+          singleLine
+          className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-cyan-500 font-mono"
+          placeholder="state.searchComplete === true"
+        />
+        <p className="mt-1 text-xs text-text-disabled">
+          Loop exits when this evaluates to true. Use <code className="px-1 py-0.5 bg-bg-secondary rounded">state.loopIteration</code> for count.
+        </p>
+      </Field>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="Max Iterations">
+          <input
+            type="number"
+            value={config.maxIterations !== undefined ? Number(config.maxIterations) : 5}
+            onChange={(e) => onUpdate('maxIterations', parseInt(e.target.value) || 5)}
+            min={1}
+            max={100}
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-cyan-500"
+          />
+        </Field>
+        <Field label="Accumulator Field (Optional)">
+          <SmartInput
+            value={String(config.accumulatorField || '')}
+            onChange={(val) => onUpdate('accumulatorField', val)}
+            singleLine
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-cyan-500"
+            placeholder="result"
+          />
+        </Field>
+      </div>
+      
+      {/* Nested Steps */}
+      <div className="mt-4 pt-4 border-t border-border">
+        <div className="flex items-center justify-between mb-3">
+          <label className="text-xs font-medium text-text-muted">Loop Steps (run each iteration)</label>
+          <button
+            onClick={() => setShowAddStep(!showAddStep)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-cyan-400 hover:text-cyan-300 bg-cyan-900/20 hover:bg-cyan-900/30 border border-cyan-500/30 rounded-lg transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Step
+          </button>
+        </div>
+        
+        {showAddStep && (
+          <div className="mb-3 p-3 bg-bg-secondary border border-border rounded-lg">
+            <p className="text-xs text-text-muted mb-2">Select step type:</p>
+            <div className="grid grid-cols-2 gap-2">
+              {LOOP_NESTED_STEP_TYPES.map((stepType) => {
+                const Icon = stepType.icon;
+                return (
+                  <button
+                    key={stepType.type}
+                    onClick={() => addNestedStep(stepType.type)}
+                    className={`flex items-center gap-2 p-2.5 rounded-lg border ${stepType.bgColor} hover:opacity-80 transition-opacity`}
+                  >
+                    <Icon className={`w-4 h-4 ${stepType.color}`} />
+                    <span className="text-xs text-text-secondary">{stepType.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        
+        {nestedSteps.length === 0 ? (
+          <div className="text-center py-6 text-xs text-text-disabled border border-dashed border-border rounded-lg">
+            No steps yet. Add steps to run in each iteration.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {nestedSteps.map((nestedStep, idx) => {
+              const typeInfo = LOOP_NESTED_STEP_TYPES.find(t => t.type === nestedStep.type) || 
+                { icon: Info, color: 'text-text-secondary', bgColor: 'bg-gray-500/20 border-gray-500/30', label: nestedStep.type };
+              const Icon = typeInfo.icon;
+              const isExpanded = expandedNestedSteps.has(idx);
+              
+              return (
+                <div key={idx} className={`border rounded-lg overflow-hidden ${typeInfo.bgColor}`}>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-bg-primary/50">
+                    <span className="text-xs text-text-muted font-mono w-5">{idx + 1}</span>
+                    <div className="p-1.5 rounded bg-bg-secondary">
+                      <Icon className={`w-4 h-4 ${typeInfo.color}`} />
+                    </div>
+                    <button
+                      onClick={() => toggleNestedStep(idx)}
+                      className="flex-1 text-left text-sm text-text-secondary hover:text-text-primary"
+                    >
+                      {typeInfo.label}
+                    </button>
+                    <button
+                      onClick={() => removeNestedStep(idx)}
+                      className="p-1.5 text-text-disabled hover:text-red-400 transition-colors"
+                      title="Remove step"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => toggleNestedStep(idx)} className="p-1.5 text-text-muted">
+                      {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  
+                  {isExpanded && (
+                    <div className="p-3 bg-bg-primary space-y-3 border-t border-border">
+                      <NestedStepConfigFull
+                        type={nestedStep.type}
+                        config={nestedStep.config || {}}
+                        onUpdate={(field, value) => updateNestedStepConfig(idx, field, value)}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// Nested step config editor for create-node page
+function NestedStepConfigFull({
+  type,
+  config,
+  onUpdate,
+}: {
+  type: string;
+  config: Record<string, unknown>;
+  onUpdate: (field: string, value: unknown) => void;
+}) {
+  switch (type) {
+    case 'neuron':
+      return (
+        <>
+          <Field label="System Prompt">
+            <SmartInput
+              value={String(config.systemPrompt || '')}
+              onChange={(val) => onUpdate('systemPrompt', val)}
+              rows={2}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary resize-none"
+              placeholder="Instructions for the AI..."
+            />
+          </Field>
+          <Field label="User Prompt">
+            <SmartInput
+              value={String(config.userPrompt || '')}
+              onChange={(val) => onUpdate('userPrompt', val)}
+              rows={2}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary resize-none"
+              placeholder="{{state.loopIteration}}: Process item..."
+            />
+          </Field>
+          <Field label="Output Field">
+            <input
+              type="text"
+              value={String(config.outputField || '')}
+              onChange={(e) => onUpdate('outputField', e.target.value)}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
+              placeholder="response"
+            />
+          </Field>
+        </>
+      );
+      
+    case 'tool':
+      return (
+        <>
+          <Field label="Tool Name">
+            <input
+              type="text"
+              value={String(config.toolName || '')}
+              onChange={(e) => onUpdate('toolName', e.target.value)}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
+              placeholder="web_search"
+            />
+          </Field>
+          <Field label="Input Mapping (JSON)">
+            <SmartInput
+              value={typeof config.inputMapping === 'string' ? config.inputMapping : JSON.stringify(config.inputMapping || {}, null, 2)}
+              onChange={(val) => {
+                try { onUpdate('inputMapping', JSON.parse(val)); }
+                catch { onUpdate('inputMapping', val); }
+              }}
+              rows={3}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary font-mono resize-none"
+              placeholder='{"query": "{{state.searchQuery}}"}'
+            />
+          </Field>
+          <Field label="Output Field">
+            <input
+              type="text"
+              value={String(config.outputField || '')}
+              onChange={(e) => onUpdate('outputField', e.target.value)}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
+              placeholder="toolResult"
+            />
+          </Field>
+        </>
+      );
+      
+    case 'transform':
+      return (
+        <>
+          <Field label="Operation">
+            <div className="relative">
+              <select
+                value={String(config.operation || 'set')}
+                onChange={(e) => onUpdate('operation', e.target.value)}
+                className="w-full appearance-none bg-bg-primary border border-border rounded-lg px-3 py-2 pr-8 text-sm text-text-primary"
+              >
+                {['set', 'map', 'filter', 'select', 'parse-json', 'append', 'concat'].map((op) => (
+                  <option key={op} value={op}>{op}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+            </div>
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Input Field">
+              <SmartInput
+                value={String(config.inputField || '')}
+                onChange={(val) => onUpdate('inputField', val)}
+                singleLine
+                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
+                placeholder="state.data"
+              />
+            </Field>
+            <Field label="Output Field">
+              <SmartInput
+                value={String(config.outputField || '')}
+                onChange={(val) => onUpdate('outputField', val)}
+                singleLine
+                isOutput
+                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
+                placeholder="result"
+              />
+            </Field>
+          </div>
+          {config.operation === 'set' && (
+            <Field label="Value">
+              <SmartInput
+                value={String(config.value || '')}
+                onChange={(val) => onUpdate('value', val)}
+                singleLine
+                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
+                placeholder="{{state.item}}"
+              />
+            </Field>
+          )}
+        </>
+      );
+      
+    case 'conditional':
+      return (
+        <>
+          <Field label="Condition">
+            <SmartInput
+              value={String(config.condition || '')}
+              onChange={(val) => onUpdate('condition', val)}
+              singleLine
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary font-mono"
+              placeholder="state.value > 0"
+            />
+          </Field>
+          <Field label="Set Field">
+            <SmartInput
+              value={String(config.setField || '')}
+              onChange={(val) => onUpdate('setField', val)}
+              singleLine
+              isOutput
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
+              placeholder="result"
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="True Value">
+              <SmartInput
+                value={String(config.trueValue || '')}
+                onChange={(val) => onUpdate('trueValue', val)}
+                singleLine
+                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
+                placeholder="yes"
+              />
+            </Field>
+            <Field label="False Value">
+              <SmartInput
+                value={String(config.falseValue || '')}
+                onChange={(val) => onUpdate('falseValue', val)}
+                singleLine
+                className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
+                placeholder="no"
+              />
+            </Field>
+          </div>
+        </>
+      );
+      
+    default:
+      return <p className="text-xs text-text-disabled">Unknown step type: {type}</p>;
+  }
 }

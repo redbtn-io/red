@@ -5,15 +5,16 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  MessageSquare, 
-  Workflow, 
-  Terminal,
-  Library,
-  Zap,
-  X,
-  Home,
-  GripVertical
+import {
+    MessageSquare,
+    Workflow,
+    Terminal,
+    Library,
+    Zap,
+    X,
+    Home,
+    GripVertical,
+    Plug
 } from 'lucide-react';
 
 interface NavItem {
@@ -28,6 +29,7 @@ const defaultNavItems: NavItem[] = [
   { href: '/chat', label: 'Chat', icon: MessageSquare, match: '/chat' },
   { href: '/studio', label: 'Studio', icon: Workflow, match: '/studio' },
   { href: '/automations', label: 'Automations', icon: Zap, match: '/automations' },
+  { href: '/connections', label: 'Connections', icon: Plug, match: '/connections' },
   { href: '/data', label: 'Data', icon: Library, match: '/data' },
   { href: '/logs', label: 'Terminal', icon: Terminal, match: '/logs' },
 ];
@@ -344,9 +346,11 @@ export function AppSidebar({
       {/* Sidebar */}
       <div
         className={`
-          fixed inset-y-0 left-0 z-50 w-64 lg:w-80 bg-bg-elevated border-r border-border text-text-primary 
+          fixed left-0 z-50 w-64 lg:w-80 bg-bg-elevated border-r border-border text-text-primary 
           transform transition-transform duration-200 ease-in-out
           lg:relative lg:translate-x-0
+          top-[env(safe-area-inset-top,0px)] bottom-0
+          lg:top-0 lg:h-full
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
@@ -432,11 +436,11 @@ export function AppSidebar({
 
           {/* Footer */}
           {footer ? (
-            <div className="p-4 border-t border-border">
+            <div className="p-4 pb-safe border-t border-border">
               {footer}
             </div>
           ) : (
-            <div className="p-4 border-t border-border">
+            <div className="p-4 pb-safe border-t border-border">
               <div className="flex items-center gap-2 text-xs text-text-muted px-1">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 <span>Red Connected</span>

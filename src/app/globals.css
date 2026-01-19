@@ -186,6 +186,12 @@ html {
   /* Ensure the app takes the full viewport including safe areas */
   min-height: 100vh;
   min-height: 100dvh; /* Dynamic viewport height for mobile */
+  /* Disable text selection globally - enable where needed */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 body {
@@ -200,9 +206,10 @@ body {
   overflow: hidden;
   overscroll-behavior: none;
   transition: background-color 0.2s ease, color 0.2s ease;
-  /* PWA safe area for status bar (top) and home indicator (bottom) */
+  /* PWA safe area - apply ONLY top padding for status bar
+     Bottom safe area is handled by individual components (sidebars, inputs)
+     to avoid double-padding issues */
   padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* All buttons should have pointer cursor */
@@ -227,11 +234,16 @@ input, textarea, select {
   height: 8px;
 }
 
-/* PWA standalone mode - remove top padding/margin since there's no browser chrome */
+/* PWA standalone mode - adjust spacing for fullscreen app experience */
 @media (display-mode: standalone) {
   .pwa-header {
     padding-top: 0 !important;
     margin-top: 0 !important;
+  }
+  
+  /* In standalone mode, reduce extra bottom margins since pb-safe handles the home indicator */
+  .pwa-bottom-adjust {
+    bottom: 0 !important;
   }
 }
 
@@ -284,7 +296,8 @@ input, textarea, select {
 }
 
 .bottom-safe {
-  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  /* Position fixed elements so they sit above the home indicator area with minimal margin */
+  bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* Scroll control - enable scrolling only where needed */

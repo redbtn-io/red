@@ -9,10 +9,14 @@ export interface ToolInfo {
     properties: Record<string, unknown>;
     required?: string[];
   };
+  source: 'global' | 'custom';
+  connectionId?: string;
 }
 
 export interface ToolsByServer {
   server: string;
+  source: 'global' | 'custom';
+  connectionId?: string;
   count: number;
   tools: Array<{
     name: string;
@@ -20,20 +24,27 @@ export interface ToolsByServer {
   }>;
 }
 
+export interface ToolSources {
+  global: string[];
+  custom: string[];
+}
+
 export interface UseAvailableToolsReturn {
   tools: ToolInfo[];
   toolsByServer: ToolsByServer[];
+  sources: ToolSources;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
 }
 
 /**
- * Hook to fetch available MCP tools
+ * Hook to fetch available MCP tools (global + user's custom)
  */
 export function useAvailableTools(): UseAvailableToolsReturn {
   const [tools, setTools] = useState<ToolInfo[]>([]);
   const [toolsByServer, setToolsByServer] = useState<ToolsByServer[]>([]);
+  const [sources, setSources] = useState<ToolSources>({ global: [], custom: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +67,7 @@ export function useAvailableTools(): UseAvailableToolsReturn {
       const data = await response.json();
       setTools(data.tools || []);
       setToolsByServer(data.toolsByServer || []);
+      setSources(data.sources || { global: [], custom: [] });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch tools';
       setError(message);
@@ -72,6 +84,7 @@ export function useAvailableTools(): UseAvailableToolsReturn {
   return {
     tools,
     toolsByServer,
+    sources,
     loading,
     error,
     refetch: fetchTools,

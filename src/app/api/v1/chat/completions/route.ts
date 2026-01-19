@@ -29,7 +29,7 @@ import {
   getDatabase,
   type RunResult,
   type StreamingRunResult,
-} from '@redbtn/ai';
+} from '@redbtn/redbtn';
 
 // =============================================================================
 // Types

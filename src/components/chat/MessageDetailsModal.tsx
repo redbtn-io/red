@@ -259,7 +259,7 @@ export function MessageDetailsModal({
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div 
-          className="bg-bg-secondary border border-border rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col pointer-events-auto animate-in zoom-in-95 duration-200 overflow-hidden"
+          className="bg-bg-secondary border border-border rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col pointer-events-auto animate-in zoom-in-95 duration-200 overflow-hidden select-text [&_*]:select-text"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header - Sticky on mobile */}

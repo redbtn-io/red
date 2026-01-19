@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { VectorStoreManager, DocumentParser } from '@redbtn/ai';
+import { VectorStoreManager, DocumentParser } from '@redbtn/redbtn';
 import { verifyAuth } from '@/lib/auth/auth';
 import mongoose from 'mongoose';
 import { GridFSBucket, ObjectId } from 'mongodb';

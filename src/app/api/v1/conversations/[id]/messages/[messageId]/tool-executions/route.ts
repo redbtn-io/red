@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import { getDatabase } from '@redbtn/ai';
+import { getDatabase } from '@redbtn/redbtn';
 import { verifyAuth } from '@/lib/auth/auth';
 
 /**

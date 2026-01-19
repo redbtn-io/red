@@ -7,7 +7,6 @@ import {
     GitBranch,
     Box,
     Brain,
-    Wrench,
     Plus,
     ArrowRight,
     Sparkles,
@@ -107,15 +106,6 @@ export default function StudioHomePage() {
       createHref: '/studio/create-neuron',
       count: stats.neurons,
     },
-    {
-      title: 'Tools',
-      description: 'MCP integrations for search, scraping, and external APIs',
-      icon: Wrench,
-      color: '#f59e0b',
-      href: '/studio/tools',
-      count: 0,
-      comingSoon: true,
-    },
   ];
 
   return (
@@ -165,7 +155,7 @@ export default function StudioHomePage() {
 
             {/* Stats Cards */}
             <motion.div 
-              className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+              className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8"
               variants={staggerContainerVariants}
               initial="initial"
               animate="animate"
@@ -173,12 +163,8 @@ export default function StudioHomePage() {
               {sections.map((section, index) => (
                 <motion.div key={section.title} variants={staggerItemVariants}>
                   <Link
-                    href={section.comingSoon ? '#' : section.href}
-                    className={`
-                      relative p-4 rounded-xl border bg-bg-secondary block
-                      ${section.comingSoon ? 'opacity-60 cursor-not-allowed' : 'hover:border-border-hover hover:bg-bg-secondary'}
-                      border-border transition-all group
-                    `}
+                    href={section.href}
+                    className="relative p-4 rounded-xl border bg-bg-secondary block hover:border-border-hover hover:bg-bg-secondary border-border transition-all group"
                   >
                     <div 
                       className="w-10 h-10 rounded-lg flex items-center justify-center mb-3"
@@ -190,14 +176,7 @@ export default function StudioHomePage() {
                       {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : section.count}
                     </div>
                     <div className="text-sm text-text-secondary">{section.title}</div>
-                    {section.comingSoon && (
-                      <span className="absolute top-3 right-3 text-[10px] font-medium px-2 py-0.5 rounded bg-bg-tertiary text-text-muted">
-                        Soon
-                      </span>
-                    )}
-                    {!section.comingSoon && (
-                      <ArrowRight className="absolute top-4 right-4 w-4 h-4 text-text-disabled group-hover:text-text-secondary transition-colors" />
-                    )}
+                    <ArrowRight className="absolute top-4 right-4 w-4 h-4 text-text-disabled group-hover:text-text-secondary transition-colors" />
                   </Link>
                 </motion.div>
               ))}

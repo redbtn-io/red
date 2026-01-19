@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/auth';
 import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
 import { RateLimits } from '@/lib/rate-limit/rate-limit';
-import { Graph } from '@redbtn/ai';
+import { Graph } from '@redbtn/redbtn';
 import connectToDatabase from '@/lib/database/mongodb';
 
 /**

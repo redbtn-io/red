@@ -82,11 +82,11 @@ The hook simply proxies to the shared script with the project path, so CI or man
 ### Prerequisites
 
 - Node.js 18+ 
-- The `@redbtn/ai` module (installed from local package)
+- The `@redbtn/redbtn` module (installed from local package)
 
 ### Installation
 
-1. **Install the @redbtn/ai module** (from the parent ai folder):
+1. **Install the @redbtn/redbtn module** (from the parent redbtn folder):
 
 ```bash
 # In the ai folder, build and pack the module
@@ -95,7 +95,7 @@ npm install
 npm run build
 npm pack
 
-# This creates: redbtn-ai-0.0.1.tgz
+# This creates: redbtn-redbtn-0.0.1-alpha.tgz
 ```
 
 2. **Install webapp dependencies**:
@@ -105,7 +105,7 @@ cd ../webapp
 npm install
 ```
 
-This will automatically install the `@redbtn/ai` module from the local tarball specified in `package.json`.
+This will automatically install the `@redbtn/redbtn` module from the local tarball specified in `package.json`.
 
 ### Environment Variables
 
@@ -140,7 +140,7 @@ npm run build
 npm start
 ```
 
-## Updating the @redbtn/ai Module
+## Updating the @redbtn/redbtn Module
 
 When you make changes to the ai module, you need to rebuild and reinstall it:
 
@@ -165,7 +165,7 @@ npm link
 
 # In the webapp folder
 cd ../webapp
-npm link @redbtn/ai
+npm link @redbtn/redbtn
 ```
 
 With `npm link`, changes to the ai module will be reflected immediately (after rebuilding with `npm run build` in the ai folder).
@@ -558,7 +558,7 @@ for await (const event of messageStream) {
 }
 ```
 
-**MessageQueue** (`@redbtn/ai/src/lib/memory/queue.ts`):
+**MessageQueue** (`@redbtn/redbtn/src/lib/memory/queue.ts`):
 ```typescript
 // Append and publish
 async appendContent(messageId: string, chunk: string) {

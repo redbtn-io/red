@@ -8,7 +8,7 @@
  * const generation = await client.getGeneration(generationId);
  */
 
-import { LogEntry, Generation, ConversationGenerationState } from '@redbtn/ai';
+import { LogEntry, Generation, ConversationGenerationState } from '@redbtn/redbtn';
 
 export class LoggingClient {
   private baseUrl: string;

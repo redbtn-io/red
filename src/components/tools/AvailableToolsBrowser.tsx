@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronRight, Search, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { useAvailableTools } from '@/hooks/useAvailableTools';
 
@@ -14,6 +14,13 @@ export function AvailableToolsBrowser({ onSelectTool, compact = false }: Availab
   const { tools, toolsByServer, loading, error } = useAvailableTools();
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set(['web', 'system', 'rag']));
   const [searchQuery, setSearchQuery] = useState('');
+  const [displayCount, setDisplayCount] = useState(5);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Reset display count when search changes
+  useEffect(() => {
+    setDisplayCount(5);
+  }, [searchQuery]);
 
   const toggleServer = (server: string) => {
     const newExpanded = new Set(expandedServers);
@@ -34,10 +41,27 @@ export function AvailableToolsBrowser({ onSelectTool, compact = false }: Availab
     ),
   })).filter(group => group.tools.length > 0);
 
-  const filteredTools = tools.filter(tool =>
-    tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    tool.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Sort tools: custom first, then alphabetically
+  const sortedFilteredTools = tools
+    .filter(tool =>
+      tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tool.description.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      // Custom tools first
+      if (a.source === 'custom' && b.source !== 'custom') return -1;
+      if (a.source !== 'custom' && b.source === 'custom') return 1;
+      // Then alphabetically
+      return a.name.localeCompare(b.name);
+    });
+
+  // Handle infinite scroll
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 20 && displayCount < sortedFilteredTools.length) {
+      setDisplayCount(prev => Math.min(prev + 5, sortedFilteredTools.length));
+    }
+  };
 
   if (compact) {
     // Minimal view for embedding
@@ -68,24 +92,42 @@ export function AvailableToolsBrowser({ onSelectTool, compact = false }: Availab
           </div>
         )}
 
-        {!loading && !error && filteredTools.length > 0 && (
-          <div className="max-h-64 overflow-y-auto space-y-1">
-            {filteredTools.slice(0, 10).map(tool => (
+        {!loading && !error && sortedFilteredTools.length > 0 && (
+          <div 
+            ref={listRef}
+            className="max-h-64 overflow-y-auto space-y-1"
+            onScroll={handleScroll}
+          >
+            {sortedFilteredTools.slice(0, displayCount).map(tool => (
               <div
                 key={`${tool.server}:${tool.name}`}
                 className="p-2 bg-bg-primary border border-border rounded hover:bg-bg-elevated cursor-pointer transition-colors"
                 onClick={() => onSelectTool?.(tool.name, tool)}
               >
-                <div className="font-mono text-xs text-accent-text">{tool.name}</div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono text-xs text-accent-text">{tool.name}</span>
+                  <span className={`text-[9px] px-1 rounded ${
+                    tool.source === 'custom' 
+                      ? 'bg-emerald-500/20 text-emerald-400' 
+                      : 'bg-blue-500/20 text-blue-400'
+                  }`}>
+                    {tool.server}
+                  </span>
+                </div>
                 <div className="text-xs text-text-muted line-clamp-1">{tool.description}</div>
               </div>
             ))}
+            {displayCount < sortedFilteredTools.length && (
+              <div className="text-center py-1 text-[10px] text-text-disabled">
+                Scroll for more ({sortedFilteredTools.length - displayCount} remaining)
+              </div>
+            )}
           </div>
         )}
 
-        {!loading && !error && filteredTools.length === 0 && (
+        {!loading && !error && sortedFilteredTools.length === 0 && (
           <div className="text-center py-4 text-text-muted text-sm">
-            No tools found matching "{searchQuery}"
+            {searchQuery ? `No tools found matching "${searchQuery}"` : 'No tools available'}
           </div>
         )}
       </div>
@@ -180,7 +222,7 @@ export function AvailableToolsBrowser({ onSelectTool, compact = false }: Availab
       {/* Summary */}
       {!loading && !error && (
         <div className="text-xs text-text-muted text-center py-2">
-          Showing {filteredTools.length} of {tools.length} available tools
+          Showing {sortedFilteredTools.length} of {tools.length} available tools
         </div>
       )}
     </div>

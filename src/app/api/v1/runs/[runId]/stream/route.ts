@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { RunKeys } from '@redbtn/ai';
+import { RunKeys } from '@redbtn/redbtn';
 import { verifyAuth } from '@/lib/auth/auth';
 import Redis from 'ioredis';
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/auth';
 import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
 import { RateLimits } from '@/lib/rate-limit/rate-limit';
-import { getDatabase } from '@redbtn/ai';
+import { getDatabase } from '@redbtn/redbtn';
 import { extractThinking } from '@/lib/api/thinking';
 
 interface RouteContext {

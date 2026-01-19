@@ -4,7 +4,7 @@ import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
 import { RateLimits } from '@/lib/rate-limit/rate-limit';
 import connectToDatabase from '@/lib/database/mongodb';
 import mongoose from 'mongoose';
-import { searchNodes, getAllTags } from '@redbtn/ai';
+import { searchNodes, getAllTags } from '@redbtn/redbtn';
 import { getUserNodePreferences } from '@/lib/database/models/UserNodePreferences';
 
 /**

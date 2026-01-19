@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { RunPublisher } from '@redbtn/ai';
+import { RunPublisher } from '@redbtn/redbtn';
 import { verifyAuth } from '@/lib/auth/auth';
 import Redis from 'ioredis';
 

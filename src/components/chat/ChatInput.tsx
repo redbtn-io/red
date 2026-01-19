@@ -31,7 +31,7 @@ export function ChatInput({
 
   return (
     <motion.div 
-      className="sticky bottom-4 z-40 bg-bg-elevated border-t border-border py-3 px-4 pb-safe"
+      className="sticky bottom-4 pwa-bottom-adjust z-40 bg-bg-elevated border-t border-border py-3 px-4 pb-safe"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, delay: 0.1 }}

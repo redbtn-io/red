@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Database,
@@ -13,8 +13,22 @@ import {
   ArrowRight,
   ArrowLeft,
   ArrowLeftRight,
+  Loader2,
 } from 'lucide-react';
 import { useGraphStore } from '@/lib/stores/graphStore';
+
+interface NodeDefinition {
+  nodeId: string;
+  name: string;
+  steps?: Array<{
+    type: string;
+    config: Record<string, unknown>;
+  }>;
+  fullConfig?: Array<{
+    type: string;
+    config: Record<string, unknown>;
+  }>;
+}
 
 interface StateNode {
   name: string;
@@ -31,6 +45,10 @@ interface StateManagerProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+// Cache for node definitions to avoid re-fetching
+const nodeDefinitionsCache = new Map<string, NodeDefinition>();
+
 
 // Infrastructure fields (not typically modified by user nodes)
 const INFRASTRUCTURE_FIELDS: Record<string, { type: string; description: string }> = {
@@ -70,6 +88,68 @@ export default function StateManager({ isOpen, onClose }: StateManagerProps) {
   const { nodes, selectNode } = useGraphStore();
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set(['data', 'globalState']));
   const [showInfrastructure, setShowInfrastructure] = useState(false);
+  const [nodeDefinitions, setNodeDefinitions] = useState<Map<string, NodeDefinition>>(new Map());
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch node definitions when opened
+  useEffect(() => {
+    if (!isOpen || nodes.length === 0) return;
+
+    const fetchNodeDefinitions = async () => {
+      const nodeTypesToFetch = new Set<string>();
+      
+      // Collect all unique node types that need definitions
+      nodes.forEach((node) => {
+        if (node.type === 'startNode' || node.type === 'endNode') return;
+        const nodeType = node.data?.nodeType;
+        if (nodeType && !nodeDefinitionsCache.has(nodeType)) {
+          nodeTypesToFetch.add(nodeType);
+        }
+      });
+
+      if (nodeTypesToFetch.size === 0) {
+        // All definitions are cached
+        const cachedDefs = new Map<string, NodeDefinition>();
+        nodes.forEach((node) => {
+          const nodeType = node.data?.nodeType;
+          if (nodeType && nodeDefinitionsCache.has(nodeType)) {
+            cachedDefs.set(nodeType, nodeDefinitionsCache.get(nodeType)!);
+          }
+        });
+        setNodeDefinitions(cachedDefs);
+        return;
+      }
+
+      setIsLoading(true);
+      const newDefinitions = new Map<string, NodeDefinition>(nodeDefinitionsCache);
+
+      // Fetch each node definition
+      await Promise.all(
+        Array.from(nodeTypesToFetch).map(async (nodeType) => {
+          try {
+            const response = await fetch(`/api/v1/nodes/${nodeType}`);
+            if (response.ok) {
+              const data = await response.json();
+              const def: NodeDefinition = {
+                nodeId: data.nodeId,
+                name: data.name,
+                steps: data.fullConfig || data.steps || [],
+              };
+              nodeDefinitionsCache.set(nodeType, def);
+              newDefinitions.set(nodeType, def);
+            }
+          } catch (error) {
+            console.error(`[StateManager] Failed to fetch node definition for ${nodeType}:`, error);
+          }
+        })
+      );
+
+      setNodeDefinitions(newDefinitions);
+      setIsLoading(false);
+    };
+
+    fetchNodeDefinitions();
+  }, [isOpen, nodes]);
 
   // Build state tree from node configs
   const stateTree = useMemo(() => {
@@ -130,19 +210,44 @@ export default function StateManager({ isOpen, onClose }: StateManagerProps) {
       if (node.type === 'startNode' || node.type === 'endNode') return;
       
       const nodeName = node.data?.label || node.id;
+      const nodeType = node.data?.nodeType;
       
-      // Stringify config to find all state references
+      // Get steps from node definition (fetched from API) or fall back to per-graph overrides
+      const nodeDefinition = nodeType ? nodeDefinitions.get(nodeType) : null;
+      const definitionSteps = nodeDefinition?.steps || [];
+      const graphSteps = node.data?.steps || [];
+      
+      // Use node definition steps as base, or graph steps if no definition available
+      const steps = definitionSteps.length > 0 ? definitionSteps : graphSteps;
+      
+      // Stringify config AND steps to find all state references
       const config = node.data?.config || {};
-      const steps = node.data?.steps || [];
       const fullConfig = JSON.stringify({ config, steps });
 
       // Find all {{state.xxx}} reads
-      const readMatches = fullConfig.matchAll(/\{\{\s*state\.([a-zA-Z0-9_.?\[\]]+)/g);
+      const readMatches = fullConfig.matchAll(/\{\{\s*state\.([a-zA-Z0-9_.?[\]]+)/g);
       for (const match of readMatches) {
         const path = match[1]
           .replace(/\?/g, '') // Remove optional chaining
           .replace(/\[\d+\]/g, '') // Remove array indices
           .replace(/\.+$/, ''); // Remove trailing dots
+        
+        if (path) {
+          const stateNode = ensurePath(path);
+          applyTypeHints(stateNode);
+          if (!stateNode.readers.includes(nodeName)) {
+            stateNode.readers.push(nodeName);
+          }
+        }
+      }
+
+      // Find all {{globalState.xxx}} reads
+      const globalStateReadMatches = fullConfig.matchAll(/\{\{\s*globalState\.([a-zA-Z0-9_.?[\]]+)/g);
+      for (const match of globalStateReadMatches) {
+        const path = 'globalState.' + match[1]
+          .replace(/\?/g, '')
+          .replace(/\[\d+\]/g, '')
+          .replace(/\.+$/, '');
         
         if (path) {
           const stateNode = ensurePath(path);
@@ -195,11 +300,21 @@ export default function StateManager({ isOpen, onClose }: StateManagerProps) {
             stateNode.writers.push(nodeName);
           }
         }
+
+        // Tool outputField writes
+        if (step.type === 'tool' && stepConfig?.outputField) {
+          const path = stepConfig.outputField as string;
+          const stateNode = ensurePath(path);
+          applyTypeHints(stateNode);
+          if (!stateNode.writers.includes(nodeName)) {
+            stateNode.writers.push(nodeName);
+          }
+        }
       });
     });
 
     return root;
-  }, [nodes]);
+  }, [nodes, nodeDefinitions]);
 
   const togglePath = useCallback((path: string) => {
     setExpandedPaths(prev => {
@@ -270,18 +385,33 @@ export default function StateManager({ isOpen, onClose }: StateManagerProps) {
 
       {/* State Tree */}
       <div className="flex-1 overflow-y-auto p-2">
-        <div className="font-mono text-xs">
-          {visibleChildren.map(([key, node]) => (
-            <StateTreeNode
-              key={key}
-              node={node}
-              depth={0}
-              expandedPaths={expandedPaths}
-              onToggle={togglePath}
-              onNodeClick={handleNodeClick}
-            />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-5 h-5 text-cyan-500 animate-spin" />
+            <span className="ml-2 text-xs text-text-muted">Loading node definitions...</span>
+          </div>
+        ) : visibleChildren.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <Database className="w-8 h-8 text-text-disabled mb-2" />
+            <p className="text-xs text-text-muted">No state references found</p>
+            <p className="text-[10px] text-text-disabled mt-1">
+              Add nodes with state references to see them here
+            </p>
+          </div>
+        ) : (
+          <div className="font-mono text-xs">
+            {visibleChildren.map(([key, node]) => (
+              <StateTreeNode
+                key={key}
+                node={node}
+                depth={0}
+                expandedPaths={expandedPaths}
+                onToggle={togglePath}
+                onNodeClick={handleNodeClick}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Legend */}

@@ -27,7 +27,7 @@ import {
   isStreamingResult,
   type RunResult,
   type StreamingRunResult,
-} from '@redbtn/ai';
+} from '@redbtn/redbtn';
 
 interface RouteParams {
   params: Promise<{ automationId: string }>;

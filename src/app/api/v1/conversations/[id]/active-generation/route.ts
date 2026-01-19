@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRed, getDatabase } from '@/lib/red';
-import { getActiveRunForConversation, getRunState } from '@redbtn/ai';
+import { getActiveRunForConversation, getRunState } from '@redbtn/redbtn';
 import { verifyAuth } from '@/lib/auth/auth';
 import Redis from 'ioredis';
 

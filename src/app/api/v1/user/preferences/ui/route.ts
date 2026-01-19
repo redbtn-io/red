@@ -7,6 +7,7 @@ import mongoose from 'mongoose';
 const UIPreferencesSchema = new mongoose.Schema({
   userId: { type: String, required: true, unique: true, index: true },
   navOrder: { type: [String], default: null }, // Array of nav item hrefs in order
+  favoriteTools: { type: [String], default: [] }, // Array of tool names (server:toolName format)
   updatedAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
@@ -15,7 +16,7 @@ const UIPreferences = mongoose.models.UIPreferences ||
 
 /**
  * GET /api/v1/user/preferences/ui
- * Get user's UI preferences (nav order, etc.)
+ * Get user's UI preferences (nav order, favorite tools, etc.)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -30,6 +31,7 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({
       navOrder: prefs?.navOrder || null,
+      favoriteTools: prefs?.favoriteTools || [],
     });
   } catch (error) {
     console.error('[API] Error getting UI preferences:', error);
@@ -49,18 +51,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { navOrder } = body;
+    const { navOrder, favoriteTools } = body;
 
     await connectToDatabase();
     
+    const updateFields: Record<string, unknown> = { updatedAt: new Date() };
+    if (navOrder !== undefined) updateFields.navOrder = navOrder || null;
+    if (favoriteTools !== undefined) updateFields.favoriteTools = favoriteTools || [];
+    
     await UIPreferences.findOneAndUpdate(
       { userId: user.userId },
-      { 
-        $set: { 
-          navOrder: navOrder || null,
-          updatedAt: new Date()
-        }
-      },
+      { $set: updateFields },
       { upsert: true, new: true }
     );
     

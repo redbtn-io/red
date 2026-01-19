@@ -71,8 +71,10 @@ export function LogsSidebar({
       {/* Sidebar */}
       <div
         className={`
-          fixed inset-y-0 left-0 z-50 w-64 bg-bg-elevated border-r border-border text-text-primary transform transition-transform duration-200 ease-in-out
+          fixed left-0 z-50 w-64 bg-bg-elevated border-r border-border text-text-primary transform transition-transform duration-200 ease-in-out
           lg:relative lg:translate-x-0
+          top-[env(safe-area-inset-top,0px)] bottom-0
+          lg:top-0 lg:h-full
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
@@ -157,7 +159,7 @@ export function LogsSidebar({
           </div>
 
           {/* Footer */}
-          <div className="p-4 border-t border-border space-y-3">
+          <div className="p-4 pb-safe border-t border-border space-y-3">
             {/* Chat Link */}
             <Link
               href="/"

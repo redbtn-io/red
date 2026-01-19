@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getRed, getDatabase } from '@/lib/red';
-import { LogEntry } from '@redbtn/ai';
+import { LogEntry } from '@redbtn/redbtn';
 import { verifyAuth } from '@/lib/auth/auth';
 
 export async function GET(request: NextRequest) {

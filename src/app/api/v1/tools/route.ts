@@ -4,7 +4,10 @@ import { getRed } from '@/lib/red';
 
 /**
  * GET /api/v1/tools
- * Get all available MCP tools
+ * Get all available MCP tools (global + user's custom)
+ * 
+ * Query params:
+ * - source: 'all' | 'global' | 'custom' - filter by source (default: 'all')
  */
 export async function GET(request: NextRequest) {
   try {
@@ -17,32 +20,51 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get all available MCP tools
+    // Get source filter from query params
+    const { searchParams } = new URL(request.url);
+    const sourceFilter = searchParams.get('source') as 'all' | 'global' | 'custom' | null;
+
+    // Get all available tools including user's custom MCP tools
     const red = await getRed();
-    const toolsByServer = await red.getMcpTools();
+    const result = await red.getAllTools(user.userId);
+
+    // Apply source filter if specified
+    let filteredTools = result.tools;
+    let filteredServers = result.toolsByServer;
+    
+    if (sourceFilter === 'global') {
+      filteredTools = result.tools.filter(t => t.source === 'global');
+      filteredServers = result.toolsByServer.filter(s => s.source === 'global');
+    } else if (sourceFilter === 'custom') {
+      filteredTools = result.tools.filter(t => t.source === 'custom');
+      filteredServers = result.toolsByServer.filter(s => s.source === 'custom');
+    }
 
     // Format response
-    const tools = toolsByServer.flatMap(({ server, tools }) =>
-      tools.map(tool => ({
-        server,
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.inputSchema,
-      }))
-    );
+    const tools = filteredTools.map(tool => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+      server: tool.serverName,
+      source: tool.source,
+      connectionId: tool.connectionId,
+    }));
 
     return NextResponse.json({
       success: true,
       count: tools.length,
       tools,
-      toolsByServer: toolsByServer.map(({ server, tools }) => ({
+      toolsByServer: filteredServers.map(({ server, source, connectionId, tools }) => ({
         server,
+        source,
+        connectionId,
         count: tools.length,
         tools: tools.map(t => ({
           name: t.name,
           description: t.description,
         })),
       })),
+      sources: result.sources,
     });
 
   } catch (error) {

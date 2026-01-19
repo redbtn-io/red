@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/auth';
 import connectToDatabase from '@/lib/database/mongodb';
 import User from '@/lib/database/models/auth/User';
-import { Graph } from '@redbtn/ai';
+import { Graph } from '@redbtn/redbtn';
 
 /**
  * PUT /api/v1/user/preferences/default-graph

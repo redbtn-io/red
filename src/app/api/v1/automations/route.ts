@@ -9,7 +9,7 @@ import {
   AutomationStatus, 
   generateAutomationId 
 } from '@/lib/database/models/automation';
-import { Graph } from '@redbtn/ai';
+import { Graph } from '@redbtn/redbtn';
 
 /**
  * POST /api/v1/automations

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { VectorStoreManager } from '@redbtn/ai';
+import { VectorStoreManager } from '@redbtn/redbtn';
 import { getUserFromRequest } from '@/lib/auth';
 import mongoose from 'mongoose';
 import connectToDatabase from '@/lib/database/mongodb';
