@@ -4,14 +4,14 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { 
-  ArrowLeft,
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  AlertCircle,
-  RefreshCw,
+import {
+    ArrowLeft,
+    Loader2,
+    CheckCircle2,
+    XCircle,
+    Clock,
+    AlertCircle,
+    RefreshCw,
 } from 'lucide-react';
 import { StudioSidebar } from '@/components/layout/StudioSidebar';
 import { StudioHeader } from '@/components/layout/StudioHeader';

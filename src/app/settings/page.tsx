@@ -2,19 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Settings, 
-  User, 
-  Bell, 
-  Palette, 
-  Shield, 
-  Key,
-  Loader2,
-  Save,
-  ChevronRight,
-  Moon,
-  Sun,
-  Monitor,
+import {
+    Settings,
+    User,
+    Bell,
+    Palette,
+    Shield,
+    Key,
+    Loader2,
+    Save,
+    ChevronRight,
+    Moon,
+    Sun,
+    Monitor,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';

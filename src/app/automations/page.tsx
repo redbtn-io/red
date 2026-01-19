@@ -4,34 +4,34 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { 
-  Zap, 
-  Plus, 
-  Play, 
-  Pause, 
-  Clock, 
-  CheckCircle2, 
-  XCircle,
-  Loader2,
-  Calendar,
-  Webhook,
-  MousePointer,
-  Radio,
-  MoreVertical,
-  Trash2,
-  Settings,
-  BarChart3,
-  GitBranch,
+import {
+    Zap,
+    Plus,
+    Play,
+    Pause,
+    Clock,
+    CheckCircle2,
+    XCircle,
+    Loader2,
+    Calendar,
+    Webhook,
+    MousePointer,
+    Radio,
+    MoreVertical,
+    Trash2,
+    Settings,
+    BarChart3,
+    GitBranch,
 } from 'lucide-react';
 import { StudioSidebar } from '@/components/layout/StudioSidebar';
 import { StudioHeader } from '@/components/layout/StudioHeader';
 import { ConfirmModal } from '@/components/ui/Modal';
 import { GraphRunDrawer, type GraphDefinition } from '@/components/graph';
-import { 
-  pageVariants, 
-  staggerContainerVariants, 
-  staggerItemVariants,
-  fadeUpVariants,
+import {
+    pageVariants,
+    staggerContainerVariants,
+    staggerItemVariants,
+    fadeUpVariants,
 } from '@/lib/animations';
 import type { AutomationSummary, AutomationRun, TriggerType, AutomationStatus } from '@/types/automation';
 

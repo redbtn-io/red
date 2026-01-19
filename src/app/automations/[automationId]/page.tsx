@@ -5,22 +5,22 @@ import { flushSync } from 'react-dom';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { 
-  ArrowLeft,
-  Play,
-  Pause,
-  Loader2,
-  Webhook,
-  Calendar,
-  MousePointer,
-  Radio,
-  Settings,
-  Clock,
-  BarChart3,
-  Copy,
-  Check,
-  ExternalLink,
-  GitBranch,
+import {
+    ArrowLeft,
+    Play,
+    Pause,
+    Loader2,
+    Webhook,
+    Calendar,
+    MousePointer,
+    Radio,
+    Settings,
+    Clock,
+    BarChart3,
+    Copy,
+    Check,
+    ExternalLink,
+    GitBranch,
 } from 'lucide-react';
 import { StudioSidebar } from '@/components/layout/StudioSidebar';
 import { StudioHeader } from '@/components/layout/StudioHeader';

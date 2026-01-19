@@ -3,17 +3,17 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { 
-  Zap, 
-  ArrowLeft,
-  Save,
-  Loader2,
-  Webhook,
-  Calendar,
-  MousePointer,
-  Radio,
-  GitBranch,
-  ChevronDown,
+import {
+    Zap,
+    ArrowLeft,
+    Save,
+    Loader2,
+    Webhook,
+    Calendar,
+    MousePointer,
+    Radio,
+    GitBranch,
+    ChevronDown,
 } from 'lucide-react';
 import { StudioSidebar } from '@/components/layout/StudioSidebar';
 import { StudioHeader } from '@/components/layout/StudioHeader';

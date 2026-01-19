@@ -4,17 +4,17 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { 
-  ArrowLeft,
-  Settings,
-  Save,
-  Loader2,
-  Webhook,
-  Calendar,
-  MousePointer,
-  Radio,
-  AlertTriangle,
-  Trash2,
+import {
+    ArrowLeft,
+    Settings,
+    Save,
+    Loader2,
+    Webhook,
+    Calendar,
+    MousePointer,
+    Radio,
+    AlertTriangle,
+    Trash2,
 } from 'lucide-react';
 import { StudioSidebar } from '@/components/layout/StudioSidebar';
 import { StudioHeader } from '@/components/layout/StudioHeader';

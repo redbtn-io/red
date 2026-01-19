@@ -4,27 +4,27 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { 
-  MessageSquare, 
-  Workflow, 
-  Zap,
-  Clock,
-  ArrowRight,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  Plus,
-  Bot,
-  TrendingUp,
+import {
+    MessageSquare,
+    Workflow,
+    Zap,
+    Clock,
+    ArrowRight,
+    CheckCircle2,
+    XCircle,
+    Loader2,
+    Plus,
+    Bot,
+    TrendingUp,
 } from 'lucide-react';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { StudioHeader } from '@/components/layout/StudioHeader';
 import { LoginModal } from '@/components/auth/LoginModal';
 import { CompleteProfileModal } from '@/components/auth/CompleteProfileModal';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  pageVariants, 
-  fadeUpVariants,
+import {
+    pageVariants,
+    fadeUpVariants,
 } from '@/lib/animations';
 
 interface DashboardData {
