@@ -32,7 +32,7 @@ export default function DataLayout({ children }: DataLayoutProps) {
   const { title, icon: PageIcon } = getPageInfo();
 
   return (
-    <div className="flex h-screen bg-bg-primary text-text-primary overflow-hidden">
+    <div className="flex h-app bg-bg-primary text-text-primary overflow-hidden">
       <DataSidebar 
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)} 

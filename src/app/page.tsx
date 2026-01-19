@@ -161,7 +161,7 @@ export default function DashboardPage() {
 
   if (authLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-bg-primary">
+      <div className="flex h-app items-center justify-center bg-bg-primary">
         <Loader2 className="w-8 h-8 text-text-primary animate-spin" />
       </div>
     );
@@ -178,7 +178,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex h-screen bg-bg-primary overflow-hidden">
+    <div className="flex h-app bg-bg-primary overflow-hidden">
       <AppSidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

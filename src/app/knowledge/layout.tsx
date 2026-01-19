@@ -27,7 +27,7 @@ export default function KnowledgeLayout({ children }: KnowledgeLayoutProps) {
   };
 
   return (
-    <div className="flex h-screen bg-bg-primary text-text-primary overflow-hidden">
+    <div className="flex h-app bg-bg-primary text-text-primary overflow-hidden">
       <KnowledgeSidebar 
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)} 

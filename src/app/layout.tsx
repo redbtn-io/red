@@ -27,6 +27,9 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "redbtn",
+    startupImage: [
+      { url: "/apple-touch-icon.png" },
+    ],
   },
   icons: {
     icon: [

@@ -182,6 +182,10 @@ html {
   -ms-touch-action: pan-x pan-y;
   height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
+  /* Ensure the app takes the full viewport including safe areas */
+  min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
 }
 
 body {
@@ -194,9 +198,11 @@ body {
   text-size-adjust: 100%;
   height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
   transition: background-color 0.2s ease, color 0.2s ease;
-  /* Base bottom padding + PWA safe area for curved screens / home indicator */
-  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  /* PWA safe area for status bar (top) and home indicator (bottom) */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* All buttons should have pointer cursor */
@@ -242,17 +248,56 @@ input, textarea, select {
   background: var(--scrollbar-thumb-hover);
 }
 
+/* ============================================
+   PWA SAFE AREA & HEIGHT UTILITIES
+   ============================================ */
+
+/* Safe height for app containers - uses 100% to fill body which already has safe area padding */
+.h-app {
+  height: 100%;
+}
+
+/* Alternative using CSS variable set by SetVh.tsx */
+.h-app-vh {
+  height: calc(var(--vh, 1vh) * 100);
+}
+
 /* PWA Safe Area Utilities */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.mt-safe {
+  margin-top: env(safe-area-inset-top, 0px);
 }
 
 .mb-safe {
   margin-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+.top-safe {
+  top: env(safe-area-inset-top, 0px);
+}
+
 .bottom-safe {
   bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Scroll control - enable scrolling only where needed */
+.scroll-enabled {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+.scroll-x-enabled {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 
 /* Skeleton placeholder for assistant message */

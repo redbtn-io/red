@@ -152,7 +152,7 @@ export default function EditNeuronPage({ params }: { params: Promise<{ neuronId:
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-bg-primary">
+      <div className="flex items-center justify-center h-app bg-bg-primary">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-accent mx-auto mb-2" />
           <p className="text-sm text-text-secondary">Loading neuron...</p>
@@ -162,7 +162,7 @@ export default function EditNeuronPage({ params }: { params: Promise<{ neuronId:
   }
 
   return (
-    <div className="flex flex-col h-screen bg-bg-primary overflow-hidden">
+    <div className="flex flex-col h-app bg-bg-primary overflow-hidden">
       {/* Header */}
       <motion.div 
         className="flex items-center justify-between px-4 py-3 border-b border-border bg-bg-primary/80 backdrop-blur-sm sticky top-0 z-10"

@@ -77,7 +77,7 @@ export default function GraphEditorPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="h-screen bg-bg-primary flex items-center justify-center">
+      <div className="h-app bg-bg-primary flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 text-red-500 animate-spin" />
           <p className="text-text-secondary">Loading graph...</p>
@@ -89,7 +89,7 @@ export default function GraphEditorPage() {
   // Error state
   if (error) {
     return (
-      <div className="h-screen bg-bg-primary flex items-center justify-center">
+      <div className="h-app bg-bg-primary flex items-center justify-center">
         <div className="flex flex-col items-center gap-4 max-w-md text-center">
           <div className="w-16 h-16 rounded-full bg-red-900/30 flex items-center justify-center">
             <AlertCircle className="w-8 h-8 text-red-500" />
@@ -117,7 +117,7 @@ export default function GraphEditorPage() {
 
   return (
     <motion.div 
-      className="h-screen bg-bg-primary flex flex-col"
+      className="h-app bg-bg-primary flex flex-col"
       initial="initial"
       animate="animate"
       exit="exit"

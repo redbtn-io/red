@@ -158,7 +158,7 @@ export default function NewAutomationPage() {
   const selectedGraph = graphs.find(g => g.graphId === selectedGraphId);
 
   return (
-    <div className="flex h-screen bg-bg-primary overflow-hidden">
+    <div className="flex h-app bg-bg-primary overflow-hidden">
       <StudioSidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

@@ -64,7 +64,7 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="flex h-screen bg-bg-primary overflow-hidden">
+    <div className="flex h-app bg-bg-primary overflow-hidden">
       <AppSidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

@@ -187,7 +187,7 @@ export default function AutomationsPage() {
   const activeCount = automations.filter(a => a.isEnabled).length;
 
   return (
-    <div className="flex h-screen bg-bg-primary overflow-hidden">
+    <div className="flex h-app bg-bg-primary overflow-hidden">
       <StudioSidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

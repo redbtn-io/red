@@ -1692,7 +1692,7 @@ function ChatPageContent() {
   };
 
   return (
-    <div className="flex bg-bg-primary overflow-hidden" style={{ height: 'calc(var(--vh, 1vh) * 100)' }}>
+    <div className="flex bg-bg-primary overflow-hidden h-app">
       {!authLoading && !user ? (
         <LoginModal
           isOpen={true}

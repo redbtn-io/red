@@ -113,7 +113,7 @@ export default function AutomationEditPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-bg-primary">
+      <div className="flex h-app items-center justify-center bg-bg-primary">
         <Loader2 className="w-8 h-8 animate-spin text-text-muted" />
       </div>
     );
@@ -121,7 +121,7 @@ export default function AutomationEditPage() {
 
   if (!automation) {
     return (
-      <div className="flex h-screen items-center justify-center bg-bg-primary">
+      <div className="flex h-app items-center justify-center bg-bg-primary">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-text-primary mb-2">Automation not found</h2>
           <Link href="/automations" className="text-accent-text hover:underline">
@@ -133,7 +133,7 @@ export default function AutomationEditPage() {
   }
 
   return (
-    <div className="flex h-screen bg-bg-primary overflow-hidden">
+    <div className="flex h-app bg-bg-primary overflow-hidden">
       <StudioSidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

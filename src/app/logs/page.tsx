@@ -344,7 +344,7 @@ function TerminalPageContent() {
 
   if (authLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-bg-primary">
+      <div className="flex h-app items-center justify-center bg-bg-primary">
         <LoadingSpinner size={32} />
       </div>
     );
@@ -361,7 +361,7 @@ function TerminalPageContent() {
   }
 
   return (
-    <div className="flex h-screen bg-bg-primary overflow-hidden">
+    <div className="flex h-app bg-bg-primary overflow-hidden">
       <AppSidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
