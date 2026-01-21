@@ -128,7 +128,7 @@ export default function StudioHomePage() {
         {/* Scrollable Content */}
         <main className="flex-1 overflow-y-auto">
           <motion.div 
-            className="max-w-6xl mx-auto px-4 py-8 pb-24"
+            className="max-w-6xl mx-auto px-4 py-8 pb-scroll-safe"
             variants={pageVariants}
             initial="initial"
             animate="animate"

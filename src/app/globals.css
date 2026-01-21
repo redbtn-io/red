@@ -180,12 +180,9 @@
 html {
   touch-action: pan-x pan-y;
   -ms-touch-action: pan-x pan-y;
-  height: 100%;
+  height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
-  /* Ensure the app takes the full viewport including safe areas */
-  min-height: 100vh;
-  min-height: 100dvh; /* Dynamic viewport height for mobile */
   /* Disable text selection globally - enable where needed */
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -202,13 +199,10 @@ body {
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  height: 100%;
+  height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
   transition: background-color 0.2s ease, color 0.2s ease;
-  /* PWA safe area - apply ONLY top padding for status bar
-     Bottom safe area is handled by individual components (sidebars, inputs)
-     to avoid double-padding issues */
   padding-top: env(safe-area-inset-top, 0px);
 }
 
@@ -241,7 +235,7 @@ input, textarea, select {
     margin-top: 0 !important;
   }
   
-  /* In standalone mode, reduce extra bottom margins since pb-safe handles the home indicator */
+  /* In standalone mode, the home indicator area is handled by the OS */
   .pwa-bottom-adjust {
     bottom: 0 !important;
   }
@@ -264,9 +258,9 @@ input, textarea, select {
    PWA SAFE AREA & HEIGHT UTILITIES
    ============================================ */
 
-/* Safe height for app containers - uses 100% to fill body which already has safe area padding */
+/* Safe height for app containers */
 .h-app {
-  height: 100%;
+  height: 100dvh;
 }
 
 /* Alternative using CSS variable set by SetVh.tsx */
@@ -281,6 +275,11 @@ input, textarea, select {
 
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Safe bottom padding with extra scroll space - use instead of pb-24 for scrollable content */
+.pb-scroll-safe {
+  padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
 }
 
 .mt-safe {

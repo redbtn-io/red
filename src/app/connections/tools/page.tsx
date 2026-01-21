@@ -621,7 +621,7 @@ function CreateSetModal({ isOpen, onClose, onCreate, tools, editingSet }: Create
         <div className="p-6 border-b border-border">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-text-primary">
-              {editingSet ? 'Edit Tool Set' : 'Create Tool Set'}
+              {editingSet ? 'Edit Toolkit' : 'Create Toolkit'}
             </h2>
             <button
               onClick={onClose}
@@ -647,7 +647,7 @@ function CreateSetModal({ isOpen, onClose, onCreate, tools, editingSet }: Create
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="My Tool Set"
+                placeholder="My Toolkit"
                 className="w-full px-4 py-3 bg-bg-primary border border-border rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
               />
             </div>
@@ -899,7 +899,7 @@ export default function ToolsPage() {
             </Link>
             <div>
               <h1 className="text-2xl font-bold text-text-primary">Tools</h1>
-              <p className="text-sm text-text-muted">Browse MCP tools and manage tool sets</p>
+              <p className="text-sm text-text-muted">Browse MCP tools and manage toolkits</p>
             </div>
           </div>
 
@@ -927,7 +927,7 @@ export default function ToolsPage() {
               }`}
             >
               <Package className="w-4 h-4" />
-              <span>Tool Sets</span>
+              <span>Toolkits</span>
               <span className="px-2 py-0.5 text-xs rounded-full bg-black/20">
                 {toolsets.length}
               </span>
@@ -1170,7 +1170,7 @@ export default function ToolsPage() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold text-text-primary">Tool Sets</h2>
+                    <h2 className="text-lg font-semibold text-text-primary">Toolkits</h2>
                     <p className="text-sm text-text-muted">Create reusable groups of tools for your nodes</p>
                   </div>
                   <button
@@ -1178,17 +1178,17 @@ export default function ToolsPage() {
                     className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>New Tool Set</span>
+                    <span>New Toolkit</span>
                   </button>
                 </div>
 
                 <div className="flex items-start gap-3 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                   <Info className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
                   <div className="text-sm text-blue-200">
-                    <p className="font-medium mb-1">How to use Tool Sets</p>
+                    <p className="font-medium mb-1">How to use Toolkits</p>
                     <p className="text-blue-300">
-                      Tool Sets let you group tools together for easy reference. When creating or editing a node,
-                      you can reference a tool set ID instead of listing individual tools. This makes it easy to
+                      Toolkits let you group tools together for easy reference. When creating or editing a node,
+                      you can reference a toolkit ID instead of listing individual tools. This makes it easy to
                       update which tools are available across multiple nodes at once.
                     </p>
                   </div>
@@ -1197,7 +1197,7 @@ export default function ToolsPage() {
                 {setsLoading && (
                   <div className="flex flex-col items-center justify-center py-20">
                     <Loader2 className="w-8 h-8 text-accent animate-spin mb-3" />
-                    <p className="text-text-secondary">Loading tool sets...</p>
+                    <p className="text-text-secondary">Loading toolkits...</p>
                   </div>
                 )}
 
@@ -1206,13 +1206,13 @@ export default function ToolsPage() {
                     {toolsets.length === 0 ? (
                       <div className="text-center py-20">
                         <FolderOpen className="w-12 h-12 text-text-disabled mx-auto mb-4" />
-                        <p className="text-text-secondary mb-4">No tool sets yet</p>
+                        <p className="text-text-secondary mb-4">No toolkits yet</p>
                         <button
                           onClick={() => setShowCreateModal(true)}
                           className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors"
                         >
                           <Plus className="w-4 h-4" />
-                          <span>Create your first tool set</span>
+                          <span>Create your first toolkit</span>
                         </button>
                       </div>
                     ) : (
@@ -1265,7 +1265,7 @@ export default function ToolsPage() {
         isOpen={!!deleteConfirmSet}
         onClose={() => setDeleteConfirmSet(null)}
         onConfirm={confirmDeleteSet}
-        title="Delete Tool Set"
+        title="Delete Toolkit"
         message={`Delete "${deleteConfirmSet?.name}"? This cannot be undone.`}
         confirmText="Delete"
         variant="danger"

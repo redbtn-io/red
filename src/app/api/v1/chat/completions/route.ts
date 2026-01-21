@@ -30,6 +30,7 @@ import {
   type RunResult,
   type StreamingRunResult,
 } from '@redbtn/redbtn';
+import { createConnectionFetcher } from '@/lib/connections';
 
 // =============================================================================
 // Types
@@ -251,6 +252,9 @@ export async function POST(request: NextRequest) {
     const requestRunId = typeof (body as any).runId === 'string' ? (body as any).runId : undefined;
     console.log(`[Completions] ${new Date().toISOString()} Starting run with runId=${requestRunId}`);
 
+    // Create connection fetcher for this user
+    const connectionFetcher = createConnectionFetcher(user.userId);
+
     // 2. Start run execution
     const result = await run(red, { message: userMessage }, {
       userId: user.userId,
@@ -259,6 +263,7 @@ export async function POST(request: NextRequest) {
       stream: body.stream ?? true,
       source: { application: 'redChat' },
       runId: requestRunId, // Use frontend-provided runId if available
+      connectionFetcher, // Provide connection access during graph execution
     });
     console.log(`[Completions] ${new Date().toISOString()} run returned`);
 

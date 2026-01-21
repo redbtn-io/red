@@ -34,7 +34,7 @@ export default function BrowseLayout({
   const meta = pageMeta[pathname] || { title: 'Studio', subtitle: '' };
 
   return (
-    <div className="flex h-screen bg-bg-primary overflow-hidden">
+    <div className="flex h-app bg-bg-primary overflow-hidden">
       <StudioSidebar 
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)} 
@@ -50,7 +50,7 @@ export default function BrowseLayout({
         
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-scroll-safe">
             {children}
           </div>
         </div>

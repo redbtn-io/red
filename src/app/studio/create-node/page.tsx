@@ -1131,7 +1131,7 @@ export default function CreateNodePage() {
 
         {/* Quick Links */}
         <motion.div 
-          className="flex items-center justify-center gap-4 text-sm pb-24 md:pb-12"
+          className="flex items-center justify-center gap-4 text-sm pb-scroll-safe"
           variants={staggerItemVariants}
         >
           <Link href="/studio/nodes" className="text-text-muted hover:text-text-secondary transition-colors">

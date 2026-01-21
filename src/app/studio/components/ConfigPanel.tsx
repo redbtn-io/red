@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
     X,
     Trash2,
@@ -1304,8 +1305,21 @@ function ToolStepEditor({
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState(String(config.toolName || config.name || ''));
   const [displayCount, setDisplayCount] = useState(5);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Update dropdown position when input is focused
+  const updateDropdownPosition = useCallback(() => {
+    if (inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  }, []);
   
   // Find the selected tool's schema
   const selectedTool = tools.find(t => t.name === config.toolName || t.name === config.name);
@@ -1451,7 +1465,10 @@ function ToolStepEditor({
               type="text"
               value={inputValue}
               onChange={(e) => handleInputChange(e.target.value)}
-              onFocus={() => setIsOpen(true)}
+              onFocus={() => {
+                updateDropdownPosition();
+                setIsOpen(true);
+              }}
               className="w-full pl-7 pr-2 py-1.5 bg-bg-secondary border border-border rounded text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent font-mono"
               placeholder="Search or type tool name..."
             />
@@ -1466,11 +1483,16 @@ function ToolStepEditor({
             )}
           </div>
           
-          {/* Dropdown */}
-          {isOpen && (
+          {/* Dropdown - Portal to body to escape overflow:hidden */}
+          {isOpen && typeof document !== 'undefined' && createPortal(
             <div 
               ref={dropdownRef}
-              className="absolute z-50 w-full mt-1 bg-bg-primary border border-border rounded shadow-lg"
+              className="fixed z-[9999] bg-bg-primary border border-border rounded shadow-lg"
+              style={{
+                top: dropdownPosition.top,
+                left: dropdownPosition.left,
+                width: dropdownPosition.width,
+              }}
             >
               <div 
                 className="max-h-48 overflow-y-auto"
@@ -1508,7 +1530,8 @@ function ToolStepEditor({
                   </div>
                 )}
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       </StepField>

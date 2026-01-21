@@ -28,6 +28,7 @@ import {
   type RunResult,
   type StreamingRunResult,
 } from '@redbtn/redbtn';
+import { createConnectionFetcher } from '@/lib/connections';
 
 interface RouteParams {
   params: Promise<{ automationId: string }>;
@@ -135,6 +136,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Get Red instance
     const red = await getRed();
 
+    // Create connection fetcher for this user
+    const connectionFetcher = createConnectionFetcher(user.userId);
+
     // Start run execution
     const result = await run(red, input, {
       userId: user.userId,
@@ -142,6 +146,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       runId,
       stream: shouldStream,
       source: { application: 'automation' },
+      connectionFetcher, // Provide connection access during graph execution
     });
 
     if (shouldStream && isStreamingResult(result)) {

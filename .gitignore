@@ -9,6 +9,7 @@ yarn-error.log
 # Environment
 .env
 .env.local
+.env.connections
 
 # Build outputs
 dist/

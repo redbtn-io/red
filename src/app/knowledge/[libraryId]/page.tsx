@@ -848,7 +848,7 @@ export default function LibraryDetailPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-4 py-6 pb-scroll-safe">
         {/* Search Results */}
         <AnimatePresence>
           {searchResults.length > 0 && (

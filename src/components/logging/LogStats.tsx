@@ -58,10 +58,10 @@ export function LogStats({ conversationId }: LogStatsProps) {
 
   if (isLoading && !stats) {
     return (
-      <div className="bg-[var(--card-bg)] rounded-lg border border-[var(--border-color)] p-4">
+      <div className="bg-bg-secondary rounded-lg border border-border p-4">
         <div className="animate-pulse space-y-3">
-          <div className="h-4 bg-[var(--background)] rounded w-3/4"></div>
-          <div className="h-4 bg-[var(--background)] rounded w-1/2"></div>
+          <div className="h-4 bg-bg-primary rounded w-3/4"></div>
+          <div className="h-4 bg-bg-primary rounded w-1/2"></div>
         </div>
       </div>
     );
@@ -70,30 +70,30 @@ export function LogStats({ conversationId }: LogStatsProps) {
   if (!stats) return null;
 
   return (
-    <div className="bg-[var(--card-bg)] rounded-lg border border-[var(--border-color)] p-4 space-y-4">
-      <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">Statistics</h2>
+    <div className="bg-bg-secondary rounded-lg border border-border p-4 space-y-4">
+      <h2 className="text-lg font-semibold text-text-primary mb-4">Statistics</h2>
 
       {/* Overview */}
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
-          <span className="text-[var(--foreground)] opacity-60">Total Logs</span>
-          <span className="text-[var(--foreground)] font-semibold">{stats.totalLogs}</span>
+          <span className="text-text-primary opacity-60">Total Logs</span>
+          <span className="text-text-primary font-semibold">{stats.totalLogs}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-[var(--foreground)] opacity-60">Generations</span>
-          <span className="text-[var(--foreground)] font-semibold">{stats.generationCount}</span>
+          <span className="text-text-primary opacity-60">Generations</span>
+          <span className="text-text-primary font-semibold">{stats.generationCount}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-[var(--foreground)] opacity-60">Status</span>
-          <span className={stats.isGenerating ? 'text-[var(--red-primary)]' : 'text-[var(--foreground)] opacity-40'}>
+          <span className="text-text-primary opacity-60">Status</span>
+          <span className={stats.isGenerating ? 'text-accent' : 'text-text-primary opacity-40'}>
             {stats.isGenerating ? '🟢 Active' : '⚪ Idle'}
           </span>
         </div>
       </div>
 
       {/* By Level */}
-      <div className="border-t border-[var(--border-color)] pt-4">
-        <h3 className="text-sm font-medium text-[var(--foreground)] opacity-70 mb-2">By Level</h3>
+      <div className="border-t border-border pt-4">
+        <h3 className="text-sm font-medium text-text-primary opacity-70 mb-2">By Level</h3>
         <div className="space-y-2">
           {Object.entries(stats.byLevel).map(([level, count]) => {
             const icons: Record<string, string> = {
@@ -125,9 +125,9 @@ export function LogStats({ conversationId }: LogStatsProps) {
                   <span className={color}>
                     {icon} {level}
                   </span>
-                  <span className="text-[var(--foreground)] opacity-60">{count}</span>
+                  <span className="text-text-primary opacity-60">{count}</span>
                 </div>
-                <div className="w-full bg-[var(--background)] rounded-full h-1.5">
+                <div className="w-full bg-bg-primary rounded-full h-1.5">
                   <div
                     className={`h-1.5 rounded-full ${color.replace('text-', 'bg-')}`}
                     style={{ width: `${percentage}%` }}
@@ -140,8 +140,8 @@ export function LogStats({ conversationId }: LogStatsProps) {
       </div>
 
       {/* By Category */}
-      <div className="border-t border-[var(--border-color)] pt-4">
-        <h3 className="text-sm font-medium text-[var(--foreground)] opacity-70 mb-2">By Category</h3>
+      <div className="border-t border-border pt-4">
+        <h3 className="text-sm font-medium text-text-primary opacity-70 mb-2">By Category</h3>
         <div className="space-y-2">
           {Object.entries(stats.byCategory).map(([category, count]) => {
             const icons: Record<string, string> = {
@@ -157,14 +157,14 @@ export function LogStats({ conversationId }: LogStatsProps) {
             return (
               <div key={category} className="space-y-1">
                 <div className="flex justify-between text-xs">
-                  <span className="text-[var(--foreground)] opacity-60">
+                  <span className="text-text-primary opacity-60">
                     {icons[category]} {category}
                   </span>
-                  <span className="text-[var(--foreground)] font-medium">{count}</span>
+                  <span className="text-text-primary font-medium">{count}</span>
                 </div>
-                <div className="w-full bg-[var(--background)] rounded-full h-1.5">
+                <div className="w-full bg-bg-primary rounded-full h-1.5">
                   <div
-                    className={`h-1.5 rounded-full bg-[var(--red-primary)]`}
+                    className={`h-1.5 rounded-full bg-accent`}
                     style={{ width: `${percentage}%` }}
                   />
                 </div>

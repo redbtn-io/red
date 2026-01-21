@@ -292,9 +292,7 @@ export default function NamespaceDetailPage() {
         animate="animate"
         exit="exit"
       >
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <Link
-            href="/data/state"
+        <div className="max-w-7xl mx-auto px-4 py-6 pb-scroll-safe">
             className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary mb-6"
           >
             <ArrowLeft size={16} />
@@ -365,7 +363,7 @@ export default function NamespaceDetailPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-4 py-6 pb-scroll-safe">
         {filteredEntries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <Key className="w-16 h-16 text-text-disabled mb-4" />

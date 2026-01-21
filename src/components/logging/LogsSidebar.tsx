@@ -165,8 +165,8 @@ export function LogsSidebar({
               href="/"
               className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-bg-secondary transition-colors group"
             >
-              <MessageSquare size={16} className="text-text-secondary group-hover:text-[var(--red-primary)]" />
-              <span className="text-sm text-text-secondary group-hover:text-[var(--foreground)]">
+              <MessageSquare size={16} className="text-text-secondary group-hover:text-accent" />
+              <span className="text-sm text-text-secondary group-hover:text-text-primary">
                 Back to Chat
               </span>
             </Link>

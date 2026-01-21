@@ -701,7 +701,7 @@ export default function McpServersPage() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-4 py-6">
+        <div className="max-w-4xl mx-auto px-4 py-6 pb-scroll-safe">
           {loading && (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-8 h-8 text-accent animate-spin mb-3" />

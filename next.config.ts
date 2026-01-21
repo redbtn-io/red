@@ -3,6 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: false, // Disable strict mode to prevent double rendering in dev
   
+  // Enable instrumentation hook for server startup tasks
+  experimental: {
+    instrumentationHook: true,
+  },
+  
   // Disable static optimization - app requires dynamic rendering
   // Pages use useSearchParams and server-side features
   output: undefined, // Ensure no static export

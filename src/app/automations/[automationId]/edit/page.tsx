@@ -148,7 +148,7 @@ export default function AutomationEditPage() {
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
           <motion.div 
-            className="max-w-2xl mx-auto px-4 py-8 pb-24"
+            className="max-w-2xl mx-auto px-4 py-8 pb-scroll-safe"
             variants={pageVariants}
             initial="initial"
             animate="animate"

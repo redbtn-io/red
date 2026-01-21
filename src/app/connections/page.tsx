@@ -69,7 +69,7 @@ export default function ConnectionsPage() {
   const sections: ConnectionSection[] = [
     {
       title: 'Tools',
-      description: 'Browse all available MCP tools and create reusable tool sets for your workflows.',
+      description: 'Browse all available MCP tools and create reusable toolkits for your workflows.',
       icon: Wrench,
       color: '#f59e0b',
       href: '/connections/tools',
@@ -89,7 +89,6 @@ export default function ConnectionsPage() {
       icon: Users,
       color: '#8b5cf6',
       href: '/connections/accounts',
-      comingSoon: true,
     },
   ];
 
@@ -112,7 +111,7 @@ export default function ConnectionsPage() {
         {/* Scrollable Content */}
         <main className="flex-1 overflow-y-auto">
           <motion.div
-            className="max-w-4xl mx-auto px-4 py-8 pb-24"
+            className="max-w-4xl mx-auto px-4 py-8 pb-scroll-safe"
             variants={pageVariants}
             initial="initial"
             animate="animate"

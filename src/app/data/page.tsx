@@ -128,7 +128,7 @@ export default function DataDashboardPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 pb-scroll-safe">
         <motion.div
           variants={staggerContainerVariants}
           initial="initial"

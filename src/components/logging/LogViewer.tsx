@@ -259,9 +259,9 @@ export function LogViewer({
   // Render loading state
   if (isLoading) {
     return (
-      <div className="bg-[var(--card-bg)] rounded-lg border border-[var(--border-color)] p-12 text-center">
-        <div className="inline-block w-8 h-8 border-4 border-[var(--background)] border-t-[var(--red-primary)] rounded-full animate-spin mb-4"></div>
-        <p className="text-[var(--foreground)] opacity-60">Loading logs...</p>
+      <div className="bg-bg-secondary rounded-lg border border-border p-12 text-center">
+        <div className="inline-block w-8 h-8 border-4 border-bg-primary border-t-accent rounded-full animate-spin mb-4"></div>
+        <p className="text-text-primary opacity-60">Loading logs...</p>
       </div>
     );
   }
@@ -269,12 +269,12 @@ export function LogViewer({
   // Render error state
   if (error) {
     return (
-      <div className="bg-[var(--card-bg)] rounded-lg border border-[var(--border-color)] p-6">
+      <div className="bg-bg-secondary rounded-lg border border-border p-6">
         <div className="flex items-start gap-3">
           <div className="text-2xl">❌</div>
           <div>
-            <h3 className="font-semibold text-[var(--red-primary)] mb-1">Error loading logs</h3>
-            <p className="text-[var(--foreground)] opacity-60 text-sm">{error}</p>
+            <h3 className="font-semibold text-accent mb-1">Error loading logs</h3>
+            <p className="text-text-primary opacity-60 text-sm">{error}</p>
           </div>
         </div>
       </div>
@@ -285,7 +285,7 @@ export function LogViewer({
   <div className={cardClass}>
       {/* Toolbar */}
       <div className={toolbarClass}>
-        <div className="text-sm text-[var(--foreground)] opacity-70">
+        <div className="text-sm text-text-primary opacity-70">
           <span className="font-medium">{filteredLogs.length}</span> {filteredLogs.length === 1 ? 'log' : 'logs'}
         </div>
         <div className="flex items-center gap-2">
@@ -328,7 +328,7 @@ export function LogViewer({
       {/* Logs */}
       <div className="p-4 max-h-[70vh] overflow-y-auto font-sans text-sm">
         {filteredLogs.length === 0 ? (
-          <div className="text-center py-12 text-[var(--foreground)] opacity-60">
+          <div className="text-center py-12 text-text-primary opacity-60">
             No logs match the current filters
           </div>
         ) : (
@@ -378,15 +378,15 @@ function LogLine({ log, compact }: { log: LogEntry; compact?: boolean }) {
     <div className={`${logLineClass} ${compact ? 'py-2 px-2' : 'py-3 px-3'}`}>
       {/* Metadata line */}
       <div className={`flex items-center gap-3 ${compact ? 'mb-1' : 'mb-2'} flex-wrap`}>
-        <span className="text-[var(--foreground)]/70 text-xs tabular-nums shrink-0">{timestamp}</span>
+        <span className="text-text-primary/70 text-xs tabular-nums shrink-0">{timestamp}</span>
         <span className="shrink-0" title={log.level}>{levelIcons[log.level] || '•'}</span>
         <span className={`shrink-0 text-xs uppercase font-semibold ${levelColors[log.level]}`}>{log.level}</span>
-        <span className="shrink-0 text-xs text-[var(--foreground)]/60 uppercase">{log.category}</span>
+        <span className="shrink-0 text-xs text-text-primary/60 uppercase">{log.category}</span>
 
         {/* Expand / collapse */}
         <button
           onClick={() => setExpanded((s) => !s)}
-          className="ml-auto text-xs px-2 py-1 rounded bg-[var(--background)] text-[var(--foreground)] hover:bg-[var(--background)]/60"
+          className="ml-auto text-xs px-2 py-1 rounded bg-bg-primary text-text-primary hover:bg-bg-primary/60"
           title={expanded ? 'Collapse' : 'Expand'}
         >
           {expanded ? '▾' : '▸'}
@@ -396,19 +396,19 @@ function LogLine({ log, compact }: { log: LogEntry; compact?: boolean }) {
       {/* Message line */}
       {(!compact || expanded) && (
         <>
-          <div className="pl-2 break-words text-sm leading-relaxed font-mono text-[var(--foreground)]/90">
+          <div className="pl-2 break-words text-sm leading-relaxed font-mono text-text-primary/90">
             <div dangerouslySetInnerHTML={{ __html: messageHtml }} />
           </div>
           
           {/* Metadata section - show when expanded */}
           {expanded && log.metadata && Object.keys(log.metadata).length > 0 && (
-            <div className="mt-3 pl-2 border-l-2 border-[var(--border-color)] ml-2">
-              <div className="text-xs text-[var(--foreground)]/60 font-semibold mb-2 uppercase">Metadata</div>
+            <div className="mt-3 pl-2 border-l-2 border-border ml-2">
+              <div className="text-xs text-text-primary/60 font-semibold mb-2 uppercase">Metadata</div>
               <div className="space-y-1">
                 {Object.entries(log.metadata).map(([key, value]) => (
                   <div key={key} className="flex gap-2 text-xs">
                     <span className="text-cyan-400 font-mono shrink-0">{key}:</span>
-                    <span className="text-[var(--foreground)]/80 font-mono break-all">
+                    <span className="text-text-primary/80 font-mono break-all">
                       {typeof value === 'object' 
                         ? JSON.stringify(value, null, 2)
                         : String(value)
