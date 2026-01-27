@@ -9,16 +9,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/auth';
 import connectToDatabase from '@/lib/database/mongodb';
-import { 
-  ConnectionProvider, 
-  UserConnection,
-  type IConnectionProvider,
+import {
+    ConnectionProvider,
+    UserConnection,
+    type IConnectionProvider,
 } from '@/lib/database/models/connections';
 import {
-  revokeToken,
-  decryptCredentials,
-  isValidConnectionLabel,
-  maskCredential,
+    revokeToken,
+    decryptCredentials,
+    isValidConnectionLabel,
+    maskCredential,
 } from '@/lib/connections';
 
 export const dynamic = 'force-dynamic';

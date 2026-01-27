@@ -9,20 +9,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/auth';
 import connectToDatabase from '@/lib/database/mongodb';
-import { 
-  ConnectionProvider, 
-  UserConnection,
-  type IConnectionProvider,
+import {
+    ConnectionProvider,
+    UserConnection,
+    type IConnectionProvider,
 } from '@/lib/database/models/connections';
 import {
-  testConnection,
-  decryptCredentials,
-  buildBasicAuthHeader,
-  parseHeaderFormat,
-  refreshAccessToken,
-  encryptCredentials,
-  calculateTokenExpiry,
-  isTokenExpired,
+    testConnection,
+    decryptCredentials,
+    buildBasicAuthHeader,
+    parseHeaderFormat,
+    refreshAccessToken,
+    encryptCredentials,
+    calculateTokenExpiry,
+    isTokenExpired,
 } from '@/lib/connections';
 
 export const dynamic = 'force-dynamic';

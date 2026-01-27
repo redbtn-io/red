@@ -4,22 +4,22 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ArrowLeft,
-  Search, 
-  Loader2, 
-  AlertCircle,
-  Plus,
-  Trash2,
-  X,
-  Key,
-  Copy,
-  Check,
-  Edit2,
-  Save,
-  ChevronDown,
-  ChevronRight,
-  Code,
+import {
+    ArrowLeft,
+    Search,
+    Loader2,
+    AlertCircle,
+    Plus,
+    Trash2,
+    X,
+    Key,
+    Copy,
+    Check,
+    Edit2,
+    Save,
+    ChevronDown,
+    ChevronRight,
+    Code,
 } from 'lucide-react';
 import { pageVariants } from '@/lib/animations';
 

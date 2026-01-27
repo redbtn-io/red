@@ -15,14 +15,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/database/mongodb';
 import { ConnectionProvider, UserConnection, type IConnectionProvider } from '@/lib/database/models/connections';
 import {
-  consumeOAuthState,
-  exchangeCodeForTokens,
-  fetchUserInfo,
-  encryptCredentials,
-  generateConnectionId,
-  getOAuthCallbackUrl,
-  calculateTokenExpiry,
-  generateDefaultLabel,
+    consumeOAuthState,
+    exchangeCodeForTokens,
+    fetchUserInfo,
+    encryptCredentials,
+    generateConnectionId,
+    getOAuthCallbackUrl,
+    calculateTokenExpiry,
+    generateDefaultLabel,
 } from '@/lib/connections';
 
 export const dynamic = 'force-dynamic';
