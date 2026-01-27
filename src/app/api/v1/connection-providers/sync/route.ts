@@ -29,9 +29,8 @@ export async function POST(request: Request) {
     const result = await syncConnectionProviders();
     
     return NextResponse.json({
-      success: result.success,
-      message: `Synced ${result.synced}/${result.total} providers (${result.withCredentials} with credentials)`,
       ...result,
+      message: `Synced ${result.synced}/${result.total} providers (${result.withCredentials} with credentials)`,
     });
   } catch (error) {
     console.error('Provider sync error:', error);

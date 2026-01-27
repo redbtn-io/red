@@ -293,6 +293,8 @@ export default function NamespaceDetailPage() {
         exit="exit"
       >
         <div className="max-w-7xl mx-auto px-4 py-6 pb-scroll-safe">
+          <Link
+            href="/data/state"
             className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary mb-6"
           >
             <ArrowLeft size={16} />

@@ -252,8 +252,8 @@ function ConnectionModal({
       setDescription(editingConnection.description || '');
       setUrl(editingConnection.url);
       setColor(editingConnection.color);
-      // Convert headers object to array
-      const headerArray = Object.entries(editingConnection.headers || {}).map(([key, value]) => ({ key, value }));
+      // Initialize headers with just keys (values must be re-entered for security)
+      const headerArray = (editingConnection.headerKeys || []).map(key => ({ key, value: '' }));
       setHeaders(headerArray);
     } else {
       // Clear form when not editing

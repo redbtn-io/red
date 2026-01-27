@@ -189,7 +189,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const provider = await ConnectionProvider.findOne({
       providerId,
       status: { $in: ['active', 'beta'] },
-    });
+    }).lean<IConnectionProvider>();
 
     if (!provider) {
       return NextResponse.json(
@@ -345,7 +345,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       errorCount: 0,
       usageCount: 0,
       isDefault: existingCount === 0,
-      autoRefresh: provider.authType === 'oauth2',
+      autoRefresh: false, // Non-OAuth2 connections don't auto-refresh
       lastValidatedAt: testConfig?.testEndpoint ? new Date() : undefined,
     });
 

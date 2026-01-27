@@ -6,7 +6,7 @@
  * to fetch user connections during graph execution.
  */
 
-import { UserConnection, ConnectionProvider } from '../database/models/connections';
+import { UserConnection, ConnectionProvider, type IConnectionProvider } from '../database/models/connections';
 import { decryptValue, encryptValue } from './crypto';
 import { refreshAccessToken } from './oauth-token';
 import type { ConnectionFetcher, UserConnection as RedbtnUserConnection, ConnectionProvider as RedbtnConnectionProvider } from '@redbtn/redbtn';
@@ -154,7 +154,7 @@ export function createConnectionFetcher(userId: string): ConnectionFetcher {
         // Only OAuth connections can be refreshed
         const provider = await ConnectionProvider.findOne({
           providerId: connection.providerId,
-        });
+        }).lean<IConnectionProvider>();
         
         if (!provider || provider.authType !== 'oauth2' || !provider.oauth2Config) {
           return null;

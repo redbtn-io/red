@@ -12,6 +12,7 @@ import connectToDatabase from '@/lib/database/mongodb';
 import { 
   ConnectionProvider, 
   UserConnection,
+  type IConnectionProvider,
 } from '@/lib/database/models/connections';
 import {
   revokeToken,
@@ -215,7 +216,7 @@ export async function DELETE(
     // Get provider for OAuth revocation
     const provider = await ConnectionProvider.findOne({
       providerId: connection.providerId,
-    });
+    }).lean<IConnectionProvider>();
 
     // Attempt to revoke OAuth tokens
     if (provider?.authType === 'oauth2' && provider.oauth2Config?.revokeUrl) {

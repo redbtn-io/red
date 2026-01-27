@@ -12,6 +12,7 @@ import connectToDatabase from '@/lib/database/mongodb';
 import { 
   ConnectionProvider, 
   UserConnection,
+  type IConnectionProvider,
 } from '@/lib/database/models/connections';
 import {
   testConnection,
@@ -67,7 +68,7 @@ export async function POST(
     // Get provider
     const provider = await ConnectionProvider.findOne({
       providerId: connection.providerId,
-    });
+    }).lean<IConnectionProvider>();
 
     if (!provider) {
       return NextResponse.json(

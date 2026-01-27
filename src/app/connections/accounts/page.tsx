@@ -33,7 +33,6 @@ import {
     Video,
     Image as ImageIcon,
 } from 'lucide-react';
-import Image from 'next/image';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { StudioHeader } from '@/components/layout/StudioHeader';
 import {
@@ -410,7 +409,7 @@ export default function AccountsPage() {
   
   // Get available categories from unconnected providers, sorted by preferred order
   const availableCategories = Array.from(
-    new Set(unconnectedProviders.map(p => p.category).filter(Boolean))
+    new Set(unconnectedProviders.map(p => p.category).filter((c): c is string => Boolean(c)))
   ).sort((a, b) => {
     const aIndex = categoryOrder.indexOf(a);
     const bIndex = categoryOrder.indexOf(b);
@@ -421,7 +420,7 @@ export default function AccountsPage() {
     if (bIndex !== -1) return 1;
     // Otherwise sort alphabetically
     return a.localeCompare(b);
-  }) as string[];
+  });
   
   // Stats calculations
   const totalConnections = connections.reduce((sum, g) => sum + g.connections.length, 0);

@@ -13,7 +13,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/database/mongodb';
-import { ConnectionProvider, UserConnection } from '@/lib/database/models/connections';
+import { ConnectionProvider, UserConnection, type IConnectionProvider } from '@/lib/database/models/connections';
 import {
   consumeOAuthState,
   exchangeCodeForTokens,
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     await connectToDatabase();
 
     // Find the provider
-    const provider = await ConnectionProvider.findOne({ providerId });
+    const provider = await ConnectionProvider.findOne({ providerId }).lean<IConnectionProvider>();
     
     if (!provider) {
       return NextResponse.redirect(

@@ -13,7 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/auth';
 import connectToDatabase from '@/lib/database/mongodb';
-import { ConnectionProvider } from '@/lib/database/models/connections';
+import { ConnectionProvider, type IConnectionProvider } from '@/lib/database/models/connections';
 import {
   createOAuthState,
   generateCodeVerifier,
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const provider = await ConnectionProvider.findOne({
       providerId,
       status: { $in: ['active', 'beta'] },
-    });
+    }).lean<IConnectionProvider>();
 
     if (!provider) {
       return NextResponse.json(
