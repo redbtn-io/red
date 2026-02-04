@@ -15,12 +15,12 @@ import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
 import { RateLimits } from '@/lib/rate-limit/rate-limit';
 import connectToDatabase from '@/lib/database/mongodb';
 import {
-  Automation,
-  AutomationRun,
-  RunStatus,
-  TriggerType,
-  generateRunId,
-  calculateExpiresAt,
+    Automation,
+    AutomationRun,
+    RunStatus,
+    TriggerType,
+    generateRunId,
+    calculateExpiresAt,
 } from '@/lib/database/models/automation';
 import { Graph } from '@redbtn/redbtn';
 import { submitAutomationJob, initializeRunState } from '@/lib/queue';

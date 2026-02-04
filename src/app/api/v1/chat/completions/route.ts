@@ -18,11 +18,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { nanoid } from 'nanoid';
 import {
-  ChatCompletionRequest,
-  generateCompletionId,
-  extractUserMessage,
-  getConversationIdFromBody,
-  generateStableConversationId,
+    ChatCompletionRequest,
+    generateCompletionId,
+    extractUserMessage,
+    getConversationIdFromBody,
+    generateStableConversationId,
 } from '@/lib/api/api-helpers';
 import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
 import { RateLimits } from '@/lib/rate-limit/rate-limit';
