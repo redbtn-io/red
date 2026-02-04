@@ -53,7 +53,8 @@ export function Sidebar({
       headerAction={
         <button
           onClick={onNewChat}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors font-medium"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors font-medium shadow-sm"
+          style={{ boxShadow: '0 2px 8px rgba(239, 68, 68, 0.25)' }}
         >
           <Plus size={18} />
           <span>New Chat</span>
@@ -67,10 +68,10 @@ export function Sidebar({
             <div
               key={conv.id}
               className={`
-                relative rounded-lg transition-all group
+                relative rounded-xl transition-all group
                 ${conv.id === activeConversationId 
-                  ? 'bg-bg-secondary border-2 border-red-500/50 shadow-lg shadow-red-500/10' 
-                  : 'hover:bg-bg-secondary border-2 border-transparent'
+                  ? 'bg-red-500/10 dark:bg-red-500/15 border border-red-500/30 shadow-sm' 
+                  : 'hover:bg-bg-hover border border-transparent hover:border-border/50'
                 }
               `}
             >
@@ -79,13 +80,13 @@ export function Sidebar({
                 className="w-full text-left px-3 py-2.5"
                 disabled={editingTitleId === conv.id}
               >
-                <div className="flex items-start gap-2 pr-16">
+                <div className="flex items-start gap-2.5 pr-16">
                   <MessageSquare 
                     size={16} 
                     className={`mt-0.5 flex-shrink-0 ${
                       conv.id === activeConversationId 
-                        ? 'text-red-400' 
-                        : 'text-text-secondary'
+                        ? 'text-red-500' 
+                        : 'text-text-muted'
                     }`} 
                   />
                   <div className="flex-1 min-w-0">
@@ -99,19 +100,19 @@ export function Sidebar({
                             if (e.key === 'Enter') onSaveEditedTitle(conv.id);
                             if (e.key === 'Escape') onCancelEditingTitle();
                           }}
-                          className="flex-1 text-base font-medium bg-bg-elevated border border-border rounded px-2 py-1 text-text-primary focus:outline-none focus:border-red-500"
+                          className="flex-1 text-base font-medium bg-bg-elevated border border-border rounded-lg px-2 py-1 text-text-primary focus:outline-none focus:border-red-500"
                           autoFocus
                         />
                         <button
                           onClick={() => onSaveEditedTitle(conv.id)}
-                          className="p-1 hover:bg-bg-tertiary rounded text-green-400 hover:text-green-300"
+                          className="p-1.5 hover:bg-bg-tertiary rounded-lg text-green-500 hover:text-green-600"
                           title="Save"
                         >
                           <Check size={14} />
                         </button>
                         <button
                           onClick={onCancelEditingTitle}
-                          className="p-1 hover:bg-bg-tertiary rounded text-text-secondary hover:text-text-secondary"
+                          className="p-1.5 hover:bg-bg-tertiary rounded-lg text-text-muted hover:text-text-secondary"
                           title="Cancel"
                         >
                           <X size={14} />
@@ -120,7 +121,7 @@ export function Sidebar({
                     ) : (
                       <div className={`text-sm font-medium truncate ${
                         conv.id === activeConversationId 
-                          ? 'text-red-100 font-semibold' 
+                          ? 'text-red-600 dark:text-red-400 font-semibold' 
                           : 'text-text-primary'
                       }`}>
                         {conv.title}
@@ -135,17 +136,17 @@ export function Sidebar({
               
               {/* Action Buttons */}
               {editingTitleId !== conv.id && (
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={(e) => onStartEditingTitle(conv, e)}
-                    className="p-2 hover:bg-bg-tertiary rounded-lg text-text-secondary hover:text-blue-400"
+                    className="p-2 hover:bg-bg-tertiary rounded-lg text-text-muted hover:text-info"
                     title="Edit title"
                   >
                     <Edit2 size={14} />
                   </button>
                   <button
                     onClick={(e) => onDeleteClick(conv.id, e)}
-                    className="p-2 hover:bg-bg-tertiary rounded-lg text-text-secondary hover:text-red-400"
+                    className="p-2 hover:bg-bg-tertiary rounded-lg text-text-muted hover:text-error"
                     title="Delete conversation"
                   >
                     <Trash2 size={14} />

@@ -53,6 +53,12 @@
   
   /* Shadows */
   --shadow-color: rgba(0, 0, 0, 0.5);
+  --shadow-bubble: 0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+  
+  /* Chat-specific backgrounds */
+  --bg-chat: #0a0a0a;
+  --bg-user-message: #2a2a2a;
+  --bg-assistant-message: #ef4444;
   
   /* Backdrop/Overlay */
   --backdrop: rgba(0, 0, 0, 0.5);
@@ -70,64 +76,71 @@
 /* Light theme */
 :root.light,
 .light {
-  /* Backgrounds */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f5f5f5;
-  --bg-tertiary: #e5e5e5;
+  /* Backgrounds - subtle cool gray tints for modern feel */
+  --bg-primary: #fafafa;
+  --bg-secondary: #f4f4f5;
+  --bg-tertiary: #e4e4e7;
   --bg-elevated: #ffffff;
-  --bg-hover: #f0f0f0;
-  --bg-active: #e5e5e5;
+  --bg-hover: #f0f0f2;
+  --bg-active: #e4e4e7;
   
-  /* Text */
-  --text-primary: #0a0a0a;
-  --text-secondary: #525252;
-  --text-muted: #6b7280;
-  --text-disabled: #9ca3af;
+  /* Chat-specific backgrounds */
+  --bg-chat: #f8fafc;
+  --bg-user-message: #f1f5f9;
+  --bg-assistant-message: #ef4444;
   
-  /* Borders - darker for better contrast */
-  --border: #d1d5db;
-  --border-hover: #9ca3af;
+  /* Text - improved contrast ratios */
+  --text-primary: #18181b;
+  --text-secondary: #3f3f46;
+  --text-muted: #71717a;
+  --text-disabled: #a1a1aa;
+  
+  /* Borders - refined for light mode */
+  --border: #e4e4e7;
+  --border-hover: #d4d4d8;
   --border-focus: rgba(220, 38, 38, 0.5);
+  --border-subtle: #f4f4f5;
   
-  /* Accent (Brand Red) */
-  --accent: #dc2626;
-  --accent-hover: #b91c1c;
-  --accent-muted: rgba(220, 38, 38, 0.1);
+  /* Accent (Brand Red) - slightly warmer for light mode */
+  --accent: #ef4444;
+  --accent-hover: #dc2626;
+  --accent-muted: rgba(239, 68, 68, 0.08);
   --accent-text: #dc2626;
   --accent-foreground: #ffffff; /* Text ON accent backgrounds - always white */
   
   /* Semantic Colors */
   --success: #16a34a;
-  --success-muted: rgba(22, 163, 74, 0.1);
+  --success-muted: rgba(22, 163, 74, 0.08);
   --warning: #ca8a04;
-  --warning-muted: rgba(202, 138, 4, 0.1);
+  --warning-muted: rgba(202, 138, 4, 0.08);
   --error: #dc2626;
-  --error-muted: rgba(220, 38, 38, 0.1);
+  --error-muted: rgba(220, 38, 38, 0.08);
   --info: #2563eb;
-  --info-muted: rgba(37, 99, 235, 0.1);
+  --info-muted: rgba(37, 99, 235, 0.08);
   
-  /* Scrollbar */
-  --scrollbar-track: #f5f5f5;
-  --scrollbar-thumb: #d4d4d4;
-  --scrollbar-thumb-hover: #a3a3a3;
+  /* Scrollbar - more subtle */
+  --scrollbar-track: #fafafa;
+  --scrollbar-thumb: #d4d4d8;
+  --scrollbar-thumb-hover: #a1a1aa;
   
-  /* Shadows - more prominent for light mode */
-  --shadow-color: rgba(0, 0, 0, 0.12);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  /* Shadows - refined for depth without heaviness */
+  --shadow-color: rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.04), 0 4px 8px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.04), 0 8px 16px rgba(0, 0, 0, 0.08);
+  --shadow-bubble: 0 1px 3px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.04);
   
   /* Backdrop/Overlay */
-  --backdrop: rgba(0, 0, 0, 0.3);
+  --backdrop: rgba(0, 0, 0, 0.2);
   
   /* Legacy variables (for backwards compat) */
-  --background: #ffffff;
-  --foreground: #0a0a0a;
-  --sidebar-bg: #f5f5f5;
+  --background: #fafafa;
+  --foreground: #18181b;
+  --sidebar-bg: #f4f4f5;
   --card-bg: #ffffff;
-  --red-primary: #dc2626;
-  --red-hover: #b91c1c;
-  --border-color: #e5e5e5;
+  --red-primary: #ef4444;
+  --red-hover: #dc2626;
+  --border-color: #e4e4e7;
 }
 
 /* ============================================
@@ -438,4 +451,72 @@ input, textarea, select {
 
 .graph-edge-active {
   animation: graph-edge-flow 0.5s linear infinite;
+}
+
+/* ============================================
+   LIGHT MODE SPECIFIC OVERRIDES
+   ============================================ */
+
+/* Light mode pulse animation - softer glow */
+.light .streaming-pulse {
+  animation: pulse-light 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-light {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15), 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25), 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Light mode thinking pulse - more visible */
+.light .thinking-pulse {
+  animation: thinking-pulse-light 1.5s ease-in-out infinite;
+}
+
+@keyframes thinking-pulse-light {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(147, 51, 234, 0.15), 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(147, 51, 234, 0.3), 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Light mode skeleton - more visible shimmer */
+.light .skeleton {
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.08) 25%, rgba(239, 68, 68, 0.15) 50%, rgba(239, 68, 68, 0.08) 75%);
+  background-size: 200% 100%;
+}
+
+/* ============================================
+   MODERN CHAT MESSAGE STYLES
+   ============================================ */
+
+/* Chat message bubbles base styling */
+.chat-bubble {
+  @apply rounded-2xl px-4 py-3 shadow-sm transition-all duration-200;
+}
+
+/* User message styling */
+.chat-bubble-user {
+  @apply bg-bg-tertiary text-text-primary;
+  box-shadow: var(--shadow-bubble, 0 1px 3px rgba(0, 0, 0, 0.1));
+}
+
+.light .chat-bubble-user {
+  @apply bg-white border border-border;
+  box-shadow: var(--shadow-bubble);
+}
+
+/* Assistant message styling */
+.chat-bubble-assistant {
+  @apply bg-red-500 text-white;
+  box-shadow: var(--shadow-bubble, 0 2px 8px rgba(239, 68, 68, 0.3));
+}
+
+.light .chat-bubble-assistant {
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2), 0 1px 3px rgba(0, 0, 0, 0.08);
 }

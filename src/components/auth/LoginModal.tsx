@@ -177,7 +177,7 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full bg-black/30 border border-gray-700 rounded-lg px-10 py-3 text-text-primary placeholder-text-muted focus:border-red-500 focus:outline-none transition-colors"
+                  className="w-full bg-bg-primary border border-border rounded-lg px-10 py-3 text-text-primary placeholder-text-muted focus:border-red-500 focus:outline-none transition-colors"
                   required
                   disabled={loading}
                   autoFocus

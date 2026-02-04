@@ -1,8 +1,10 @@
 /**
  * Automation Trigger API v2
  *
- * Uses the run system with RunPublisher for clean execution.
- * No skipConversation hacks - automations don't use conversations.
+ * DISTRIBUTED ARCHITECTURE VERSION
+ *
+ * Offloads automation execution to BullMQ workers for horizontal scaling.
+ * Creates an AutomationRun record, then submits job to worker queue.
  *
  * @module api/v1/automations/[automationId]/trigger
  */
@@ -20,15 +22,8 @@ import {
   generateRunId,
   calculateExpiresAt,
 } from '@/lib/database/models/automation';
-import { getRed } from '@/lib/red';
-import {
-  Graph,
-  run,
-  isStreamingResult,
-  type RunResult,
-  type StreamingRunResult,
-} from '@redbtn/redbtn';
-import { createConnectionFetcher } from '@/lib/connections';
+import { Graph } from '@redbtn/redbtn';
+import { submitAutomationJob, initializeRunState } from '@/lib/queue';
 
 interface RouteParams {
   params: Promise<{ automationId: string }>;
@@ -74,7 +69,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const inputOverride = body.input || {};
-    const shouldStream = body.stream !== false; // Default to streaming
+    // Note: In distributed mode, streaming is always enabled (SSE-first)
+    // The body.stream option is ignored
 
     // Find automation
     const automation = await Automation.findOne({
@@ -121,216 +117,53 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       triggeredBy: TriggerType.MANUAL,
       triggerData: { triggeredBy: user.userId },
       input,
-      status: RunStatus.RUNNING,
+      status: RunStatus.QUEUED,
       startedAt,
       logs: [
         {
           timestamp: startedAt,
           level: 'info',
-          message: 'Manual trigger initiated (v2)',
+          message: 'Manual trigger initiated (distributed)',
         },
       ],
       expiresAt: calculateExpiresAt(30), // 30 day TTL
     });
 
-    // Get Red instance
-    const red = await getRed();
+    console.log(`[Automation] ${new Date().toISOString()} Submitting job runId=${runId}`);
 
-    // Create connection fetcher for this user
-    const connectionFetcher = createConnectionFetcher(user.userId);
-
-    // Start run execution
-    const result = await run(red, input, {
+    // Initialize run state in Redis (allows SSE to connect immediately)
+    await initializeRunState({
+      runId,
       userId: user.userId,
       graphId: automation.graphId,
-      runId,
-      stream: shouldStream,
-      source: { application: 'automation' },
-      connectionFetcher, // Provide connection access during graph execution
+      graphName: graph.name || 'Automation Graph',
+      input,
+      // No conversationId for automations
     });
 
-    if (shouldStream && isStreamingResult(result)) {
-      const streamingResult = result as StreamingRunResult;
+    // Submit job to worker queue
+    await submitAutomationJob({
+      runId,
+      automationId: automation.automationId,
+      userId: user.userId,
+      triggerType: 'manual',
+      input,
+    });
 
-      // Set up completion callback to update automation run
-      streamingResult.completion
-        .then(async (finalResult: RunResult) => {
-          const completedAt = new Date();
-          const durationMs = completedAt.getTime() - startedAt.getTime();
+    console.log(`[Automation] ${new Date().toISOString()} Job submitted to queue`);
 
-          // Update run as completed
-          await AutomationRun.updateOne(
-            { runId },
-            {
-              status: RunStatus.COMPLETED,
-              completedAt,
-              durationMs,
-              output: {
-                content: finalResult.content,
-                data: finalResult.data,
-                graphId: finalResult.graphId,
-                graphName: finalResult.graphName,
-                executionPath: finalResult.metadata.executionPath,
-                nodesExecuted: finalResult.metadata.nodesExecuted,
-              },
-              $push: {
-                logs: {
-                  timestamp: completedAt,
-                  level: 'info',
-                  message: `Run completed in ${durationMs}ms`,
-                },
-              },
-            }
-          );
-
-          // Update automation stats
-          await Automation.updateOne(
-            { automationId },
-            {
-              $inc: {
-                'stats.runCount': 1,
-                'stats.successCount': 1,
-              },
-              $set: { lastRunAt: completedAt },
-            }
-          );
-
-          console.log(
-            `[Automation v2] Run ${runId} completed successfully in ${durationMs}ms`
-          );
-        })
-        .catch(async (error: Error) => {
-          const completedAt = new Date();
-          const durationMs = completedAt.getTime() - startedAt.getTime();
-
-          // Update run as failed
-          await AutomationRun.updateOne(
-            { runId },
-            {
-              status: RunStatus.FAILED,
-              completedAt,
-              durationMs,
-              error: error.message || 'Unknown error',
-              errorStack: error.stack,
-              $push: {
-                logs: {
-                  timestamp: completedAt,
-                  level: 'error',
-                  message: `Run failed: ${error.message}`,
-                  metadata: { stack: error.stack },
-                },
-              },
-            }
-          );
-
-          // Update automation stats
-          await Automation.updateOne(
-            { automationId },
-            {
-              $inc: {
-                'stats.runCount': 1,
-                'stats.failureCount': 1,
-              },
-              $set: {
-                lastRunAt: completedAt,
-                'stats.lastError': error.message,
-              },
-            }
-          );
-
-          console.error(`[Automation v2] Run ${runId} failed:`, error.message);
-        });
-
-      // Return immediately with run info for SSE subscription
-      return NextResponse.json({
-        success: true,
-        runId: streamingResult.runId,
-        streamUrl: `/api/v1/runs/${streamingResult.runId}/stream`,
-        run: {
-          runId: automationRun.runId,
-          automationId: automationRun.automationId,
-          graphId: automationRun.graphId,
-          status: RunStatus.RUNNING,
-          input: automationRun.input,
-          startedAt: automationRun.startedAt,
-        },
-      });
-    }
-
-    // Non-streaming: wait for completion
-    const finalResult = result as RunResult;
-    const completedAt = new Date();
-    const durationMs = completedAt.getTime() - startedAt.getTime();
-
-    // Update run as completed
-    await AutomationRun.updateOne(
-      { runId },
-      {
-        status:
-          finalResult.status === 'completed'
-            ? RunStatus.COMPLETED
-            : RunStatus.FAILED,
-        completedAt,
-        durationMs,
-        output: {
-          content: finalResult.content,
-          data: finalResult.data,
-          graphId: finalResult.graphId,
-          graphName: finalResult.graphName,
-          executionPath: finalResult.metadata.executionPath,
-          nodesExecuted: finalResult.metadata.nodesExecuted,
-        },
-        error: finalResult.error,
-        $push: {
-          logs: {
-            timestamp: completedAt,
-            level: finalResult.status === 'completed' ? 'info' : 'error',
-            message:
-              finalResult.status === 'completed'
-                ? `Run completed in ${durationMs}ms`
-                : `Run failed: ${finalResult.error}`,
-          },
-        },
-      }
-    );
-
-    // Update automation stats
-    await Automation.updateOne(
-      { automationId },
-      {
-        $inc: {
-          'stats.runCount': 1,
-          [`stats.${finalResult.status === 'completed' ? 'successCount' : 'failureCount'}`]: 1,
-        },
-        $set: {
-          lastRunAt: completedAt,
-          ...(finalResult.status === 'error' && {
-            'stats.lastError': finalResult.error,
-          }),
-        },
-      }
-    );
-
+    // Return immediately with run info for SSE subscription
     return NextResponse.json({
-      success: finalResult.status === 'completed',
-      runId: finalResult.runId,
+      success: true,
+      runId,
+      streamUrl: `/api/v1/runs/${runId}/stream`,
       run: {
         runId: automationRun.runId,
         automationId: automationRun.automationId,
         graphId: automationRun.graphId,
-        status:
-          finalResult.status === 'completed'
-            ? RunStatus.COMPLETED
-            : RunStatus.FAILED,
+        status: RunStatus.QUEUED,
         input: automationRun.input,
-        output: {
-          content: finalResult.content,
-          data: finalResult.data,
-        },
         startedAt: automationRun.startedAt,
-        completedAt,
-        durationMs,
-        error: finalResult.error,
       },
     });
   } catch (error: any) {

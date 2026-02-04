@@ -5,6 +5,7 @@ import { TriggerType } from './Automation';
  * Run status
  */
 export enum RunStatus {
+  QUEUED = 'queued',
   PENDING = 'pending',
   RUNNING = 'running',
   COMPLETED = 'completed',

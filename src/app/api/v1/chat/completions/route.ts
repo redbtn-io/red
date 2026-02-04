@@ -1,18 +1,22 @@
 /**
  * Chat Completions API v2
  *
- * Uses the run system with RunPublisher for clean execution.
+ * DISTRIBUTED ARCHITECTURE VERSION
+ * 
+ * Offloads graph execution to BullMQ workers for horizontal scaling.
+ * 
  * Responsibilities:
  * - Store user message before execution
- * - Start graph execution via run
+ * - Initialize run state in Redis
+ * - Submit job to worker queue
  * - Return runId for SSE stream subscription
- * - Store assistant message and trigger background tasks after completion
+ * - Worker handles: execution, assistant message storage, background tasks
  *
  * @module api/v1/chat/completions
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getRed } from '@/lib/red';
+import { nanoid } from 'nanoid';
 import {
   ChatCompletionRequest,
   generateCompletionId,
@@ -23,20 +27,18 @@ import {
 import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
 import { RateLimits } from '@/lib/rate-limit/rate-limit';
 import { verifyAuth } from '@/lib/auth/auth';
-import {
-  run,
-  isStreamingResult,
-  getDatabase,
-  type RunResult,
-  type StreamingRunResult,
-} from '@redbtn/redbtn';
-import { createConnectionFetcher } from '@/lib/connections';
+import { getDatabase } from '@redbtn/redbtn';
+import { submitGraphJob, initializeRunState } from '@/lib/queue';
 
 // =============================================================================
 // Types
 // =============================================================================
 
-interface CompletionResponse {
+/**
+ * Non-streaming response format (kept for potential sync API support)
+ * @deprecated In distributed architecture, always use streaming response
+ */
+interface _CompletionResponse {
   id: string;
   object: 'chat.completion';
   created: number;
@@ -138,44 +140,12 @@ async function storeMessage(params: {
 
   await db.storeMessage(message as any, params.userId);
   console.log(
-    `[Completions-v2] Stored ${params.role} message ${params.messageId} for conversation ${params.conversationId}`
+    `[Completions] Stored ${params.role} message ${params.messageId} for conversation ${params.conversationId}`
   );
 }
 
-/**
- * Trigger background tasks after completion
- */
-async function triggerBackgroundTasks(params: {
-  conversationId: string;
-  userId: string;
-  messageCount: number;
-}): Promise<void> {
-  const red = await getRed();
-
-  // Get message count for title generation
-  const metadataResult = await red.callMcpTool(
-    'get_conversation_metadata',
-    { conversationId: params.conversationId },
-    { conversationId: params.conversationId }
-  );
-  const actualMessageCount = metadataResult.isError
-    ? params.messageCount
-    : JSON.parse(metadataResult.content?.[0]?.text || '{}').messageCount ||
-      params.messageCount;
-
-  // Trigger title generation for new conversations (first 2-3 messages)
-  if (actualMessageCount <= 3) {
-    console.log(
-      `[Completions-v2] Triggering title generation for ${params.conversationId}`
-    );
-    // Title generation is handled internally by the background module
-  }
-
-  // Summarization is triggered automatically by memory module
-  console.log(
-    `[Completions-v2] Background tasks triggered for ${params.conversationId}`
-  );
-}
+// Note: Background tasks (title generation, summarization) are now handled
+// by the worker after graph execution completes. See worker/src/processors/graph.ts
 
 // =============================================================================
 // POST Handler
@@ -232,12 +202,10 @@ export async function POST(request: NextRequest) {
       (body as any).userMessageId || generateMessageId();
     const assistantMessageId = generateMessageId();
 
-    // Get Red instance
-    const red = await getRed();
-
-    // Get graph ID
+    // Get graph ID (default graph if not specified)
     const graphId =
       typeof body.graphId === 'string' ? body.graphId : undefined;
+    const graphName = 'Default Graph'; // TODO: Look up graph name from DB
 
     // 1. Store user message BEFORE execution
     await storeMessage({
@@ -248,229 +216,67 @@ export async function POST(request: NextRequest) {
       content: userMessage,
     });
 
-    // Get runId from request (frontend may pre-generate to connect SSE early)
-    const requestRunId = typeof (body as any).runId === 'string' ? (body as any).runId : undefined;
-    console.log(`[Completions] ${new Date().toISOString()} Starting run with runId=${requestRunId}`);
+    // Generate or use provided runId
+    const runId = typeof (body as any).runId === 'string' 
+      ? (body as any).runId 
+      : `run_${nanoid()}`;
+    
+    console.log(`[Completions] ${new Date().toISOString()} Submitting job runId=${runId}`);
 
-    // Create connection fetcher for this user
-    const connectionFetcher = createConnectionFetcher(user.userId);
+    // Extract source info from request
+    const source = {
+      application: 'redChat' as const,
+      device: request.headers.get('x-device-type') || undefined,
+      userAgent: request.headers.get('user-agent') || undefined,
+      ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined,
+    };
 
-    // 2. Start run execution
-    const result = await run(red, { message: userMessage }, {
+    // 2. Initialize run state in Redis (allows SSE to connect immediately)
+    await initializeRunState({
+      runId,
       userId: user.userId,
-      graphId,
-      conversationId, // Pass conversationId for context loading
+      graphId: graphId || 'default',
+      graphName,
+      input: { message: userMessage },
+      conversationId,
+    });
+
+    // 3. Submit job to worker queue
+    await submitGraphJob({
+      runId,
+      userId: user.userId,
+      graphId: graphId || 'default',
+      conversationId,
+      input: { message: userMessage },
       stream: body.stream ?? true,
-      source: { application: 'redChat' },
-      runId: requestRunId, // Use frontend-provided runId if available
-      connectionFetcher, // Provide connection access during graph execution
-    });
-    console.log(`[Completions] ${new Date().toISOString()} run returned`);
-
-    // 3. Handle streaming vs non-streaming
-    if (body.stream && isStreamingResult(result)) {
-      const streamingResult = result as StreamingRunResult;
-      console.log(`[Completions-v2] ${new Date().toISOString()} Returning streaming response for runId=${streamingResult.runId}`);
-
-      // Set up completion callback to store assistant message and trigger background tasks
-      streamingResult.completion
-        .then(async (finalResult: RunResult) => {
-          // Map tool executions from RunResult to stored format
-          const toolExecutions = (finalResult.tools || []).map(tool => ({
-            toolId: tool.toolId,
-            toolName: tool.toolName,
-            toolType: tool.toolType,
-            status: tool.status,
-            startTime: new Date(tool.startedAt),
-            endTime: tool.completedAt ? new Date(tool.completedAt) : undefined,
-            duration: tool.duration,
-            steps: tool.steps?.map(step => ({
-              name: step.name,
-              timestamp: step.timestamp,
-              data: step.data,
-            })) || [],
-            result: tool.result,
-            error: tool.error,
-          }));
-
-          // Store assistant message with graph run data and tool executions
-          await storeMessage({
-            messageId: assistantMessageId,
-            conversationId,
-            userId: user.userId,
-            role: 'assistant',
-            content: finalResult.content,
-            thinking: finalResult.thinking || undefined,
-            toolExecutions: toolExecutions.length > 0 ? toolExecutions : undefined,
-            metadata: {
-              runId: finalResult.runId,
-              graphId: finalResult.graphId,
-              graphName: finalResult.graphName,
-              model: finalResult.metadata.model,
-              tokens: finalResult.metadata.tokens,
-              executionPath: finalResult.metadata.executionPath,
-              duration: finalResult.metadata.duration,
-            },
-            graphRun: {
-              graphId: finalResult.graphId,
-              graphName: finalResult.graphName,
-              runId: finalResult.runId,
-              status: finalResult.status,
-              executionPath: finalResult.graphTrace.executionPath,
-              nodeProgress: Object.fromEntries(
-                Object.entries(finalResult.graphTrace.nodeProgress).map(([nodeId, progress]) => [
-                  nodeId,
-                  {
-                    nodeId,
-                    status: progress.status,
-                    stepName: progress.nodeName,
-                    startTime: progress.startedAt,
-                    endTime: progress.completedAt,
-                    error: progress.error,
-                  },
-                ])
-              ),
-              startTime: finalResult.graphTrace.startTime,
-              endTime: finalResult.graphTrace.endTime,
-              duration: finalResult.metadata.duration,
-              error: finalResult.error,
-            },
-          });
-
-          // Trigger background tasks
-          await triggerBackgroundTasks({
-            conversationId,
-            userId: user.userId,
-            messageCount: body.messages.length + 1,
-          });
-
-          console.log(
-            `[Completions-v2] Run ${streamingResult.runId} completed, assistant message stored`
-          );
-        })
-        .catch((error: Error) => {
-          console.error(
-            `[Completions-v2] Run ${streamingResult.runId} failed:`,
-            error
-          );
-        });
-
-      // Return immediately with run info for SSE subscription
-      const response: StreamingCompletionResponse = {
-        id: completionId,
-        object: 'chat.completion.stream',
-        created,
-        model: modelName,
-        conversationId,
-        runId: streamingResult.runId,
+      source,
+      storeMessage: {
         messageId: assistantMessageId,
+        conversationId,
         userMessageId,
-        streamUrl: `/api/v1/runs/${streamingResult.runId}/stream`,
-      };
-
-      return NextResponse.json(response);
-    }
-
-    // Non-streaming: wait for completion
-    const finalResult = result as RunResult;
-
-    // Map tool executions from RunResult to stored format
-    const toolExecutions = (finalResult.tools || []).map(tool => ({
-      toolId: tool.toolId,
-      toolName: tool.toolName,
-      toolType: tool.toolType,
-      status: tool.status,
-      startTime: new Date(tool.startedAt),
-      endTime: tool.completedAt ? new Date(tool.completedAt) : undefined,
-      duration: tool.duration,
-      steps: tool.steps?.map(step => ({
-        name: step.name,
-        timestamp: step.timestamp,
-        data: step.data,
-      })) || [],
-      result: tool.result,
-      error: tool.error,
-    }));
-
-    // Store assistant message with graph run data and tool executions
-    await storeMessage({
-      messageId: assistantMessageId,
-      conversationId,
-      userId: user.userId,
-      role: 'assistant',
-      content: finalResult.content,
-      thinking: finalResult.thinking || undefined,
-      toolExecutions: toolExecutions.length > 0 ? toolExecutions : undefined,
-      metadata: {
-        runId: finalResult.runId,
-        graphId: finalResult.graphId,
-        graphName: finalResult.graphName,
-        model: finalResult.metadata.model,
-        tokens: finalResult.metadata.tokens,
-        executionPath: finalResult.metadata.executionPath,
-        duration: finalResult.metadata.duration,
-      },
-      graphRun: {
-        graphId: finalResult.graphId,
-        graphName: finalResult.graphName,
-        runId: finalResult.runId,
-        status: finalResult.status,
-        executionPath: finalResult.graphTrace.executionPath,
-        nodeProgress: Object.fromEntries(
-          Object.entries(finalResult.graphTrace.nodeProgress).map(([nodeId, progress]) => [
-            nodeId,
-            {
-              nodeId,
-              status: progress.status,
-              stepName: progress.nodeName,
-              startTime: progress.startedAt,
-              endTime: progress.completedAt,
-              error: progress.error,
-            },
-          ])
-        ),
-        startTime: finalResult.graphTrace.startTime,
-        endTime: finalResult.graphTrace.endTime,
-        duration: finalResult.metadata.duration,
-        error: finalResult.error,
       },
     });
 
-    // Trigger background tasks
-    await triggerBackgroundTasks({
-      conversationId,
-      userId: user.userId,
-      messageCount: body.messages.length + 1,
-    });
+    console.log(`[Completions] ${new Date().toISOString()} Job submitted to queue`);
 
-    // Return complete response
-    const response: CompletionResponse = {
+    // 4. Return immediately with stream URL
+    // Both streaming and non-streaming modes use the same response format now
+    // Client connects to SSE endpoint to get real-time updates
+    const response: StreamingCompletionResponse = {
       id: completionId,
-      object: 'chat.completion',
+      object: 'chat.completion.stream',
       created,
       model: modelName,
       conversationId,
-      runId: finalResult.runId,
-      choices: [
-        {
-          index: 0,
-          message: {
-            role: 'assistant',
-            content: finalResult.content,
-          },
-          finish_reason: finalResult.status === 'completed' ? 'stop' : 'error',
-        },
-      ],
-      usage: {
-        prompt_tokens: finalResult.metadata.tokens?.input || 0,
-        completion_tokens: finalResult.metadata.tokens?.output || 0,
-        total_tokens: finalResult.metadata.tokens?.total || 0,
-      },
+      runId,
+      messageId: assistantMessageId,
+      userMessageId,
+      streamUrl: `/api/v1/runs/${runId}/stream`,
     };
 
     return NextResponse.json(response);
   } catch (error: unknown) {
-    console.error('[Completions-v2] Error:', error);
+    console.error('[Completions] Error:', error);
 
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';

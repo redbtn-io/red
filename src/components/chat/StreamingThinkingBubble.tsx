@@ -53,11 +53,15 @@ export function StreamingThinkingBubble({ thinking, isStreaming, isThinkingDispl
       <div 
         onClick={onOpenModal}
         className={`
-        max-w-[80%] rounded-xl px-5 py-3.5 shadow-lg cursor-pointer transition-all duration-400 ease-in-out select-none
-        bg-purple-600 border border-purple-500/50 text-text-primary hover:bg-purple-700
+        max-w-[85%] md:max-w-[75%] rounded-2xl px-4 py-3 cursor-pointer transition-all duration-400 ease-in-out select-none
+        bg-purple-600 text-white hover:bg-purple-700
         ${isStreaming ? 'thinking-pulse' : ''}
         ${isShrinking ? 'transform scale-x-0 scale-y-0 opacity-0 origin-top-left' : 'transform scale-x-100 scale-y-100 opacity-100 origin-top-left'}
-      `}>
+      `}
+        style={{
+          boxShadow: '0 2px 8px rgba(147, 51, 234, 0.25), 0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}
+      >
         {/* Header with brain icon and minimal text */}
         <div className="flex items-center gap-2 mb-2">
           <Brain className="w-4 h-4 text-purple-200" />
@@ -74,11 +78,11 @@ export function StreamingThinkingBubble({ thinking, isStreaming, isThinkingDispl
         </div>
         
         {/* Compact thinking content */}
-        <div className="prose prose-invert max-w-none prose-sm
+        <div className="prose prose-invert max-w-none prose-sm text-[14px]
           prose-p:my-1 prose-p:leading-relaxed prose-p:text-purple-50
-          prose-pre:bg-black/30 prose-pre:border prose-pre:border-purple-400/30 prose-pre:my-2
-          prose-code:text-purple-100 prose-code:bg-black/20 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
-          prose-a:text-purple-100 prose-a:underline 
+          prose-pre:bg-black/20 prose-pre:border prose-pre:border-purple-400/20 prose-pre:my-2 prose-pre:rounded-lg
+          prose-code:text-purple-100 prose-code:bg-black/15 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-sm
+          prose-a:text-purple-100 prose-a:underline prose-a:decoration-purple-300/50
           prose-strong:text-purple-50 prose-strong:font-semibold
           prose-em:text-purple-50 prose-em:italic
           prose-headings:text-purple-50 prose-headings:font-bold prose-headings:mt-2 prose-headings:mb-1

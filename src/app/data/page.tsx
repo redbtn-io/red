@@ -112,21 +112,6 @@ export default function DataDashboardPage() {
       animate="animate"
       exit="exit"
     >
-      {/* Header */}
-      <div className="border-b border-border bg-bg-primary/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center">
-              <Database size={20} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">Data</h1>
-              <p className="text-sm text-text-secondary">Manage your knowledge bases and persistent state</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 py-8 pb-scroll-safe">
         <motion.div
