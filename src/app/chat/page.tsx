@@ -1744,12 +1744,13 @@ function ChatPageContent() {
                     disabled={isLoading || isStreaming}
                     loading={agentsLoading}
                   />
-                  {currentGraphDefinition && (
+                  {selectedGraphId && (
                     <GraphViewButton
                       isRunning={graphIsRunning}
                       onClick={toggleGraphDrawer}
                       iconOnly={true}
                       size="sm"
+                      disabled={!currentGraphDefinition}
                     />
                   )}
                 </div>

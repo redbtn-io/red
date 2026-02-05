@@ -78,6 +78,16 @@ export function AgentSelector({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
   
+  // Show loading state or hide completely if no agents after loading
+  if (loading) {
+    return (
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-sm border border-border bg-white dark:bg-bg-secondary opacity-50">
+        <Bot className="w-4 h-4 text-purple-500 flex-shrink-0 animate-pulse" />
+        <span className="text-text-muted hidden sm:inline text-xs">Loading...</span>
+      </div>
+    );
+  }
+  
   if (agents.length === 0) {
     return null;
   }
