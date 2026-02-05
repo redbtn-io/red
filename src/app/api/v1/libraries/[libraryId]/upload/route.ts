@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { VectorStoreManager, DocumentParser } from '@redbtn/redbtn';
 import { getUserFromRequest } from '@/lib/auth';
 import mongoose from 'mongoose';
-import { GridFSBucket } from 'mongodb';
+import { GridFSBucket, Db } from 'mongodb';
 import connectToDatabase from '@/lib/database/mongodb';
 
 // Image MIME types that need vision processing
@@ -127,7 +127,8 @@ export async function POST(
     // Store original file in GridFS first (needed for images, useful for all files)
     let gridFsFileId: string | undefined;
     try {
-      const bucket = new GridFSBucket(db, { bucketName: 'library_files' });
+      // Cast db to avoid type mismatch between mongoose's bundled mongodb and standalone mongodb
+      const bucket = new GridFSBucket(db as unknown as Db, { bucketName: 'library_files' });
       const uploadStream = bucket.openUploadStream(file.name, {
         metadata: {
           documentId,

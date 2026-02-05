@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
 import mongoose from 'mongoose';
-import { GridFSBucket, ObjectId } from 'mongodb';
+import { GridFSBucket, ObjectId, Db } from 'mongodb';
 import connectToDatabase from '@/lib/database/mongodb';
 
 // --- Type Definitions ---
@@ -83,7 +83,8 @@ export async function GET(
     }
 
     // Get file from GridFS
-    const bucket = new GridFSBucket(db, { bucketName: 'library_files' });
+    // Cast db to avoid type mismatch between mongoose's bundled mongodb and standalone mongodb
+    const bucket = new GridFSBucket(db as unknown as Db, { bucketName: 'library_files' });
     
     let fileId: ObjectId;
     try {

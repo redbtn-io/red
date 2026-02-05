@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { VectorStoreManager, DocumentParser } from '@redbtn/redbtn';
 import { verifyAuth } from '@/lib/auth/auth';
 import mongoose from 'mongoose';
-import { GridFSBucket, ObjectId } from 'mongodb';
+import { GridFSBucket, ObjectId, Db } from 'mongodb';
 import connectToDatabase from '@/lib/database/mongodb';
 
 interface LibraryDocument {
@@ -75,7 +75,8 @@ export async function POST(
     );
 
     // Retrieve file from GridFS
-    const bucket = new GridFSBucket(db, { bucketName: 'library_files' });
+    // Cast db to avoid type mismatch between mongoose's bundled mongodb and standalone mongodb
+    const bucket = new GridFSBucket(db as unknown as Db, { bucketName: 'library_files' });
     const downloadStream = bucket.openDownloadStream(new ObjectId(docRecord.gridFsFileId));
     
     const chunks: Buffer[] = [];
