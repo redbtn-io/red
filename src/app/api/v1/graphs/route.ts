@@ -172,7 +172,12 @@ export async function GET(request: NextRequest) {
     const userTier = user.accountLevel || 4;
 
     // Build graphType filter if specified
-    const graphTypeFilter = graphType ? { graphType } : {};
+    // For 'agent' type, also match documents where graphType is missing (legacy data defaults to agent)
+    const graphTypeFilter = graphType 
+      ? graphType === 'agent' 
+        ? { $or: [{ graphType: 'agent' }, { graphType: { $exists: false } }] }
+        : { graphType }
+      : {};
 
     // 4. Get system graphs (accessible by tier)
     // User can access graphs at their tier or higher (lower tier numbers = higher privilege)
