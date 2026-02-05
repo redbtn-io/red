@@ -7,13 +7,18 @@
  */
 import { Red, RedConfig, getDatabase } from '@redbtn/redbtn';
 
+// Initialize database singleton immediately with correct URL
+// This prevents race conditions where API routes call getDatabase() before getRed()
+const mongoUrl = process.env.MONGODB_URI || "mongodb://localhost:27017/redbtn";
+getDatabase(mongoUrl);
+
 // Re-export getDatabase for convenience
 export { getDatabase };
 
 const config: RedConfig = {
   redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
   vectorDbUrl: process.env.VECTOR_DB_URL || "http://localhost:8200",
-  databaseUrl: process.env.MONGODB_URI || "mongodb://localhost:27017/redbtn",
+  databaseUrl: mongoUrl,
   chatLlmUrl: process.env.CHAT_LLM_URL || "http://localhost:11434",
   workLlmUrl: process.env.WORK_LLM_URL || "http://localhost:11434",
   disableMcp: true, // Webapp doesn't run tools, workers do. Tools come from DB.

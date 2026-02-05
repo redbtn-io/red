@@ -4,7 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { Red, getDatabase } from '@redbtn/redbtn';
+import { Red } from '@redbtn/redbtn';
+import { getDatabase } from '@/lib/red';
 import { verifyAuth } from '@/lib/auth/auth';
 
 const red = new Red({

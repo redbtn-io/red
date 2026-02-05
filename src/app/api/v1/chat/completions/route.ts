@@ -27,7 +27,7 @@ import {
 import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
 import { RateLimits } from '@/lib/rate-limit/rate-limit';
 import { verifyAuth } from '@/lib/auth/auth';
-import { getDatabase } from '@redbtn/redbtn';
+import { getDatabase } from '@/lib/red';
 import { submitGraphJob, initializeRunState } from '@/lib/queue';
 
 // =============================================================================
