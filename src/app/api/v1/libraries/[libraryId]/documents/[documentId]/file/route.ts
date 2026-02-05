@@ -88,7 +88,7 @@ export async function GET(
     let fileId: ObjectId;
     try {
       fileId = new ObjectId(doc.gridFsFileId);
-    } catch {
+    } catch (_err) {
       return NextResponse.json({ error: 'Invalid file reference' }, { status: 500 });
     }
 
