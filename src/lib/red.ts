@@ -1,5 +1,9 @@
 /**
  * redbtn instance initialization for Next.js API routes
+ * 
+ * Note: MCP is disabled for webapp - tools are fetched from database
+ * where workers register them on startup. This avoids spawning child
+ * processes in the webapp container.
  */
 import { Red, RedConfig, getDatabase } from '@redbtn/redbtn';
 
@@ -12,6 +16,7 @@ const config: RedConfig = {
   databaseUrl: process.env.MONGODB_URI || "mongodb://localhost:27017/redbtn",
   chatLlmUrl: process.env.CHAT_LLM_URL || "http://localhost:11434",
   workLlmUrl: process.env.WORK_LLM_URL || "http://localhost:11434",
+  disableMcp: true, // Webapp doesn't run tools, workers do. Tools come from DB.
 };
 
 let redInstance: Red | null = null;

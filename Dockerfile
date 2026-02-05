@@ -59,8 +59,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy the full @redbtn/redbtn package (needed for MCP stdio servers that run as separate processes)
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@redbtn/redbtn ./node_modules/@redbtn/redbtn
+# Note: MCP is disabled for webapp (disableMcp: true in config)
+# Tools are fetched from database where workers register them on startup
+# No need to copy @redbtn/redbtn package for MCP stdio servers
 
 USER nextjs
 

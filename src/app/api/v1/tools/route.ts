@@ -6,6 +6,9 @@ import { getRed } from '@/lib/red';
  * GET /api/v1/tools
  * Get all available MCP tools (global + user's custom)
  * 
+ * Tools are fetched from the database (registered by workers on startup)
+ * rather than directly from MCP servers, so webapp doesn't need MCP runtime.
+ * 
  * Query params:
  * - source: 'all' | 'global' | 'custom' - filter by source (default: 'all')
  */
@@ -24,9 +27,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const sourceFilter = searchParams.get('source') as 'all' | 'global' | 'custom' | null;
 
-    // Get all available tools including user's custom MCP tools
+    // Get all available tools from database (registered by workers)
     const red = await getRed();
-    const result = await red.getAllTools(user.userId);
+    const result = await red.getToolsFromRegistry(user.userId);
 
     // Apply source filter if specified
     let filteredTools = result.tools;
