@@ -88,8 +88,14 @@ export function AgentSelector({
     );
   }
   
+  // No agents available - show disabled placeholder
   if (agents.length === 0) {
-    return null;
+    return (
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-sm border border-border/50 bg-bg-secondary/50 opacity-60">
+        <Bot className="w-4 h-4 text-text-muted flex-shrink-0" />
+        <span className="text-text-muted hidden sm:inline text-xs">No agents</span>
+      </div>
+    );
   }
   
   return (
