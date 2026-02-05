@@ -59,6 +59,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Copy the full @redbtn/redbtn package (needed for MCP stdio servers that run as separate processes)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@redbtn/redbtn ./node_modules/@redbtn/redbtn
+
 USER nextjs
 
 EXPOSE 3000
