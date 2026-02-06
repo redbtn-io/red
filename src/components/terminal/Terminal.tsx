@@ -1066,7 +1066,7 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
         {!isInitialized ? (
           <div className="text-text-muted">Loading...</div>
         ) : (
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence key={activeTabId} mode="popLayout">
             {lines.map((line) => (
               <motion.div
                 key={line.id}
