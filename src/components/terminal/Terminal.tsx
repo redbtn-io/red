@@ -308,6 +308,8 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
     if (tabId === activeTabId) {
       const newIdx = Math.min(idx, newTabs.length - 1);
       const newTab = newTabs[newIdx];
+      // Invalidate any in-flight loadConversationHistory fetches
+      expectedConvIdRef.current = newTab.conversationId;
       const cached = tabDataRef.current.get(newTab.id);
       if (cached) {
         setLines(cached.lines);
