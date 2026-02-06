@@ -25,10 +25,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
+    const source = searchParams.get('source') || undefined; // Filter by source: 'chat', 'terminal', 'api'
 
     // Fetch conversations from AI package database (red.memory)
     const db = getDatabase();
-    const conversations = await db.getConversations(user.userId, limit, offset);
+    const conversations = await db.getConversations(user.userId, limit, offset, source);
 
     return NextResponse.json({
       conversations: conversations.map(conv => ({
@@ -37,6 +38,7 @@ export async function GET(request: NextRequest) {
         lastMessageAt: conv.updatedAt, // Use updatedAt as proxy for lastMessageAt
         messageCount: conv.metadata?.messageCount || 0,
         isArchived: false, // AI package doesn't have archive feature yet
+        source: conv.source || 'chat',
         createdAt: conv.createdAt,
         updatedAt: conv.updatedAt,
       })),
@@ -73,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title } = body;
+    const { title, source } = body;
 
     // Generate a conversationId using Memory class method
     // The AI package will create the actual conversation when first message is sent
@@ -87,6 +89,7 @@ export async function POST(request: NextRequest) {
       conversationId,
       title: title || 'New Conversation',
       userId: user.userId,
+      source: source || 'chat',
       metadata: {
         messageCount: 0,
       },

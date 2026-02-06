@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, KeyboardEvent, useCallback } from 'react';
+import { useState, useRef, useEffect, KeyboardEvent, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Settings, Plus, X } from 'lucide-react';
 
@@ -18,11 +18,13 @@ interface GraphOption {
   isDefault?: boolean;
 }
 
-interface TerminalProps {
+export interface TerminalProps {
   initialGraphId?: string;
+  /** Called after a tab is closed (e.g. to refresh history sidebar) */
+  onTabClose?: () => void;
 }
 
-interface TabInfo {
+export interface TabInfo {
   id: string;
   name: string;
   conversationId: string;
@@ -33,6 +35,22 @@ interface TabData {
   lines: TerminalLine[];
   commandHistory: string[];
   historyIndex: number;
+}
+
+export interface TerminalHistoryItem {
+  id: string;
+  conversationId: string;
+  title: string;
+  messageCount: number;
+  updatedAt: string;
+  createdAt: string;
+}
+
+export interface TerminalHandle {
+  /** Restore a closed session as a new tab */
+  restoreSession: (conversationId: string, title: string) => boolean;
+  /** Get current active tab conversation IDs (for filtering history) */
+  getActiveConversationIds: () => string[];
 }
 
 // LocalStorage keys
@@ -77,7 +95,7 @@ function loadTabsFromStorage(defaultGraphId: string): { tabs: TabInfo[]; activeT
   return { tabs: [{ id: tabId, name: 'Terminal 1', conversationId: legacyId || createConversationId(), selectedGraphId: defaultGraphId }], activeTabId: tabId };
 }
 
-export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
+export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Terminal({ initialGraphId = 'red-assistant', onTabClose }, ref) {
   // Tab state
   const [tabs, setTabs] = useState<TabInfo[]>([]);
   const [activeTabId, setActiveTabId] = useState<string>('');
@@ -97,6 +115,11 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editingTabName, setEditingTabName] = useState('');
   
+  // Tab drag-reorder state
+  const [draggingTabIdx, setDraggingTabIdx] = useState<number | null>(null);
+  const tabDragIdxRef = useRef<number | null>(null);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
   // Refs
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
@@ -111,10 +134,7 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
   const linesRef = useRef<TerminalLine[]>([]);
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef<number>(-1);
-  useEffect(() => {
-    linesRef.current = lines;
-    console.log(`[TAB] lines changed: ${lines.length} lines, first: ${lines[0]?.content?.slice(0,40) || '(empty)'}`, lines.map(l => l.content?.slice(0,30)));
-  }, [lines]);
+  useEffect(() => { linesRef.current = lines; }, [lines]);
   useEffect(() => { historyRef.current = commandHistory; }, [commandHistory]);
   useEffect(() => { historyIndexRef.current = historyIndex; }, [historyIndex]);
 
@@ -170,7 +190,6 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
         loaded = loadTabsFromStorage(initialGraphId);
       }
       if (cancelled) return;
-      console.log(`[TAB] init: loaded ${loaded.tabs.length} tabs, active=${loaded.activeTabId.slice(-6)}, conv=${loaded.tabs.find(t => t.id === loaded!.activeTabId)?.conversationId.slice(-8)}`);
       profileLoadedRef.current = true;
       setTabs(loaded.tabs);
       setActiveTabId(loaded.activeTabId);
@@ -234,7 +253,6 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
 
   const saveCurrentTabData = useCallback(() => {
     if (activeTabId) {
-      console.log(`[TAB] saveCurrentTabData: saving ${linesRef.current.length} lines for tab=${activeTabId.slice(-6)}, first line: ${linesRef.current[0]?.content?.slice(0,40)}`);
       tabDataRef.current.set(activeTabId, {
         lines: linesRef.current,
         commandHistory: historyRef.current,
@@ -245,7 +263,6 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
 
   const switchToTab = (tabId: string) => {
     if (tabId === activeTabId) return;
-    console.log(`[TAB] switchToTab: from=${activeTabId.slice(-6)} to=${tabId.slice(-6)}`);
     // Abort any active streaming
     abortControllerRef.current?.abort();
     if (eventSourceRef.current) { eventSourceRef.current.close(); eventSourceRef.current = null; }
@@ -256,13 +273,11 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
     const cached = tabDataRef.current.get(tabId);
     const tab = tabs.find(t => t.id === tabId);
     if (cached) {
-      console.log(`[TAB] switchToTab: restoring cached ${cached.lines.length} lines, first: ${cached.lines[0]?.content?.slice(0,40)}`);
       setLines(cached.lines);
       setCommandHistory(cached.commandHistory);
       setHistoryIndex(cached.historyIndex);
       setIsInitialized(true);
     } else if (tab) {
-      console.log(`[TAB] switchToTab: no cache, loading history for conv=${tab.conversationId.slice(-8)}`);
       setLines([]);
       setIsInitialized(false);
       loadConversationHistory(tab.conversationId);
@@ -273,7 +288,6 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
       setConversationId(tab.conversationId);
       setSelectedGraphId(tab.selectedGraphId);
       expectedConvIdRef.current = tab.conversationId;
-      console.log(`[TAB] switchToTab: expectedConvId=${tab.conversationId.slice(-8)}`);
     }
     setActiveTabId(tabId);
     setInput('');
@@ -282,11 +296,9 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
 
   const addTab = () => {
     if (tabs.length >= 8) return;
-    console.log(`[TAB] addTab: current activeTabId=${activeTabId.slice(-6)}, current linesRef has ${linesRef.current.length} lines`);
     saveCurrentTabData();
     const tabId = createTabId();
     const convId = createConversationId();
-    console.log(`[TAB] addTab: new tab=${tabId.slice(-6)}, conv=${convId.slice(-8)}, expectedConvId was=${expectedConvIdRef.current.slice(-8)}`);
     // Mark the new conversation as expected so any in-flight fetch for the old tab is discarded
     expectedConvIdRef.current = convId;
     const newTab: TabInfo = { id: tabId, name: `Terminal ${tabs.length + 1}`, conversationId: convId, selectedGraphId: initialGraphId };
@@ -295,7 +307,6 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
     setConversationId(convId);
     setSelectedGraphId(initialGraphId);
     const welcomeLines = getWelcomeLines();
-    console.log(`[TAB] addTab: calling setLines with ${welcomeLines.length} welcome lines`);
     setLines(welcomeLines);
     setCommandHistory([]);
     setHistoryIndex(-1);
@@ -308,7 +319,6 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
   const closeTab = (tabId: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (tabs.length <= 1) return;
-    console.log(`[TAB] closeTab: closing tab=${tabId.slice(-6)}, isActive=${tabId === activeTabId}`);
     const idx = tabs.findIndex(t => t.id === tabId);
     const newTabs = tabs.filter(t => t.id !== tabId);
     tabDataRef.current.delete(tabId);
@@ -322,18 +332,15 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
     if (tabId === activeTabId) {
       const newIdx = Math.min(idx, newTabs.length - 1);
       const newTab = newTabs[newIdx];
-      console.log(`[TAB] closeTab: switching to tab=${newTab.id.slice(-6)}, conv=${newTab.conversationId.slice(-8)}`);
       // Invalidate any in-flight loadConversationHistory fetches
       expectedConvIdRef.current = newTab.conversationId;
       const cached = tabDataRef.current.get(newTab.id);
       if (cached) {
-        console.log(`[TAB] closeTab: restoring cached ${cached.lines.length} lines, first: ${cached.lines[0]?.content?.slice(0,40)}`);
         setLines(cached.lines);
         setCommandHistory(cached.commandHistory);
         setHistoryIndex(cached.historyIndex);
         setIsInitialized(true);
       } else {
-        console.log(`[TAB] closeTab: no cache for tab=${newTab.id.slice(-6)}, loading history`);
         setLines([]);
         setIsInitialized(false);
         loadConversationHistory(newTab.conversationId);
@@ -343,6 +350,8 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
       setSelectedGraphId(newTab.selectedGraphId);
       setInput('');
     }
+    // Notify parent so history sidebar can refresh
+    onTabClose?.();
   };
 
   const startRenamingTab = (tabId: string, e: React.MouseEvent) => {
@@ -364,19 +373,16 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
   const expectedConvIdRef = useRef<string>('');
 
   const loadConversationHistory = async (convId: string) => {
-    console.log(`[TAB] loadConversationHistory: START conv=${convId.slice(-8)}, expectedConvId=${expectedConvIdRef.current.slice(-8)}`);
     expectedConvIdRef.current = convId;
     try {
       const res = await fetch(`/api/v1/conversations/${convId}/messages`, { credentials: 'include' });
       // Guard: if tab switched while we were fetching, discard results
       if (expectedConvIdRef.current !== convId) {
-        console.log(`[TAB] loadConversationHistory: STALE after fetch, conv=${convId.slice(-8)}, expected=${expectedConvIdRef.current.slice(-8)} — DISCARDING`);
         return;
       }
       if (res.ok) {
         const data = await res.json();
         if (expectedConvIdRef.current !== convId) {
-          console.log(`[TAB] loadConversationHistory: STALE after json parse, conv=${convId.slice(-8)}, expected=${expectedConvIdRef.current.slice(-8)} — DISCARDING`);
           return;
         }
         const messages = data.messages || [];
@@ -401,19 +407,15 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
           }
         });
         
-        console.log(`[TAB] loadConversationHistory: conv=${convId.slice(-8)} returned ${messages.length} msgs → ${historyLines.length} lines`);
         if (historyLines.length > 0) {
           setLines(historyLines);
         } else {
-          console.log(`[TAB] loadConversationHistory: no messages, setting welcome lines`);
           setLines(getWelcomeLines());
         }
       } else {
-        console.log(`[TAB] loadConversationHistory: conv=${convId.slice(-8)} returned ${res.status}, setting welcome lines`);
         setLines(getWelcomeLines());
       }
     } catch (err) {
-      console.log(`[TAB] loadConversationHistory: conv=${convId.slice(-8)} ERROR:`, err);
       setLines(getWelcomeLines());
     }
     setIsInitialized(true);
@@ -642,6 +644,78 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
     }
   };
 
+  // --- Imperative handle for parent (session history restore) ---
+  useImperativeHandle(ref, () => ({
+    restoreSession(conversationId: string, title: string): boolean {
+      if (tabs.length >= 8) return false;
+      saveCurrentTabData();
+      const tabId = createTabId();
+      const newTab: TabInfo = {
+        id: tabId,
+        name: title.length > 20 ? title.slice(0, 18) + '…' : title,
+        conversationId,
+        selectedGraphId: initialGraphId,
+      };
+      expectedConvIdRef.current = conversationId;
+      setTabs(prev => [...prev, newTab]);
+      setActiveTabId(tabId);
+      setConversationId(conversationId);
+      setSelectedGraphId(initialGraphId);
+      setLines([]);
+      setIsInitialized(false);
+      loadConversationHistory(conversationId);
+      setCommandHistory([]);
+      setHistoryIndex(-1);
+      setInput('');
+      setTimeout(() => inputRef.current?.focus(), 50);
+      return true;
+    },
+    getActiveConversationIds(): string[] {
+      return tabs.map(t => t.conversationId);
+    },
+  }), [tabs, saveCurrentTabData, initialGraphId]);
+
+  // --- Tab drag reorder ---
+  const handleTabDragStart = useCallback((index: number, e: React.PointerEvent) => {
+    if (editingTabId) return; // Don't drag while renaming
+    e.preventDefault();
+    tabDragIdxRef.current = index;
+    setDraggingTabIdx(index);
+
+    const handleMove = (moveEvt: PointerEvent) => {
+      const ci = tabDragIdxRef.current;
+      if (ci === null) return;
+      let targetIdx: number | null = null;
+      tabRefs.current.forEach((el, idx) => {
+        if (!el || idx === ci) return;
+        const rect = el.getBoundingClientRect();
+        if (moveEvt.clientX >= rect.left && moveEvt.clientX <= rect.right) {
+          targetIdx = idx;
+        }
+      });
+      if (targetIdx !== null && targetIdx !== ci) {
+        setTabs(prev => {
+          const next = [...prev];
+          const [moved] = next.splice(ci, 1);
+          next.splice(targetIdx!, 0, moved);
+          return next;
+        });
+        tabDragIdxRef.current = targetIdx;
+        setDraggingTabIdx(targetIdx);
+      }
+    };
+
+    const handleUp = () => {
+      document.removeEventListener('pointermove', handleMove);
+      document.removeEventListener('pointerup', handleUp);
+      setDraggingTabIdx(null);
+      tabDragIdxRef.current = null;
+    };
+
+    document.addEventListener('pointermove', handleMove);
+    document.addEventListener('pointerup', handleUp);
+  }, [editingTabId]);
+
   // Execute input via graph
   const executeViaGraph = async (userInput: string) => {
     // Add a streaming line with cursor indicator immediately
@@ -660,6 +734,7 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
           messages: [{ role: 'user', content: userInput }],
           stream: true,
           graphId: selectedGraphId,
+          source: 'terminal',
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -935,12 +1010,12 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
     }
   }, [lines]);
 
-  // Focus input on mount
+  // Focus input on mount and after processing completes
   useEffect(() => {
-    if (isInitialized) {
-      inputRef.current?.focus();
+    if (isInitialized && !isProcessing) {
+      setTimeout(() => inputRef.current?.focus(), 0);
     }
-  }, [isInitialized]);
+  }, [isInitialized, isProcessing]);
 
   const selectedGraph = graphs.find(g => g.graphId === selectedGraphId);
 
@@ -952,15 +1027,17 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
       {/* Tab Bar */}
       <div className="flex items-center bg-bg-secondary border-b border-border min-h-[36px]">
         <div className="flex items-center overflow-x-auto flex-1 min-w-0 scrollbar-none">
-          {tabs.map((tab) => (
+          {tabs.map((tab, tabIdx) => (
             <button
               key={tab.id}
+              ref={(el) => { tabRefs.current[tabIdx] = el; }}
               onClick={() => switchToTab(tab.id)}
-              className={`group flex items-center gap-1.5 px-3 py-2 text-xs border-r border-border/50 whitespace-nowrap transition-colors relative ${
+              onPointerDown={(e) => handleTabDragStart(tabIdx, e)}
+              className={`group flex items-center gap-1.5 px-3 py-2 text-xs border-r border-border/50 whitespace-nowrap transition-colors relative touch-none select-none ${
                 tab.id === activeTabId
                   ? 'bg-bg-primary text-text-primary'
                   : 'text-text-muted hover:text-text-secondary hover:bg-bg-tertiary'
-              }`}
+              } ${draggingTabIdx === tabIdx ? 'opacity-50' : ''}`}
             >
               {tab.id === activeTabId && (
                 <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-accent" />
@@ -1138,4 +1215,4 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
       </div>
     </div>
   );
-}
+});

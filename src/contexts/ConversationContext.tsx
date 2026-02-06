@@ -81,7 +81,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      const response = await fetch('/api/v1/conversations', {
+      const response = await fetch('/api/v1/conversations?source=chat', {
         credentials: 'include',
       });
 

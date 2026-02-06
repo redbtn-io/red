@@ -89,6 +89,7 @@ async function storeMessage(params: {
   userId: string;
   role: 'user' | 'assistant';
   content: string;
+  source?: string;
   thinking?: string;
   metadata?: Record<string, unknown>;
   toolExecutions?: Array<{
@@ -138,7 +139,7 @@ async function storeMessage(params: {
     message.graphRun = params.graphRun;
   }
 
-  await db.storeMessage(message as any, params.userId);
+  await db.storeMessage(message as any, params.userId, params.source);
   console.log(
     `[Completions] Stored ${params.role} message ${params.messageId} for conversation ${params.conversationId}`
   );
@@ -207,6 +208,9 @@ export async function POST(request: NextRequest) {
       typeof body.graphId === 'string' ? body.graphId : undefined;
     const graphName = 'Default Graph'; // TODO: Look up graph name from DB
 
+    // Get conversation source (chat, terminal, api)
+    const conversationSource: string = (body as any).source || 'chat';
+
     // 1. Store user message BEFORE execution
     await storeMessage({
       messageId: userMessageId,
@@ -214,6 +218,7 @@ export async function POST(request: NextRequest) {
       userId: user.userId,
       role: 'user',
       content: userMessage,
+      source: conversationSource,
     });
 
     // Generate or use provided runId
