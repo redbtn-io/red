@@ -111,7 +111,10 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
   const linesRef = useRef<TerminalLine[]>([]);
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef<number>(-1);
-  useEffect(() => { linesRef.current = lines; }, [lines]);
+  useEffect(() => {
+    linesRef.current = lines;
+    console.log(`[TAB] lines changed: ${lines.length} lines, first: ${lines[0]?.content?.slice(0,40) || '(empty)'}`, lines.map(l => l.content?.slice(0,30)));
+  }, [lines]);
   useEffect(() => { historyRef.current = commandHistory; }, [commandHistory]);
   useEffect(() => { historyIndexRef.current = historyIndex; }, [historyIndex]);
 
@@ -167,6 +170,7 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
         loaded = loadTabsFromStorage(initialGraphId);
       }
       if (cancelled) return;
+      console.log(`[TAB] init: loaded ${loaded.tabs.length} tabs, active=${loaded.activeTabId.slice(-6)}, conv=${loaded.tabs.find(t => t.id === loaded!.activeTabId)?.conversationId.slice(-8)}`);
       profileLoadedRef.current = true;
       setTabs(loaded.tabs);
       setActiveTabId(loaded.activeTabId);
@@ -230,6 +234,7 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
 
   const saveCurrentTabData = useCallback(() => {
     if (activeTabId) {
+      console.log(`[TAB] saveCurrentTabData: saving ${linesRef.current.length} lines for tab=${activeTabId.slice(-6)}, first line: ${linesRef.current[0]?.content?.slice(0,40)}`);
       tabDataRef.current.set(activeTabId, {
         lines: linesRef.current,
         commandHistory: historyRef.current,
@@ -240,6 +245,7 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
 
   const switchToTab = (tabId: string) => {
     if (tabId === activeTabId) return;
+    console.log(`[TAB] switchToTab: from=${activeTabId.slice(-6)} to=${tabId.slice(-6)}`);
     // Abort any active streaming
     abortControllerRef.current?.abort();
     if (eventSourceRef.current) { eventSourceRef.current.close(); eventSourceRef.current = null; }
@@ -250,11 +256,13 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
     const cached = tabDataRef.current.get(tabId);
     const tab = tabs.find(t => t.id === tabId);
     if (cached) {
+      console.log(`[TAB] switchToTab: restoring cached ${cached.lines.length} lines, first: ${cached.lines[0]?.content?.slice(0,40)}`);
       setLines(cached.lines);
       setCommandHistory(cached.commandHistory);
       setHistoryIndex(cached.historyIndex);
       setIsInitialized(true);
     } else if (tab) {
+      console.log(`[TAB] switchToTab: no cache, loading history for conv=${tab.conversationId.slice(-8)}`);
       setLines([]);
       setIsInitialized(false);
       loadConversationHistory(tab.conversationId);
@@ -265,6 +273,7 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
       setConversationId(tab.conversationId);
       setSelectedGraphId(tab.selectedGraphId);
       expectedConvIdRef.current = tab.conversationId;
+      console.log(`[TAB] switchToTab: expectedConvId=${tab.conversationId.slice(-8)}`);
     }
     setActiveTabId(tabId);
     setInput('');
@@ -273,9 +282,11 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
 
   const addTab = () => {
     if (tabs.length >= 8) return;
+    console.log(`[TAB] addTab: current activeTabId=${activeTabId.slice(-6)}, current linesRef has ${linesRef.current.length} lines`);
     saveCurrentTabData();
     const tabId = createTabId();
     const convId = createConversationId();
+    console.log(`[TAB] addTab: new tab=${tabId.slice(-6)}, conv=${convId.slice(-8)}, expectedConvId was=${expectedConvIdRef.current.slice(-8)}`);
     // Mark the new conversation as expected so any in-flight fetch for the old tab is discarded
     expectedConvIdRef.current = convId;
     const newTab: TabInfo = { id: tabId, name: `Terminal ${tabs.length + 1}`, conversationId: convId, selectedGraphId: initialGraphId };
@@ -283,18 +294,21 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
     setActiveTabId(tabId);
     setConversationId(convId);
     setSelectedGraphId(initialGraphId);
-    setLines(getWelcomeLines());
+    const welcomeLines = getWelcomeLines();
+    console.log(`[TAB] addTab: calling setLines with ${welcomeLines.length} welcome lines`);
+    setLines(welcomeLines);
     setCommandHistory([]);
     setHistoryIndex(-1);
     setInput('');
     setIsInitialized(true);
-    tabDataRef.current.set(tabId, { lines: getWelcomeLines(), commandHistory: [], historyIndex: -1 });
+    tabDataRef.current.set(tabId, { lines: welcomeLines, commandHistory: [], historyIndex: -1 });
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
   const closeTab = (tabId: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (tabs.length <= 1) return;
+    console.log(`[TAB] closeTab: closing tab=${tabId.slice(-6)}, isActive=${tabId === activeTabId}`);
     const idx = tabs.findIndex(t => t.id === tabId);
     const newTabs = tabs.filter(t => t.id !== tabId);
     tabDataRef.current.delete(tabId);
@@ -308,15 +322,18 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
     if (tabId === activeTabId) {
       const newIdx = Math.min(idx, newTabs.length - 1);
       const newTab = newTabs[newIdx];
+      console.log(`[TAB] closeTab: switching to tab=${newTab.id.slice(-6)}, conv=${newTab.conversationId.slice(-8)}`);
       // Invalidate any in-flight loadConversationHistory fetches
       expectedConvIdRef.current = newTab.conversationId;
       const cached = tabDataRef.current.get(newTab.id);
       if (cached) {
+        console.log(`[TAB] closeTab: restoring cached ${cached.lines.length} lines, first: ${cached.lines[0]?.content?.slice(0,40)}`);
         setLines(cached.lines);
         setCommandHistory(cached.commandHistory);
         setHistoryIndex(cached.historyIndex);
         setIsInitialized(true);
       } else {
+        console.log(`[TAB] closeTab: no cache for tab=${newTab.id.slice(-6)}, loading history`);
         setLines([]);
         setIsInitialized(false);
         loadConversationHistory(newTab.conversationId);
@@ -347,14 +364,21 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
   const expectedConvIdRef = useRef<string>('');
 
   const loadConversationHistory = async (convId: string) => {
+    console.log(`[TAB] loadConversationHistory: START conv=${convId.slice(-8)}, expectedConvId=${expectedConvIdRef.current.slice(-8)}`);
     expectedConvIdRef.current = convId;
     try {
       const res = await fetch(`/api/v1/conversations/${convId}/messages`, { credentials: 'include' });
       // Guard: if tab switched while we were fetching, discard results
-      if (expectedConvIdRef.current !== convId) return;
+      if (expectedConvIdRef.current !== convId) {
+        console.log(`[TAB] loadConversationHistory: STALE after fetch, conv=${convId.slice(-8)}, expected=${expectedConvIdRef.current.slice(-8)} — DISCARDING`);
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
-        if (expectedConvIdRef.current !== convId) return;
+        if (expectedConvIdRef.current !== convId) {
+          console.log(`[TAB] loadConversationHistory: STALE after json parse, conv=${convId.slice(-8)}, expected=${expectedConvIdRef.current.slice(-8)} — DISCARDING`);
+          return;
+        }
         const messages = data.messages || [];
         
         // Convert stored messages to terminal lines
@@ -377,15 +401,19 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
           }
         });
         
+        console.log(`[TAB] loadConversationHistory: conv=${convId.slice(-8)} returned ${messages.length} msgs → ${historyLines.length} lines`);
         if (historyLines.length > 0) {
           setLines(historyLines);
         } else {
+          console.log(`[TAB] loadConversationHistory: no messages, setting welcome lines`);
           setLines(getWelcomeLines());
         }
       } else {
+        console.log(`[TAB] loadConversationHistory: conv=${convId.slice(-8)} returned ${res.status}, setting welcome lines`);
         setLines(getWelcomeLines());
       }
     } catch (err) {
+      console.log(`[TAB] loadConversationHistory: conv=${convId.slice(-8)} ERROR:`, err);
       setLines(getWelcomeLines());
     }
     setIsInitialized(true);
