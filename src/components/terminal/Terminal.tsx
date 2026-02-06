@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, KeyboardEvent, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Settings } from 'lucide-react';
+import { ChevronDown, Settings, Plus, X } from 'lucide-react';
 
 interface TerminalLine {
   id: string;
@@ -22,21 +22,68 @@ interface TerminalProps {
   initialGraphId?: string;
 }
 
-// Generate a stable terminal conversation ID for this browser session
-const TERMINAL_CONVERSATION_KEY = 'redbtn_terminal_conversation_id';
+interface TabInfo {
+  id: string;
+  name: string;
+  conversationId: string;
+  selectedGraphId: string;
+}
 
-function getTerminalConversationId(): string {
-  if (typeof window === 'undefined') return `terminal-${Date.now()}`;
-  
-  let conversationId = localStorage.getItem(TERMINAL_CONVERSATION_KEY);
-  if (!conversationId) {
-    conversationId = `terminal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    localStorage.setItem(TERMINAL_CONVERSATION_KEY, conversationId);
+interface TabData {
+  lines: TerminalLine[];
+  commandHistory: string[];
+  historyIndex: number;
+}
+
+// LocalStorage keys
+const TERMINAL_TABS_KEY = 'redbtn_terminal_tabs';
+const TERMINAL_ACTIVE_TAB_KEY = 'redbtn_terminal_active_tab';
+const TERMINAL_CONVERSATION_KEY = 'redbtn_terminal_conversation_id'; // Legacy
+
+function createTabId(): string {
+  return `tab-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+}
+
+function createConversationId(): string {
+  return `terminal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+function getWelcomeLines(): TerminalLine[] {
+  return [
+    { id: `welcome-${Date.now()}`, type: 'system', content: 'Welcome to redbtn Terminal v0.1.0', timestamp: new Date() },
+    { id: `hint-${Date.now()}`, type: 'system', content: 'Type "help" for commands or just start chatting.', timestamp: new Date() },
+  ];
+}
+
+function loadTabsFromStorage(defaultGraphId: string): { tabs: TabInfo[]; activeTabId: string } {
+  if (typeof window === 'undefined') {
+    const id = createTabId();
+    return { tabs: [{ id, name: 'Terminal 1', conversationId: createConversationId(), selectedGraphId: defaultGraphId }], activeTabId: id };
   }
-  return conversationId;
+  try {
+    const saved = localStorage.getItem(TERMINAL_TABS_KEY);
+    const savedActive = localStorage.getItem(TERMINAL_ACTIVE_TAB_KEY);
+    if (saved) {
+      const tabs: TabInfo[] = JSON.parse(saved);
+      if (tabs.length > 0) {
+        const activeTabId = savedActive && tabs.some(t => t.id === savedActive) ? savedActive : tabs[0].id;
+        return { tabs, activeTabId };
+      }
+    }
+  } catch { /* corrupt storage */ }
+  // Migrate from legacy single-conversation
+  const legacyId = localStorage.getItem(TERMINAL_CONVERSATION_KEY);
+  const tabId = createTabId();
+  return { tabs: [{ id: tabId, name: 'Terminal 1', conversationId: legacyId || createConversationId(), selectedGraphId: defaultGraphId }], activeTabId: tabId };
 }
 
 export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
+  // Tab state
+  const [tabs, setTabs] = useState<TabInfo[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string>('');
+  const tabDataRef = useRef<Map<string, TabData>>(new Map());
+
+  // Active session state
   const [lines, setLines] = useState<TerminalLine[]>([]);
   const [input, setInput] = useState('');
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
@@ -47,23 +94,90 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
   const [graphs, setGraphs] = useState<GraphOption[]>([]);
   const [showGraphSelector, setShowGraphSelector] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [editingTabId, setEditingTabId] = useState<string | null>(null);
+  const [editingTabName, setEditingTabName] = useState('');
   
+  // Refs
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const graphSelectorRef = useRef<HTMLDivElement>(null);
+  const tabNameInputRef = useRef<HTMLInputElement>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const profileLoadedRef = useRef(false);
 
-  // Initialize terminal
+  // Mirror state in refs for tab-switching (avoids stale closures)
+  const linesRef = useRef<TerminalLine[]>([]);
+  const historyRef = useRef<string[]>([]);
+  const historyIndexRef = useRef<number>(-1);
+  useEffect(() => { linesRef.current = lines; }, [lines]);
+  useEffect(() => { historyRef.current = commandHistory; }, [commandHistory]);
+  useEffect(() => { historyIndexRef.current = historyIndex; }, [historyIndex]);
+
+  // Debounced save to user profile API
+  const saveTabsToProfile = useCallback((tabsToSave: TabInfo[], activeId: string) => {
+    // Write-through to localStorage immediately
+    localStorage.setItem(TERMINAL_TABS_KEY, JSON.stringify(tabsToSave));
+    localStorage.setItem(TERMINAL_ACTIVE_TAB_KEY, activeId);
+    // Debounce the API call (1s)
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      fetch('/api/v1/user/preferences/ui', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ terminalTabs: tabsToSave, terminalActiveTab: activeId }),
+      }).catch(() => { /* silent — localStorage is the fallback */ });
+    }, 1000);
+  }, []);
+
+  // Persist tabs on change
   useEffect(() => {
-    const id = getTerminalConversationId();
-    setConversationId(id);
-    
-    // Load graphs for selector
-    fetchGraphs();
-    
-    // Load existing messages from this conversation
-    loadConversationHistory(id);
+    if (tabs.length > 0 && activeTabId && profileLoadedRef.current) {
+      saveTabsToProfile(tabs, activeTabId);
+    }
+  }, [tabs, activeTabId, saveTabsToProfile]);
+
+  // Cleanup debounce timer
+  useEffect(() => {
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, []);
+
+  // Initialize terminal — load from profile API, fall back to localStorage
+  useEffect(() => {
+    let cancelled = false;
+    const init = async () => {
+      let loaded: { tabs: TabInfo[]; activeTabId: string } | null = null;
+      // Try loading from user profile first
+      try {
+        const res = await fetch('/api/v1/user/preferences/ui', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.terminalTabs && Array.isArray(data.terminalTabs) && data.terminalTabs.length > 0) {
+            const activeId = data.terminalActiveTab && data.terminalTabs.some((t: TabInfo) => t.id === data.terminalActiveTab)
+              ? data.terminalActiveTab
+              : data.terminalTabs[0].id;
+            loaded = { tabs: data.terminalTabs, activeTabId: activeId };
+          }
+        }
+      } catch { /* fall through to localStorage */ }
+      // Fall back to localStorage
+      if (!loaded) {
+        loaded = loadTabsFromStorage(initialGraphId);
+      }
+      if (cancelled) return;
+      profileLoadedRef.current = true;
+      setTabs(loaded.tabs);
+      setActiveTabId(loaded.activeTabId);
+      const activeTab = loaded.tabs.find(t => t.id === loaded!.activeTabId) || loaded.tabs[0];
+      setConversationId(activeTab.conversationId);
+      setSelectedGraphId(activeTab.selectedGraphId);
+      fetchGraphs();
+      loadConversationHistory(activeTab.conversationId);
+    };
+    init();
+    return () => { cancelled = true; };
   }, []);
 
   // Close graph selector on outside click
@@ -76,6 +190,21 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Focus tab name input when editing
+  useEffect(() => {
+    if (editingTabId && tabNameInputRef.current) {
+      tabNameInputRef.current.focus();
+      tabNameInputRef.current.select();
+    }
+  }, [editingTabId]);
+
+  // Sync active tab's graphId to tab state
+  useEffect(() => {
+    if (activeTabId && tabs.length > 0) {
+      setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, selectedGraphId } : t));
+    }
+  }, [selectedGraphId]);
 
   const fetchGraphs = async () => {
     try {
@@ -95,6 +224,115 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
     } catch (err) {
       console.error('Failed to fetch graphs:', err);
     }
+  };
+
+  // --- Tab Management ---
+
+  const saveCurrentTabData = useCallback(() => {
+    if (activeTabId) {
+      tabDataRef.current.set(activeTabId, {
+        lines: linesRef.current,
+        commandHistory: historyRef.current,
+        historyIndex: historyIndexRef.current,
+      });
+    }
+  }, [activeTabId]);
+
+  const switchToTab = (tabId: string) => {
+    if (tabId === activeTabId) return;
+    // Abort any active streaming
+    abortControllerRef.current?.abort();
+    if (eventSourceRef.current) { eventSourceRef.current.close(); eventSourceRef.current = null; }
+    setIsProcessing(false);
+    // Save current tab data
+    saveCurrentTabData();
+    // Load new tab data
+    const cached = tabDataRef.current.get(tabId);
+    const tab = tabs.find(t => t.id === tabId);
+    if (cached) {
+      setLines(cached.lines);
+      setCommandHistory(cached.commandHistory);
+      setHistoryIndex(cached.historyIndex);
+      setIsInitialized(true);
+    } else if (tab) {
+      setLines([]);
+      setIsInitialized(false);
+      loadConversationHistory(tab.conversationId);
+      setCommandHistory([]);
+      setHistoryIndex(-1);
+    }
+    if (tab) { setConversationId(tab.conversationId); setSelectedGraphId(tab.selectedGraphId); }
+    setActiveTabId(tabId);
+    setInput('');
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const addTab = () => {
+    if (tabs.length >= 8) return;
+    saveCurrentTabData();
+    const tabId = createTabId();
+    const convId = createConversationId();
+    const newTab: TabInfo = { id: tabId, name: `Terminal ${tabs.length + 1}`, conversationId: convId, selectedGraphId: initialGraphId };
+    setTabs(prev => [...prev, newTab]);
+    setActiveTabId(tabId);
+    setConversationId(convId);
+    setSelectedGraphId(initialGraphId);
+    setLines(getWelcomeLines());
+    setCommandHistory([]);
+    setHistoryIndex(-1);
+    setInput('');
+    setIsInitialized(true);
+    tabDataRef.current.set(tabId, { lines: getWelcomeLines(), commandHistory: [], historyIndex: -1 });
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const closeTab = (tabId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (tabs.length <= 1) return;
+    const idx = tabs.findIndex(t => t.id === tabId);
+    const newTabs = tabs.filter(t => t.id !== tabId);
+    tabDataRef.current.delete(tabId);
+    // If closing a tab that's streaming, abort it
+    if (tabId === activeTabId) {
+      abortControllerRef.current?.abort();
+      if (eventSourceRef.current) { eventSourceRef.current.close(); eventSourceRef.current = null; }
+      setIsProcessing(false);
+    }
+    setTabs(newTabs);
+    if (tabId === activeTabId) {
+      const newIdx = Math.min(idx, newTabs.length - 1);
+      const newTab = newTabs[newIdx];
+      const cached = tabDataRef.current.get(newTab.id);
+      if (cached) {
+        setLines(cached.lines);
+        setCommandHistory(cached.commandHistory);
+        setHistoryIndex(cached.historyIndex);
+        setIsInitialized(true);
+      } else {
+        setLines([]);
+        setIsInitialized(false);
+        loadConversationHistory(newTab.conversationId);
+      }
+      setActiveTabId(newTab.id);
+      setConversationId(newTab.conversationId);
+      setSelectedGraphId(newTab.selectedGraphId);
+      setInput('');
+    }
+  };
+
+  const startRenamingTab = (tabId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const tab = tabs.find(t => t.id === tabId);
+    if (tab) { setEditingTabId(tabId); setEditingTabName(tab.name); }
+  };
+
+  const finishRenamingTab = () => {
+    if (editingTabId && editingTabName.trim()) {
+      setTabs(prev => prev.map(t => t.id === editingTabId ? { ...t, name: editingTabName.trim() } : t));
+    }
+    setEditingTabId(null);
+    setEditingTabName('');
+    inputRef.current?.focus();
   };
 
   const loadConversationHistory = async (convId: string) => {
@@ -127,55 +365,13 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
         if (historyLines.length > 0) {
           setLines(historyLines);
         } else {
-          // Show welcome message for new terminal
-          setLines([
-            {
-              id: 'welcome',
-              type: 'system',
-              content: 'Welcome to redbtn Terminal v0.1.0',
-              timestamp: new Date(),
-            },
-            {
-              id: 'hint',
-              type: 'system',
-              content: 'Type "help" for commands or just start chatting.',
-              timestamp: new Date(),
-            },
-          ]);
+          setLines(getWelcomeLines());
         }
       } else {
-        // Conversation doesn't exist yet, show welcome
-        setLines([
-          {
-            id: 'welcome',
-            type: 'system',
-            content: 'Welcome to redbtn Terminal v0.1.0',
-            timestamp: new Date(),
-          },
-          {
-            id: 'hint',
-            type: 'system',
-            content: 'Type "help" for commands or just start chatting.',
-            timestamp: new Date(),
-          },
-        ]);
+        setLines(getWelcomeLines());
       }
     } catch (err) {
-      // Show welcome on error
-      setLines([
-        {
-          id: 'welcome',
-          type: 'system',
-          content: 'Welcome to redbtn Terminal v0.1.0',
-          timestamp: new Date(),
-        },
-        {
-          id: 'hint',
-          type: 'system',
-          content: 'Type "help" for commands or just start chatting.',
-          timestamp: new Date(),
-        },
-      ]);
+      setLines(getWelcomeLines());
     }
     setIsInitialized(true);
   };
@@ -244,7 +440,14 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
         addLine({ type: 'output', content: '  whoami   - Show current user' });
         addLine({ type: 'output', content: '  ping     - Test connection' });
         addLine({ type: 'output', content: '' });
-        addLine({ type: 'output', content: 'Any other input is sent to the selected graph.' });
+        addLine({ type: 'output', content: 'Shortcuts:' });
+        addLine({ type: 'output', content: '  Ctrl+T   - New tab' });
+        addLine({ type: 'output', content: '  Ctrl+W   - Close tab' });
+        addLine({ type: 'output', content: '  Ctrl+L   - Clear screen' });
+        addLine({ type: 'output', content: '  Ctrl+C   - Cancel request' });
+        addLine({ type: 'output', content: '  ↑/↓      - Command history' });
+        addLine({ type: 'output', content: '' });
+        addLine({ type: 'output', content: 'Double-click a tab to rename it.' });
         return true;
 
       case 'clear':
@@ -300,9 +503,10 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
     }
 
     // Generate new conversation ID
-    const newId = `terminal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    localStorage.setItem(TERMINAL_CONVERSATION_KEY, newId);
+    const newId = createConversationId();
     setConversationId(newId);
+    // Update the active tab's conversationId
+    setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, conversationId: newId } : t));
 
     addLine({
       type: 'system',
@@ -655,6 +859,12 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
+    } else if (e.key === 't' && e.ctrlKey) {
+      e.preventDefault();
+      addTab();
+    } else if (e.key === 'w' && e.ctrlKey) {
+      e.preventDefault();
+      closeTab(activeTabId);
     }
   };
 
@@ -696,62 +906,113 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
       className="h-full flex flex-col bg-bg-primary rounded-lg border border-border overflow-hidden font-mono text-sm"
       onClick={() => inputRef.current?.focus()}
     >
-      {/* Terminal Header */}
-      <div className="flex items-center gap-2 px-4 py-2 bg-bg-secondary border-b border-border">
-        <div className="flex gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-red-500/80" />
-          <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-          <div className="w-3 h-3 rounded-full bg-green-500/80" />
-        </div>
-        <span className="text-text-muted text-xs ml-2">redbtn ~ terminal</span>
-        
-        {/* Graph Selector */}
-        <div className="ml-auto relative" ref={graphSelectorRef}>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowGraphSelector(!showGraphSelector);
-            }}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-secondary rounded transition-colors"
-          >
-            <Settings className="w-3 h-3" />
-            <span className="truncate max-w-[120px]">{selectedGraph?.name || selectedGraphId}</span>
-            <ChevronDown className="w-3 h-3" />
-          </button>
-          
-          {showGraphSelector && (
-            <div className="absolute right-0 top-full mt-1 w-48 bg-bg-secondary border border-border rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
-              {graphs.length === 0 ? (
-                <div className="px-3 py-2 text-xs text-text-muted">No graphs available</div>
-              ) : (
-                graphs.map(graph => (
-                  <button
-                    key={graph.graphId}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedGraphId(graph.graphId);
-                      setShowGraphSelector(false);
-                      addLine({ type: 'system', content: `Switched to graph: ${graph.name}` });
-                    }}
-                    className={`w-full text-left px-3 py-2 text-xs hover:bg-bg-tertiary transition-colors ${
-                      graph.graphId === selectedGraphId ? 'bg-accent/10 text-accent-text' : 'text-text-secondary'
-                    }`}
-                  >
-                    <div className="font-medium">{graph.name}</div>
-                    <div className="text-text-muted text-[10px]">
-                      {graph.isSystem ? 'System' : 'Custom'}
-                      {graph.isDefault && ' • Default'}
-                    </div>
-                  </button>
-                ))
+      {/* Tab Bar */}
+      <div className="flex items-center bg-bg-secondary border-b border-border min-h-[36px]">
+        <div className="flex items-center overflow-x-auto flex-1 min-w-0 scrollbar-none">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => switchToTab(tab.id)}
+              className={`group flex items-center gap-1.5 px-3 py-2 text-xs border-r border-border/50 whitespace-nowrap transition-colors relative ${
+                tab.id === activeTabId
+                  ? 'bg-bg-primary text-text-primary'
+                  : 'text-text-muted hover:text-text-secondary hover:bg-bg-tertiary'
+              }`}
+            >
+              {tab.id === activeTabId && (
+                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-accent" />
               )}
-            </div>
+              {editingTabId === tab.id ? (
+                <input
+                  ref={tabNameInputRef}
+                  value={editingTabName}
+                  onChange={(e) => setEditingTabName(e.target.value)}
+                  onBlur={finishRenamingTab}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === 'Enter') finishRenamingTab();
+                    if (e.key === 'Escape') { setEditingTabId(null); setEditingTabName(''); }
+                  }}
+                  className="bg-transparent outline-none text-xs w-20 text-text-primary"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <span
+                  onDoubleClick={(e) => startRenamingTab(tab.id, e)}
+                  className="select-none"
+                >
+                  {tab.name}
+                </span>
+              )}
+              {tabs.length > 1 && (
+                <span
+                  onClick={(e) => closeTab(tab.id, e)}
+                  className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-opacity ml-1 p-0.5 rounded hover:bg-bg-tertiary"
+                >
+                  <X className="w-3 h-3" />
+                </span>
+              )}
+            </button>
+          ))}
+          {tabs.length < 8 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); addTab(); }}
+              className="flex items-center justify-center px-2.5 py-2 text-text-muted hover:text-text-secondary hover:bg-bg-tertiary transition-colors"
+              title="New tab (Ctrl+T)"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
           )}
         </div>
-        
-        {isProcessing && (
-          <span className="text-xs text-accent animate-pulse">processing...</span>
-        )}
+
+        {/* Right side controls */}
+        <div className="flex items-center gap-2 px-2 shrink-0 border-l border-border/50">
+          {isProcessing && (
+            <span className="text-xs text-accent animate-pulse">processing...</span>
+          )}
+          <div className="relative" ref={graphSelectorRef}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowGraphSelector(!showGraphSelector);
+              }}
+              className="flex items-center gap-1.5 px-2 py-1 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-secondary rounded transition-colors"
+            >
+              <Settings className="w-3 h-3" />
+              <span className="truncate max-w-[120px]">{selectedGraph?.name || selectedGraphId}</span>
+              <ChevronDown className="w-3 h-3" />
+            </button>
+            
+            {showGraphSelector && (
+              <div className="absolute right-0 top-full mt-1 w-48 bg-bg-secondary border border-border rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+                {graphs.length === 0 ? (
+                  <div className="px-3 py-2 text-xs text-text-muted">No graphs available</div>
+                ) : (
+                  graphs.map(graph => (
+                    <button
+                      key={graph.graphId}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedGraphId(graph.graphId);
+                        setShowGraphSelector(false);
+                        addLine({ type: 'system', content: `Switched to graph: ${graph.name}` });
+                      }}
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-bg-tertiary transition-colors ${
+                        graph.graphId === selectedGraphId ? 'bg-accent/10 text-accent-text' : 'text-text-secondary'
+                      }`}
+                    >
+                      <div className="font-medium">{graph.name}</div>
+                      <div className="text-text-muted text-[10px]">
+                        {graph.isSystem ? 'System' : 'Custom'}
+                        {graph.isDefault && ' • Default'}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Terminal Content */}
@@ -818,9 +1079,12 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
 
       {/* Status Bar */}
       <div className="px-4 py-1.5 bg-bg-secondary border-t border-border flex items-center justify-between text-xs text-text-muted">
-        <span>{conversationId ? conversationId.slice(0, 20) + '...' : 'No session'}</span>
         <div className="flex items-center gap-3">
-          <span>{commandHistory.length} commands</span>
+          {tabs.length > 1 && <span>{tabs.findIndex(t => t.id === activeTabId) + 1}/{tabs.length} tabs</span>}
+          <span>{conversationId ? conversationId.slice(0, 16) + '…' : 'No session'}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span>{commandHistory.length} cmds</span>
           {isProcessing && (
             <span className="flex items-center gap-1.5 text-accent">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />

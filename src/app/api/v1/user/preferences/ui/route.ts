@@ -8,6 +8,8 @@ const UIPreferencesSchema = new mongoose.Schema({
   userId: { type: String, required: true, unique: true, index: true },
   navOrder: { type: [String], default: null }, // Array of nav item hrefs in order
   favoriteTools: { type: [String], default: [] }, // Array of tool names (server:toolName format)
+  terminalTabs: { type: mongoose.Schema.Types.Mixed, default: null }, // Array of {id, name, conversationId, selectedGraphId}
+  terminalActiveTab: { type: String, default: null }, // Active tab ID
   updatedAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
@@ -32,6 +34,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       navOrder: prefs?.navOrder || null,
       favoriteTools: prefs?.favoriteTools || [],
+      terminalTabs: prefs?.terminalTabs || null,
+      terminalActiveTab: prefs?.terminalActiveTab || null,
     });
   } catch (error) {
     console.error('[API] Error getting UI preferences:', error);
@@ -51,13 +55,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { navOrder, favoriteTools } = body;
+    const { navOrder, favoriteTools, terminalTabs, terminalActiveTab } = body;
 
     await connectToDatabase();
     
     const updateFields: Record<string, unknown> = { updatedAt: new Date() };
     if (navOrder !== undefined) updateFields.navOrder = navOrder || null;
     if (favoriteTools !== undefined) updateFields.favoriteTools = favoriteTools || [];
+    if (terminalTabs !== undefined) updateFields.terminalTabs = terminalTabs;
+    if (terminalActiveTab !== undefined) updateFields.terminalActiveTab = terminalActiveTab;
     
     await UIPreferences.findOneAndUpdate(
       { userId: user.userId },
