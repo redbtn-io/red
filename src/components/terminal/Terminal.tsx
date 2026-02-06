@@ -51,6 +51,7 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
   const graphSelectorRef = useRef<HTMLDivElement>(null);
 
   // Initialize terminal
@@ -396,11 +397,13 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
 
   // Execute input via graph
   const executeViaGraph = async (userInput: string) => {
+    // Add a streaming line with cursor indicator immediately
     addLine({ type: 'streaming', content: '' });
     
     try {
       abortControllerRef.current = new AbortController();
       
+      // 1. POST to chat/completions to get runId and streamUrl
       const res = await fetch('/api/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -417,49 +420,161 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
       if (!res.ok) {
         removeStreamingLine();
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
-        addLine({ type: 'error', content: errorData.error || `Failed (${res.status})` });
+        addLine({ type: 'error', content: errorData.error?.message || errorData.error || `Failed (${res.status})` });
         return;
       }
 
-      const reader = res.body?.getReader();
-      if (!reader) {
+      const data = await res.json();
+      const { runId, streamUrl } = data;
+      
+      if (!runId || !streamUrl) {
         removeStreamingLine();
-        addLine({ type: 'error', content: 'No response stream available' });
+        addLine({ type: 'error', content: 'No stream URL returned from server' });
         return;
       }
 
-      const decoder = new TextDecoder();
+      // 2. Connect to SSE stream via EventSource
       let accumulated = '';
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6).trim();
-            if (data === '[DONE]') continue;
-            
-            try {
-              const parsed = JSON.parse(data);
-              const delta = parsed.choices?.[0]?.delta?.content;
-              if (delta) {
-                accumulated += delta;
-                updateStreamingLine(accumulated);
-              }
-            } catch {
-              // Ignore parse errors for partial JSON
-            }
+      
+      await new Promise<void>((resolve, reject) => {
+        // Close any existing connection
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+        }
+        
+        const eventSource = new EventSource(streamUrl, { withCredentials: true });
+        eventSourceRef.current = eventSource;
+        let resolved = false;
+        
+        // Timeout if nothing happens in 60 seconds
+        const timeout = setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            eventSource.close();
+            eventSourceRef.current = null;
+            reject(new Error('Stream timeout'));
           }
+        }, 60000);
+        
+        const finish = () => {
+          if (resolved) return;
+          resolved = true;
+          clearTimeout(timeout);
+          eventSource.close();
+          eventSourceRef.current = null;
+          resolve();
+        };
+        
+        // Handle abort
+        if (abortControllerRef.current) {
+          abortControllerRef.current.signal.addEventListener('abort', () => {
+            finish();
+          });
+        }
+        
+        eventSource.onerror = () => {
+          // If we haven't received any data, this is a connection failure
+          if (!accumulated && !resolved) {
+            resolved = true;
+            clearTimeout(timeout);
+            eventSource.close();
+            eventSourceRef.current = null;
+            reject(new Error('Stream connection failed'));
+          }
+          // Otherwise EventSource will auto-reconnect
+        };
+        
+        eventSource.onmessage = (evt) => {
+          const eventData = evt.data;
+          
+          if (eventData === '[DONE]') {
+            finish();
+            return;
+          }
+          
+          try {
+            const event = JSON.parse(eventData);
+            
+            // Handle init event (may contain existing content for reconnections)
+            if (event.type === 'init' && event.existingContent) {
+              accumulated = event.existingContent;
+              updateStreamingLine(accumulated);
+              return;
+            }
+            
+            // Handle content chunks
+            if (event.type === 'chunk' && event.content && !event.thinking) {
+              accumulated += event.content;
+              updateStreamingLine(accumulated);
+              return;
+            }
+            
+            // Handle status updates - show in the streaming line if no content yet
+            if (event.type === 'status' || event.type === 'tool_status') {
+              if (!accumulated) {
+                const desc = event.description || event.action || 'Processing...';
+                updateStreamingLine(`[${desc}]`);
+              }
+              return;
+            }
+            
+            // Handle tool events
+            if (event.type === 'tool_start' || (event.type === 'tool_event' && event.event?.type === 'tool_start')) {
+              const toolName = event.toolName || event.event?.toolName || 'tool';
+              if (!accumulated) {
+                updateStreamingLine(`[Running ${toolName}...]`);
+              }
+              return;
+            }
+            
+            // Handle completion
+            if (event.type === 'run_complete' || event.type === 'complete') {
+              finish();
+              return;
+            }
+            
+            // Handle errors
+            if (event.type === 'run_error' || event.type === 'error') {
+              const errMsg = event.error || 'Run failed';
+              removeStreamingLine();
+              addLine({ type: 'error', content: errMsg });
+              finish();
+              return;
+            }
+          } catch {
+            // Ignore parse errors (comments, keepalives)
+          }
+        };
+      });
+
+      // Finalize the streaming line
+      if (accumulated) {
+        // If streaming line still shows a status placeholder, replace with final content
+        finalizeStreamingLine();
+      } else {
+        // No content received — check if directResponse was used
+        // Fetch the run result to get the response
+        try {
+          const runRes = await fetch(`/api/v1/runs/${runId}`, {
+            credentials: 'include',
+          });
+          if (runRes.ok) {
+            const runData = await runRes.json();
+            const content = runData.output?.content || runData.output?.data?.response || runData.output?.data?.directResponse;
+            if (content) {
+              updateStreamingLine(content);
+              finalizeStreamingLine();
+            } else {
+              removeStreamingLine();
+              addLine({ type: 'output', content: '(No response)' });
+            }
+          } else {
+            removeStreamingLine();
+          }
+        } catch {
+          removeStreamingLine();
         }
       }
-
-      finalizeStreamingLine();
     } catch (err: any) {
       removeStreamingLine();
       if (err.name === 'AbortError') {
@@ -468,6 +583,10 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
         addLine({ type: 'error', content: `Error: ${err.message || 'Unknown error'}` });
       }
     } finally {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
       abortControllerRef.current = null;
     }
   };
@@ -531,6 +650,10 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
       e.preventDefault();
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
+      }
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
       }
     }
   };
@@ -656,8 +779,14 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
                   </span>
                 ) : line.type === 'streaming' ? (
                   <span>
-                    {line.content}
-                    <span className="animate-pulse">▊</span>
+                    {line.content ? (
+                      <>
+                        {line.content}
+                        <span className="animate-pulse">▊</span>
+                      </>
+                    ) : (
+                      <span className="text-text-muted animate-pulse">● thinking...</span>
+                    )}
                   </span>
                 ) : (
                   line.content
@@ -692,7 +821,12 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
         <span>{conversationId ? conversationId.slice(0, 20) + '...' : 'No session'}</span>
         <div className="flex items-center gap-3">
           <span>{commandHistory.length} commands</span>
-          {isProcessing && <span className="text-accent">●</span>}
+          {isProcessing && (
+            <span className="flex items-center gap-1.5 text-accent">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+              running
+            </span>
+          )}
         </div>
       </div>
     </div>
