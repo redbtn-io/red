@@ -261,7 +261,11 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
       setCommandHistory([]);
       setHistoryIndex(-1);
     }
-    if (tab) { setConversationId(tab.conversationId); setSelectedGraphId(tab.selectedGraphId); }
+    if (tab) {
+      setConversationId(tab.conversationId);
+      setSelectedGraphId(tab.selectedGraphId);
+      expectedConvIdRef.current = tab.conversationId;
+    }
     setActiveTabId(tabId);
     setInput('');
     setTimeout(() => inputRef.current?.focus(), 50);
@@ -272,6 +276,8 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
     saveCurrentTabData();
     const tabId = createTabId();
     const convId = createConversationId();
+    // Mark the new conversation as expected so any in-flight fetch for the old tab is discarded
+    expectedConvIdRef.current = convId;
     const newTab: TabInfo = { id: tabId, name: `Terminal ${tabs.length + 1}`, conversationId: convId, selectedGraphId: initialGraphId };
     setTabs(prev => [...prev, newTab]);
     setActiveTabId(tabId);
@@ -335,11 +341,18 @@ export function Terminal({ initialGraphId = 'red-assistant' }: TerminalProps) {
     inputRef.current?.focus();
   };
 
+  // Track which conversation is currently expected, to guard against stale async loads
+  const expectedConvIdRef = useRef<string>('');
+
   const loadConversationHistory = async (convId: string) => {
+    expectedConvIdRef.current = convId;
     try {
       const res = await fetch(`/api/v1/conversations/${convId}/messages`, { credentials: 'include' });
+      // Guard: if tab switched while we were fetching, discard results
+      if (expectedConvIdRef.current !== convId) return;
       if (res.ok) {
         const data = await res.json();
+        if (expectedConvIdRef.current !== convId) return;
         const messages = data.messages || [];
         
         // Convert stored messages to terminal lines
