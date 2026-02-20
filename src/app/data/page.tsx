@@ -3,17 +3,17 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { 
-  BookOpen, 
-  Database, 
-  FileText, 
-  Key,
-  ArrowRight,
-  Clock,
-  Loader2,
-  Plus,
-  Folder,
-  Activity,
+import {
+    BookOpen,
+    Database,
+    FileText,
+    Key,
+    ArrowRight,
+    Clock,
+    Loader2,
+    Plus,
+    Folder,
+    Activity,
 } from 'lucide-react';
 import { pageVariants, staggerContainerVariants, staggerItemVariants } from '@/lib/animations';
 
@@ -121,7 +121,7 @@ export default function DataDashboardPage() {
           className="grid grid-cols-1 lg:grid-cols-2 gap-6"
         >
           {/* Knowledge Section */}
-          <motion.div variants={staggerItemVariants}>
+          <motion.div key="knowledge" variants={staggerItemVariants}>
             <div className="bg-bg-elevated border border-border rounded-2xl overflow-hidden">
               {/* Section Header */}
               <div className="p-6 border-b border-border">
@@ -199,7 +199,7 @@ export default function DataDashboardPage() {
           </motion.div>
 
           {/* State Section */}
-          <motion.div variants={staggerItemVariants}>
+          <motion.div key="state" variants={staggerItemVariants}>
             <div className="bg-bg-elevated border border-border rounded-2xl overflow-hidden">
               {/* Section Header */}
               <div className="p-6 border-b border-border">
@@ -283,7 +283,7 @@ export default function DataDashboardPage() {
           </motion.div>
 
           {/* Usage Tips */}
-          <motion.div variants={staggerItemVariants} className="lg:col-span-2">
+          <motion.div key="tips" variants={staggerItemVariants} className="lg:col-span-2">
             <div className="bg-bg-elevated border border-border rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-4">
                 <Activity size={20} className="text-text-secondary" />

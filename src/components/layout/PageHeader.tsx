@@ -31,7 +31,7 @@ export function PageHeader({
 }: PageHeaderProps) {
   return (
     <motion.div 
-      className="sticky top-0 z-40 bg-white/90 dark:bg-bg-elevated backdrop-blur-md border-b border-border/50 px-4 py-3 flex items-center gap-3"
+      className="sticky top-0 z-40 bg-bg-elevated/90 backdrop-blur-md border-b border-border/50 px-4 py-3 flex items-center gap-3"
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}

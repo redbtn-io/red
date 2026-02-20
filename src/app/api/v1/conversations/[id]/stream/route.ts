@@ -6,7 +6,8 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getRed, getDatabase } from '@/lib/red';
+import { getDatabase } from '@/lib/red';
+import { getLogStream } from '@/lib/redlog';
 import { verifyAuth } from '@/lib/auth/auth';
 
 export const runtime = 'nodejs';
@@ -34,15 +35,15 @@ export async function GET(
     return new Response('Forbidden', { status: 403 });
   }
 
-  const red = await getRed();
+  const logStream = getLogStream();
   
   // Create SSE stream
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        // Stream logs from logger
-        for await (const log of red.logger.subscribeToConversation(conversationId)) {
+        // Stream logs via RedLog
+        for await (const log of logStream.subscribe('conversationId', conversationId, { catchUp: true })) {
           const data = `data: ${JSON.stringify(log)}\n\n`;
           controller.enqueue(encoder.encode(data));
         }

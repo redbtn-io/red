@@ -207,7 +207,7 @@ export function Messages({
       {!messages?.length && !isLoading && (
         <div className="flex items-center justify-center h-full">
           <div className="text-center text-text-muted px-6 py-12">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-bg-secondary dark:bg-bg-tertiary flex items-center justify-center">
+            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-bg-secondary flex items-center justify-center">
               <MessageSquare size={32} className="text-text-muted opacity-40" />
             </div>
             <p className="text-lg font-semibold text-text-primary mb-2">Start a conversation</p>
@@ -218,7 +218,7 @@ export function Messages({
       
       {/* Loading spinner for pagination - appears at visual top (oldest messages) due to flex-col-reverse */}
       {pagination?.isLoadingMore ? (
-        <div className="flex items-center justify-center py-6 bg-bg-secondary/60 dark:bg-bg-secondary/50 backdrop-blur-sm rounded-xl border border-border/50 mb-2">
+        <div className="flex items-center justify-center py-6 bg-bg-secondary/50 backdrop-blur-sm rounded-xl border border-border/50 mb-2">
           <Loader2 className="w-5 h-5 animate-spin text-accent mr-3" />
           <span className="text-sm font-medium text-text-secondary">Loading older messages...</span>
         </div>
@@ -385,7 +385,7 @@ function MessageBubble({ message, isStreaming, onOpenModal, isLatest = false, an
         className={`
           max-w-[85%] md:max-w-[75%] rounded-2xl px-4 py-3 cursor-pointer transition-all duration-200 select-none
           ${isUser
-            ? 'bg-bg-secondary dark:bg-bg-tertiary border border-border text-text-primary hover:border-border-hover'
+            ? 'bg-bg-secondary border border-border text-text-primary hover:border-border-hover'
             : `bg-red-500 text-white hover:bg-red-600 ${isStreaming ? 'streaming-pulse' : ''}`
           }
         `}

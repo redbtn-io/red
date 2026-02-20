@@ -74,6 +74,7 @@ interface UseGraphRunStateReturn {
   /** Load a historical run state (from saved graph runs) */
   loadRunState: (savedRun: {
     graphId?: string;
+    runId?: string;
     status: 'running' | 'completed' | 'error';
     executionPath: string[];
     nodeProgress: Record<string, NodeProgress>;
@@ -131,6 +132,7 @@ export function useGraphRunState({
   // Load a historical run state (from saved graph runs)
   const loadRunState = useCallback((savedRun: {
     graphId?: string;
+    runId?: string;
     status: 'running' | 'completed' | 'error';
     executionPath: string[];
     nodeProgress: Record<string, NodeProgress>;
@@ -140,6 +142,7 @@ export function useGraphRunState({
   }) => {
     const loadedState: GraphRunState = {
       graphId: savedRun.graphId,
+      runId: savedRun.runId,
       status: savedRun.status === 'running' ? 'completed' : savedRun.status, // Treat saved running as completed
       currentNodeId: undefined,
       nodeProgress: savedRun.nodeProgress || {},

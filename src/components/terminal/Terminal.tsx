@@ -31,10 +31,17 @@ export interface TabInfo {
   selectedGraphId: string;
 }
 
+/** Tracks an in-flight run so we can reconnect after page nav or tab switch */
+interface ActiveStream {
+  runId: string;
+  streamUrl: string;
+}
+
 interface TabData {
   lines: TerminalLine[];
   commandHistory: string[];
   historyIndex: number;
+  activeStream?: ActiveStream | null;
 }
 
 export interface TerminalHistoryItem {
@@ -57,6 +64,7 @@ export interface TerminalHandle {
 const TERMINAL_TABS_KEY = 'redbtn_terminal_tabs';
 const TERMINAL_ACTIVE_TAB_KEY = 'redbtn_terminal_active_tab';
 const TERMINAL_CONVERSATION_KEY = 'redbtn_terminal_conversation_id'; // Legacy
+const TERMINAL_ACTIVE_STREAMS_KEY = 'redbtn_terminal_active_streams'; // {[tabId]: ActiveStream}
 
 function createTabId(): string {
   return `tab-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
@@ -114,6 +122,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
   const [isInitialized, setIsInitialized] = useState(false);
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editingTabName, setEditingTabName] = useState('');
+  const [spinnerFrame, setSpinnerFrame] = useState(0);
   
   // Tab drag-reorder state
   const [draggingTabIdx, setDraggingTabIdx] = useState<number | null>(null);
@@ -125,10 +134,35 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
   const terminalRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const activeStreamRef = useRef<ActiveStream | null>(null);
   const graphSelectorRef = useRef<HTMLDivElement>(null);
+
+  // Persist/clear active stream info to localStorage for reconnection after page reload
+  const saveActiveStream = useCallback((tabId: string, stream: ActiveStream | null) => {
+    try {
+      const raw = localStorage.getItem(TERMINAL_ACTIVE_STREAMS_KEY);
+      const streams: Record<string, ActiveStream> = raw ? JSON.parse(raw) : {};
+      if (stream) { streams[tabId] = stream; } else { delete streams[tabId]; }
+      localStorage.setItem(TERMINAL_ACTIVE_STREAMS_KEY, JSON.stringify(streams));
+    } catch { /* silent */ }
+  }, []);
+
+  const getActiveStreamForTab = useCallback((tabId: string): ActiveStream | null => {
+    try {
+      const raw = localStorage.getItem(TERMINAL_ACTIVE_STREAMS_KEY);
+      if (!raw) return null;
+      const streams: Record<string, ActiveStream> = JSON.parse(raw);
+      return streams[tabId] || null;
+    } catch { return null; }
+  }, []);
   const tabNameInputRef = useRef<HTMLInputElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const profileLoadedRef = useRef(false);
+
+  // Typewriter streaming refs
+  const streamTargetRef = useRef('');
+  const streamDisplayedLenRef = useRef(0);
+  const streamRafRef = useRef<number | null>(null);
 
   // Mirror state in refs for tab-switching (avoids stale closures)
   const linesRef = useRef<TerminalLine[]>([]);
@@ -167,6 +201,14 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, []);
 
+  // Spinner animation while processing
+  const SPINNER_CHARS = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏';
+  useEffect(() => {
+    if (!isProcessing) return;
+    const id = setInterval(() => setSpinnerFrame(f => (f + 1) % SPINNER_CHARS.length), 80);
+    return () => clearInterval(id);
+  }, [isProcessing]);
+
   // Initialize terminal — load from profile API, fall back to localStorage
   useEffect(() => {
     let cancelled = false;
@@ -198,10 +240,50 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
       setSelectedGraphId(activeTab.selectedGraphId);
       fetchGraphs();
       loadConversationHistory(activeTab.conversationId);
+      // Check for active run via API (like chat does) — more robust than localStorage alone
+      const convId = activeTab.conversationId;
+      if (convId) {
+        try {
+          const genRes = await fetch(`/api/v1/conversations/${convId}/active-generation`, { credentials: 'include' });
+          if (genRes.ok) {
+            const genData = await genRes.json();
+            if (genData.active && genData.runId) {
+              const stream: ActiveStream = { runId: genData.runId, streamUrl: `/api/v1/runs/${genData.runId}/stream` };
+              activeStreamRef.current = stream;
+              saveActiveStream(loaded.activeTabId, stream);
+              setTimeout(() => { if (!cancelled) reconnectToStream(stream); }, 100);
+            } else {
+              // Run not active — clear any stale localStorage entry
+              saveActiveStream(loaded.activeTabId, null);
+            }
+          }
+        } catch { /* silent — no reconnect */ }
+      }
     };
     init();
     return () => { cancelled = true; };
   }, []);
+
+  // Reconnect on visibility change (e.g. returning from another browser tab)
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.hidden || isProcessing || !conversationId) return;
+      try {
+        const res = await fetch(`/api/v1/conversations/${conversationId}/active-generation`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.active && data.runId && !eventSourceRef.current) {
+            const stream: ActiveStream = { runId: data.runId, streamUrl: `/api/v1/runs/${data.runId}/stream` };
+            activeStreamRef.current = stream;
+            saveActiveStream(activeTabId, stream);
+            reconnectToStream(stream);
+          }
+        }
+      } catch { /* silent */ }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [conversationId, activeTabId, isProcessing]);
 
   // Close graph selector on outside click
   useEffect(() => {
@@ -257,26 +339,70 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
         lines: linesRef.current,
         commandHistory: historyRef.current,
         historyIndex: historyIndexRef.current,
+        activeStream: activeStreamRef.current,
       });
     }
   }, [activeTabId]);
 
   const switchToTab = (tabId: string) => {
     if (tabId === activeTabId) return;
-    // Abort any active streaming
-    abortControllerRef.current?.abort();
+    // Detach EventSource but preserve activeStreamRef in tab data for reconnection
+    resetTypewriter();
     if (eventSourceRef.current) { eventSourceRef.current.close(); eventSourceRef.current = null; }
+    abortControllerRef.current = null;
     setIsProcessing(false);
-    // Save current tab data
+    // Save current tab data (includes activeStream)
     saveCurrentTabData();
+    activeStreamRef.current = null;
     // Load new tab data
     const cached = tabDataRef.current.get(tabId);
     const tab = tabs.find(t => t.id === tabId);
     if (cached) {
-      setLines(cached.lines);
+      // If reconnecting, strip stale streaming lines — reconnectToStream will add a fresh one
+      const linesToRestore = cached.activeStream
+        ? cached.lines.filter(l => l.type !== 'streaming')
+        : cached.lines;
+      setLines(linesToRestore);
       setCommandHistory(cached.commandHistory);
       setHistoryIndex(cached.historyIndex);
       setIsInitialized(true);
+      // Reconnect to active stream if this tab had one — verify it's still active first
+      if (cached.activeStream && tab) {
+        const cachedStream = cached.activeStream;
+        // Check via API if the run is actually still running
+        (async () => {
+          try {
+            const genRes = await fetch(`/api/v1/conversations/${tab.conversationId}/active-generation`, { credentials: 'include' });
+            if (genRes.ok) {
+              const genData = await genRes.json();
+              if (genData.active && genData.runId) {
+                // Run is still active — reconnect
+                const stream: ActiveStream = { runId: genData.runId, streamUrl: `/api/v1/runs/${genData.runId}/stream` };
+                activeStreamRef.current = stream;
+                reconnectToStream(stream);
+              } else {
+                // Run finished while we were away — fetch the final result
+                activeStreamRef.current = null;
+                saveActiveStream(tabId, null);
+                try {
+                  const runRes = await fetch(`/api/v1/runs/${cachedStream.runId}`, { credentials: 'include' });
+                  if (runRes.ok) {
+                    const runData = await runRes.json();
+                    const content = runData.output?.content || runData.output?.data?.response || runData.output?.data?.directResponse;
+                    if (content) {
+                      addLine({ type: 'output', content });
+                    }
+                  }
+                } catch { /* silent */ }
+              }
+            }
+          } catch {
+            // API failed — try reconnecting anyway
+            activeStreamRef.current = cachedStream;
+            reconnectToStream(cachedStream);
+          }
+        })();
+      }
     } else if (tab) {
       setLines([]);
       setIsInitialized(false);
@@ -324,6 +450,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     tabDataRef.current.delete(tabId);
     // If closing a tab that's streaming, abort it
     if (tabId === activeTabId) {
+      resetTypewriter();
       abortControllerRef.current?.abort();
       if (eventSourceRef.current) { eventSourceRef.current.close(); eventSourceRef.current = null; }
       setIsProcessing(false);
@@ -465,6 +592,75 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
       }
       return prev;
     });
+  }, []);
+
+  // --- Typewriter streaming (character-by-character reveal) ---
+  const lastTickTimeRef = useRef(0);
+
+  const typewriterTick = useCallback(() => {
+    const target = streamTargetRef.current;
+    const currentLen = streamDisplayedLenRef.current;
+    if (currentLen >= target.length) {
+      // Caught up — park the loop, will restart on next push
+      streamRafRef.current = null;
+      return;
+    }
+    const now = performance.now();
+    const elapsed = now - lastTickTimeRef.current;
+    // Base speed: 1 char every 18ms (~55 chars/sec)
+    // Speed up when the buffer falls far behind to prevent lag
+    const behind = target.length - currentLen;
+    const msPerChar = behind > 300 ? 2 : behind > 120 ? 6 : behind > 50 ? 10 : 18;
+    if (elapsed >= msPerChar) {
+      const charsToReveal = Math.max(1, Math.floor(elapsed / msPerChar));
+      const newLen = Math.min(currentLen + charsToReveal, target.length);
+      streamDisplayedLenRef.current = newLen;
+      lastTickTimeRef.current = now;
+      updateStreamingLine(target.slice(0, newLen));
+    }
+    streamRafRef.current = requestAnimationFrame(typewriterTick);
+  }, [updateStreamingLine]);
+
+  // Extend the typewriter target (for appending content chunks)
+  const pushToTypewriter = useCallback((newTarget: string) => {
+    streamTargetRef.current = newTarget;
+    if (!streamRafRef.current) {
+      lastTickTimeRef.current = performance.now();
+      streamRafRef.current = requestAnimationFrame(typewriterTick);
+    }
+  }, [typewriterTick]);
+
+  // Replace the typewriter target and reset display position (for status/tool messages that replace content)
+  const replaceTypewriter = useCallback((newTarget: string) => {
+    streamTargetRef.current = newTarget;
+    streamDisplayedLenRef.current = 0;
+    updateStreamingLine('');
+    if (!streamRafRef.current) {
+      lastTickTimeRef.current = performance.now();
+      streamRafRef.current = requestAnimationFrame(typewriterTick);
+    }
+  }, [typewriterTick, updateStreamingLine]);
+
+  // Flush: cancel animation, show all remaining content immediately
+  const flushTypewriter = useCallback(() => {
+    if (streamRafRef.current) {
+      cancelAnimationFrame(streamRafRef.current);
+      streamRafRef.current = null;
+    }
+    if (streamTargetRef.current) {
+      updateStreamingLine(streamTargetRef.current);
+      streamDisplayedLenRef.current = streamTargetRef.current.length;
+    }
+  }, [updateStreamingLine]);
+
+  // Reset typewriter state (call on abort/error/tab-close)
+  const resetTypewriter = useCallback(() => {
+    if (streamRafRef.current) {
+      cancelAnimationFrame(streamRafRef.current);
+      streamRafRef.current = null;
+    }
+    streamTargetRef.current = '';
+    streamDisplayedLenRef.current = 0;
   }, []);
 
   // Built-in commands
@@ -716,10 +912,267 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     document.addEventListener('pointerup', handleUp);
   }, [editingTabId]);
 
+  // --- Shared SSE connection logic ---
+  // Returns a promise that resolves with the accumulated content when the stream ends.
+  // Handles all event types including neuron/tool/status indicators.
+  const connectToSSE = (streamUrl: string): Promise<string> => {
+    return new Promise<string>((resolve, reject) => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+
+      let accumulated = '';
+      let currentNodeName = '';  // Track the current universal node's human name (e.g. "Response Generator")
+      let currentNeuronLabel = '';  // Set when a neuron step is detected within a node
+      const eventSource = new EventSource(streamUrl, { withCredentials: true });
+      eventSourceRef.current = eventSource;
+      let resolved = false;
+
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          eventSource.close();
+          eventSourceRef.current = null;
+          reject(new Error('Stream timeout'));
+        }
+      }, 120000);
+
+      const finish = () => {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(timeout);
+        eventSource.close();
+        eventSourceRef.current = null;
+        activeStreamRef.current = null;
+        // Note: localStorage is cleared by the caller's finally block
+        resolve(accumulated);
+      };
+
+      // Handle abort
+      if (abortControllerRef.current) {
+        abortControllerRef.current.signal.addEventListener('abort', () => finish());
+      }
+
+      eventSource.onerror = () => {
+        if (!accumulated && !resolved) {
+          resolved = true;
+          clearTimeout(timeout);
+          eventSource.close();
+          eventSourceRef.current = null;
+          activeStreamRef.current = null;
+          reject(new Error('Stream connection failed'));
+        }
+        // Otherwise EventSource auto-reconnects (using Last-Event-ID)
+      };
+
+      eventSource.onmessage = (evt) => {
+        const eventData = evt.data;
+        if (eventData === '[DONE]') { finish(); return; }
+
+        try {
+          const event = JSON.parse(eventData);
+
+          // --- Init (reconnection catch-up) ---
+          if (event.type === 'init') {
+            if (event.existingContent) {
+              accumulated = event.existingContent;
+              replaceTypewriter(accumulated);
+            }
+            // Show current node status from init state
+            if (!accumulated && event.state?.currentNode) {
+              updateStreamingLine(`[${event.state.currentNode}]`);
+            }
+            return;
+          }
+
+          // --- Content chunks (typewriter these) ---
+          if (event.type === 'chunk' && event.content && !event.thinking) {
+            const isFirst = accumulated === '';
+            accumulated += event.content;
+            isFirst ? replaceTypewriter(accumulated) : pushToTypewriter(accumulated);
+            return;
+          }
+
+          // All status indicators below are shown INSTANTLY (not typewritten)
+          // so fast nodes like get_context_history are visible before the next event replaces them.
+
+          // --- Node lifecycle ---
+          if (event.type === 'node_start') {
+            const name = event.nodeName || event.nodeId || 'node';
+            currentNodeName = name;
+            currentNeuronLabel = '';  // Reset — will be set if a neuron step fires
+            if (!accumulated) {
+              updateStreamingLine(`[${name}...]`);
+            }
+            return;
+          }
+          if (event.type === 'node_progress') {
+            if (!accumulated) {
+              const stepType = event.data?.stepType || event.step || '';
+              // Detect neuron steps (LLM generation)
+              if (stepType === 'neuron') {
+                currentNeuronLabel = currentNodeName || 'Generating';
+                updateStreamingLine(`[${currentNeuronLabel} → generating...]`);
+              } else {
+                const stepName = event.step || event.description || 'processing';
+                const humanStep = stepName.replace(/_/g, ' ');
+                const prefix = currentNeuronLabel || currentNodeName;
+                updateStreamingLine(`[${prefix ? prefix + ' → ' : ''}${humanStep}...]`);
+              }
+            }
+            return;
+          }
+          if (event.type === 'node_complete') {
+            currentNodeName = '';
+            currentNeuronLabel = '';
+            return;
+          }
+
+          // --- Status updates ---
+          if (event.type === 'status' || event.type === 'tool_status') {
+            if (!accumulated) {
+              const desc = event.description || event.action || 'Processing...';
+              const prefix = currentNeuronLabel || currentNodeName;
+              updateStreamingLine(`[${prefix ? prefix + ' → ' : ''}${desc}]`);
+            }
+            return;
+          }
+
+          // --- Tool lifecycle ---
+          if (event.type === 'tool_start' || (event.type === 'tool_event' && event.event?.type === 'tool_start')) {
+            const toolName = event.toolName || event.event?.toolName || 'tool';
+            if (!accumulated) {
+              const prefix = currentNeuronLabel || currentNodeName;
+              updateStreamingLine(`[${prefix ? prefix + ' → ' : ''}Running ${toolName}...]`);
+            }
+            return;
+          }
+          if (event.type === 'tool_progress') {
+            if (!accumulated) {
+              const desc = event.description || event.toolName || 'tool';
+              const prefix = currentNeuronLabel || currentNodeName;
+              updateStreamingLine(`[${prefix ? prefix + ' → ' : ''}${desc}...]`);
+            }
+            return;
+          }
+
+          // --- Completion / errors ---
+          if (event.type === 'run_complete' || event.type === 'complete') {
+            finish();
+            return;
+          }
+          if (event.type === 'run_error' || event.type === 'error') {
+            const errMsg = event.error || 'Run failed';
+            resetTypewriter();
+            removeStreamingLine();
+            addLine({ type: 'error', content: errMsg });
+            finish();
+            return;
+          }
+        } catch {
+          // Ignore parse errors (keepalives, comments)
+        }
+      };
+    });
+  };
+
+  // Wait for typewriter to finish revealing, then finalize
+  const waitForTypewriterAndFinalize = async (accumulated: string, runId: string) => {
+    if (accumulated) {
+      await new Promise<void>(resolve => {
+        const check = () => {
+          if (streamDisplayedLenRef.current >= streamTargetRef.current.length) { resolve(); return; }
+          requestAnimationFrame(check);
+        };
+        if (streamDisplayedLenRef.current >= streamTargetRef.current.length) resolve();
+        else requestAnimationFrame(check);
+      });
+      finalizeStreamingLine();
+      resetTypewriter();
+    } else {
+      // No streamed content — try fetching final result (directResponse)
+      try {
+        const runRes = await fetch(`/api/v1/runs/${runId}`, { credentials: 'include' });
+        if (runRes.ok) {
+          const runData = await runRes.json();
+          const content = runData.output?.content || runData.output?.data?.response || runData.output?.data?.directResponse;
+          if (content) {
+            replaceTypewriter(content);
+            await new Promise<void>(resolve => {
+              const check = () => {
+                if (streamDisplayedLenRef.current >= streamTargetRef.current.length) { resolve(); return; }
+                requestAnimationFrame(check);
+              };
+              requestAnimationFrame(check);
+            });
+            finalizeStreamingLine();
+            resetTypewriter();
+          } else {
+            removeStreamingLine();
+            addLine({ type: 'output', content: '(No response)' });
+          }
+        } else {
+          removeStreamingLine();
+        }
+      } catch {
+        removeStreamingLine();
+      }
+    }
+  };
+
+  // Reconnect to an active stream (after tab switch or page reload)
+  const reconnectToStream = async (stream: ActiveStream) => {
+    setIsProcessing(true);
+    resetTypewriter();
+    // Ensure there's a streaming line to write into
+    addLine({ type: 'streaming', content: 'reconnecting...' });
+
+    try {
+      abortControllerRef.current = new AbortController();
+      const accumulated = await connectToSSE(stream.streamUrl);
+      await waitForTypewriterAndFinalize(accumulated, stream.runId);
+    } catch (err: any) {
+      resetTypewriter();
+      // If reconnection fails, the run may have completed — try to fetch result
+      try {
+        const runRes = await fetch(`/api/v1/runs/${stream.runId}`, { credentials: 'include' });
+        if (runRes.ok) {
+          const runData = await runRes.json();
+          if (runData.status === 'completed') {
+            const content = runData.output?.content || runData.output?.data?.response || runData.output?.data?.directResponse;
+            if (content) {
+              removeStreamingLine();
+              addLine({ type: 'output', content });
+            } else {
+              removeStreamingLine();
+            }
+          } else {
+            removeStreamingLine();
+            if (err.name !== 'AbortError') {
+              addLine({ type: 'error', content: `Stream reconnect failed: ${err.message}` });
+            }
+          }
+        } else {
+          removeStreamingLine();
+        }
+      } catch {
+        removeStreamingLine();
+      }
+    } finally {
+      if (eventSourceRef.current) { eventSourceRef.current.close(); eventSourceRef.current = null; }
+      abortControllerRef.current = null;
+      activeStreamRef.current = null;
+      saveActiveStream(activeTabId, null);
+      setIsProcessing(false);
+    }
+  };
+
   // Execute input via graph
   const executeViaGraph = async (userInput: string) => {
-    // Add a streaming line with cursor indicator immediately
-    addLine({ type: 'streaming', content: '' });
+    // Reset typewriter state for new stream
+    resetTypewriter();
+    // Add a streaming line with instant status indicator
+    addLine({ type: 'streaming', content: 'thinking...' });
     
     try {
       abortControllerRef.current = new AbortController();
@@ -755,149 +1208,15 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
         return;
       }
 
-      // 2. Connect to SSE stream via EventSource
-      let accumulated = '';
-      
-      await new Promise<void>((resolve, reject) => {
-        // Close any existing connection
-        if (eventSourceRef.current) {
-          eventSourceRef.current.close();
-        }
-        
-        const eventSource = new EventSource(streamUrl, { withCredentials: true });
-        eventSourceRef.current = eventSource;
-        let resolved = false;
-        
-        // Timeout if nothing happens in 60 seconds
-        const timeout = setTimeout(() => {
-          if (!resolved) {
-            resolved = true;
-            eventSource.close();
-            eventSourceRef.current = null;
-            reject(new Error('Stream timeout'));
-          }
-        }, 60000);
-        
-        const finish = () => {
-          if (resolved) return;
-          resolved = true;
-          clearTimeout(timeout);
-          eventSource.close();
-          eventSourceRef.current = null;
-          resolve();
-        };
-        
-        // Handle abort
-        if (abortControllerRef.current) {
-          abortControllerRef.current.signal.addEventListener('abort', () => {
-            finish();
-          });
-        }
-        
-        eventSource.onerror = () => {
-          // If we haven't received any data, this is a connection failure
-          if (!accumulated && !resolved) {
-            resolved = true;
-            clearTimeout(timeout);
-            eventSource.close();
-            eventSourceRef.current = null;
-            reject(new Error('Stream connection failed'));
-          }
-          // Otherwise EventSource will auto-reconnect
-        };
-        
-        eventSource.onmessage = (evt) => {
-          const eventData = evt.data;
-          
-          if (eventData === '[DONE]') {
-            finish();
-            return;
-          }
-          
-          try {
-            const event = JSON.parse(eventData);
-            
-            // Handle init event (may contain existing content for reconnections)
-            if (event.type === 'init' && event.existingContent) {
-              accumulated = event.existingContent;
-              updateStreamingLine(accumulated);
-              return;
-            }
-            
-            // Handle content chunks
-            if (event.type === 'chunk' && event.content && !event.thinking) {
-              accumulated += event.content;
-              updateStreamingLine(accumulated);
-              return;
-            }
-            
-            // Handle status updates - show in the streaming line if no content yet
-            if (event.type === 'status' || event.type === 'tool_status') {
-              if (!accumulated) {
-                const desc = event.description || event.action || 'Processing...';
-                updateStreamingLine(`[${desc}]`);
-              }
-              return;
-            }
-            
-            // Handle tool events
-            if (event.type === 'tool_start' || (event.type === 'tool_event' && event.event?.type === 'tool_start')) {
-              const toolName = event.toolName || event.event?.toolName || 'tool';
-              if (!accumulated) {
-                updateStreamingLine(`[Running ${toolName}...]`);
-              }
-              return;
-            }
-            
-            // Handle completion
-            if (event.type === 'run_complete' || event.type === 'complete') {
-              finish();
-              return;
-            }
-            
-            // Handle errors
-            if (event.type === 'run_error' || event.type === 'error') {
-              const errMsg = event.error || 'Run failed';
-              removeStreamingLine();
-              addLine({ type: 'error', content: errMsg });
-              finish();
-              return;
-            }
-          } catch {
-            // Ignore parse errors (comments, keepalives)
-          }
-        };
-      });
+      // Track active stream for reconnection
+      activeStreamRef.current = { runId, streamUrl };
+      saveActiveStream(activeTabId, { runId, streamUrl });
 
-      // Finalize the streaming line
-      if (accumulated) {
-        // If streaming line still shows a status placeholder, replace with final content
-        finalizeStreamingLine();
-      } else {
-        // No content received — check if directResponse was used
-        // Fetch the run result to get the response
-        try {
-          const runRes = await fetch(`/api/v1/runs/${runId}`, {
-            credentials: 'include',
-          });
-          if (runRes.ok) {
-            const runData = await runRes.json();
-            const content = runData.output?.content || runData.output?.data?.response || runData.output?.data?.directResponse;
-            if (content) {
-              updateStreamingLine(content);
-              finalizeStreamingLine();
-            } else {
-              removeStreamingLine();
-              addLine({ type: 'output', content: '(No response)' });
-            }
-          } else {
-            removeStreamingLine();
-          }
-        } catch {
-          removeStreamingLine();
-        }
-      }
+      // 2. Connect to SSE and stream
+      const accumulated = await connectToSSE(streamUrl);
+      await waitForTypewriterAndFinalize(accumulated, runId);
     } catch (err: any) {
+      resetTypewriter();
       removeStreamingLine();
       if (err.name === 'AbortError') {
         addLine({ type: 'system', content: 'Cancelled' });
@@ -905,11 +1224,10 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
         addLine({ type: 'error', content: `Error: ${err.message || 'Unknown error'}` });
       }
     } finally {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
+      if (eventSourceRef.current) { eventSourceRef.current.close(); eventSourceRef.current = null; }
       abortControllerRef.current = null;
+      activeStreamRef.current = null;
+      saveActiveStream(activeTabId, null);
     }
   };
 
@@ -1160,14 +1478,8 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
                   </span>
                 ) : line.type === 'streaming' ? (
                   <span>
-                    {line.content ? (
-                      <>
-                        {line.content}
-                        <span className="animate-pulse">▊</span>
-                      </>
-                    ) : (
-                      <span className="text-text-muted animate-pulse">● thinking...</span>
-                    )}
+                    {line.content}
+                    <span className="text-accent-text ml-0.5">{SPINNER_CHARS[spinnerFrame]}</span>
                   </span>
                 ) : (
                   line.content

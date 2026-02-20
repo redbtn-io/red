@@ -4,22 +4,28 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getRed, getDatabase } from '@/lib/red';
+import { getDatabase, getRunState } from '@redbtn/redbtn';
+import { getLogReader } from '@/lib/redlog';
 import { verifyAuth } from '@/lib/auth/auth';
+import Redis from 'ioredis';
+
+function getRedis(): Redis {
+  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+  return new Redis(redisUrl, { maxRetriesPerRequest: 3 });
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ generationId: string }> }
 ) {
   try {
-    // Verify authentication
     const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { generationId } = await params;
-    
+
     if (!generationId) {
       return NextResponse.json(
         { error: 'generationId is required' },
@@ -27,21 +33,28 @@ export async function GET(
       );
     }
 
-    const red = await getRed();
-
-    // Verify ownership via generation's conversation
-    const generation = await red.logger.getGeneration(generationId);
-    if (generation) {
-      const db = getDatabase();
-      const conversation = await db.getConversation(generation.conversationId);
-      if (conversation?.userId && conversation.userId !== user.userId) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    // Verify ownership via RunState's conversation
+    const redis = getRedis();
+    try {
+      const runState = await getRunState(redis, generationId);
+      if (runState?.conversationId) {
+        const db = getDatabase();
+        const conversation = await db.getConversation(runState.conversationId);
+        if (conversation?.userId && conversation.userId !== user.userId) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
       }
+    } finally {
+      redis.disconnect();
     }
-    
+
     // Get all logs for this generation
-    const logs = await red.logger.getGenerationLogs(generationId);
-    
+    const reader = getLogReader();
+    const logs = await reader.query({
+      scope: { generationId },
+      order: 'asc',
+    });
+
     return NextResponse.json({
       generationId,
       count: logs.length,

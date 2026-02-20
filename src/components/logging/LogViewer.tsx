@@ -4,51 +4,27 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { List, Rows3, Maximize2, SquareTerminal } from 'lucide-react';
 import { cardClass, toolbarClass, toolbarBtn, toolbarActive, logLineClass } from './logStyles';
+import { parseColorTagsToTailwind, stripColorTags } from '@redbtn/redlog/colors';
 
 // Define LogEntry type locally to avoid importing server modules
 interface LogEntry {
   id: string;
   timestamp: number;
   level: 'debug' | 'info' | 'success' | 'warning' | 'error';
-  category: string;
+  category?: string;
   message: string;
+  namespace?: string;
+  scope?: {
+    generationId?: string;
+    conversationId?: string;
+    [key: string]: string | undefined;
+  };
+  metadata?: Record<string, unknown>;
+  // Backward compat with old LogEntry shape
   generationId?: string;
   conversationId?: string;
-  metadata?: Record<string, unknown>;
-}
-
-// Color tag parsing functions
-function stripColorTags(text: string): string {
-  return text.replace(/<\/?(?:red|green|yellow|blue|magenta|cyan|white|black|gray|dim|bold|underline|blink|reverse|hidden)>/gi, '');
-}
-
-function parseColorTagsToHtml(text: string): string {
-  const colorMap: Record<string, string> = {
-    red: 'text-red-400',
-    green: 'text-green-400',
-    yellow: 'text-yellow-400',
-    blue: 'text-blue-400',
-    magenta: 'text-magenta-400',
-    cyan: 'text-cyan-400',
-    white: 'text-text-primary',
-    gray: 'text-text-secondary',
-    dim: 'text-text-muted',
-    bold: 'font-bold',
-  };
-  
-  let html = text;
-  
-  // Replace opening tags
-  Object.entries(colorMap).forEach(([color, className]) => {
-    const regex = new RegExp(`<${color}>`, 'gi');
-    html = html.replace(regex, `<span class="${className}">`);
-  });
-  
-  // Replace closing tags
-  html = html.replace(/<\/(?:red|green|yellow|blue|magenta|cyan|white|black|gray|dim|bold|underline|blink|reverse|hidden)>/gi, '</span>');
-  
-  return html;
 }
 
 interface LogViewerProps {
@@ -81,7 +57,7 @@ export function LogViewer({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoScroll, setAutoScroll] = useState(true);
-  const [compact, setCompact] = useState(false);
+  const [viewMode, setViewMode] = useState<'default' | 'compact' | 'expanded' | 'terminal'>('default');
   const logsEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -296,13 +272,39 @@ export function LogViewer({
           >
             {autoScroll ? '📌 Auto' : '📌'}
           </button>
-          <button
-            onClick={() => setCompact(!compact)}
-            className={`${toolbarBtn} ${compact ? toolbarActive : ''}`}
-            title={compact ? 'Disable compact view' : 'Enable compact view'}
-          >
-            {compact ? '� Compact' : '�'}
-          </button>
+
+          {/* View mode buttons */}
+          <div className="flex items-center bg-bg-primary rounded overflow-hidden border border-border/30">
+            <button
+              onClick={() => setViewMode('default')}
+              className={`p-1.5 ${viewMode === 'default' ? 'bg-accent text-white' : 'text-text-muted hover:text-text-primary hover:bg-bg-primary/60'}`}
+              title="Default view"
+            >
+              <Rows3 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setViewMode('compact')}
+              className={`p-1.5 ${viewMode === 'compact' ? 'bg-accent text-white' : 'text-text-muted hover:text-text-primary hover:bg-bg-primary/60'}`}
+              title="Compact view"
+            >
+              <List className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setViewMode('expanded')}
+              className={`p-1.5 ${viewMode === 'expanded' ? 'bg-accent text-white' : 'text-text-muted hover:text-text-primary hover:bg-bg-primary/60'}`}
+              title="Expanded view (all details open)"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setViewMode('terminal')}
+              className={`p-1.5 ${viewMode === 'terminal' ? 'bg-accent text-white' : 'text-text-muted hover:text-text-primary hover:bg-bg-primary/60'}`}
+              title="Terminal view"
+            >
+              <SquareTerminal className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           <button
             onClick={() => setLogs([])}
             className={toolbarBtn}
@@ -326,15 +328,22 @@ export function LogViewer({
       </div>
 
       {/* Logs */}
-      <div className="p-4 max-h-[70vh] overflow-y-auto font-sans text-sm">
+      <div className={`${viewMode === 'terminal' ? 'p-0' : 'p-4'} max-h-[70vh] overflow-y-auto font-sans text-sm`}>
         {filteredLogs.length === 0 ? (
           <div className="text-center py-12 text-text-primary opacity-60">
             No logs match the current filters
           </div>
+        ) : viewMode === 'terminal' ? (
+          <div className="bg-[#0c0c0c] p-4 font-mono text-xs leading-relaxed select-text cursor-text whitespace-pre-wrap">
+            {filteredLogs.map((log) => (
+              <TerminalLogLine key={log.id} log={log} />
+            ))}
+            <div ref={logsEndRef} />
+          </div>
         ) : (
           <div className="space-y-2">
             {filteredLogs.map((log) => (
-              <LogLine key={log.id} log={log} compact={compact} />
+              <LogLine key={log.id} log={log} viewMode={viewMode} />
             ))}
             <div ref={logsEndRef} />
           </div>
@@ -345,7 +354,7 @@ export function LogViewer({
 }
 
 // Individual log line component
-function LogLine({ log, compact }: { log: LogEntry; compact?: boolean }) {
+function LogLine({ log, viewMode }: { log: LogEntry; viewMode: 'default' | 'compact' | 'expanded' | 'terminal' }) {
   const levelColors: Record<string, string> = {
     debug: 'text-text-muted',
     info: 'text-blue-400',
@@ -354,12 +363,12 @@ function LogLine({ log, compact }: { log: LogEntry; compact?: boolean }) {
     error: 'text-red-400',
   };
 
-  const levelIcons: Record<string, string> = {
-    debug: '🐛',
-    info: 'ℹ️',
-    success: '✅',
-    warning: '⚠️',
-    error: '❌',
+  const levelBgColors: Record<string, string> = {
+    debug: 'bg-gray-500/10',
+    info: 'bg-blue-500/10',
+    success: 'bg-green-500/10',
+    warning: 'bg-yellow-500/10',
+    error: 'bg-red-500/10',
   };
 
   const timestamp = new Date(log.timestamp).toLocaleTimeString('en-US', {
@@ -370,31 +379,47 @@ function LogLine({ log, compact }: { log: LogEntry; compact?: boolean }) {
     fractionalSecondDigits: 3,
   });
 
-  // Parse color tags to HTML
-  const messageHtml = parseColorTagsToHtml(log.message);
-  const [expanded, setExpanded] = useState(false);
+  // Parse color tags to Tailwind spans
+  const messageHtml = parseColorTagsToTailwind(log.message);
+  const isCompact = viewMode === 'compact';
+  const isExpanded = viewMode === 'expanded';
+  const [expanded, setExpanded] = useState(isExpanded);
+
+  // Sync with viewMode changes
+  useEffect(() => {
+    if (viewMode === 'expanded') setExpanded(true);
+    else if (viewMode === 'compact' || viewMode === 'default') setExpanded(false);
+  }, [viewMode]);
 
   return (
-    <div className={`${logLineClass} ${compact ? 'py-2 px-2' : 'py-3 px-3'}`}>
+    <div className={`${logLineClass} ${isCompact ? 'py-2 px-2' : 'py-3 px-3'}`}>
       {/* Metadata line */}
-      <div className={`flex items-center gap-3 ${compact ? 'mb-1' : 'mb-2'} flex-wrap`}>
+      <div className={`flex items-center gap-3 ${isCompact ? 'mb-0' : 'mb-2'} flex-wrap`}>
         <span className="text-text-primary/70 text-xs tabular-nums shrink-0">{timestamp}</span>
-        <span className="shrink-0" title={log.level}>{levelIcons[log.level] || '•'}</span>
-        <span className={`shrink-0 text-xs uppercase font-semibold ${levelColors[log.level]}`}>{log.level}</span>
+        <span className={`shrink-0 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${levelColors[log.level]} ${levelBgColors[log.level]}`}>{log.level}</span>
         <span className="shrink-0 text-xs text-text-primary/60 uppercase">{log.category}</span>
 
+        {/* Inline message in compact mode */}
+        {isCompact && (
+          <span className="text-sm font-mono text-text-primary/90 truncate flex-1 min-w-0 ml-1">
+            <span dangerouslySetInnerHTML={{ __html: messageHtml }} />
+          </span>
+        )}
+
         {/* Expand / collapse */}
-        <button
-          onClick={() => setExpanded((s) => !s)}
-          className="ml-auto text-xs px-2 py-1 rounded bg-bg-primary text-text-primary hover:bg-bg-primary/60"
-          title={expanded ? 'Collapse' : 'Expand'}
-        >
-          {expanded ? '▾' : '▸'}
-        </button>
+        {!isCompact && (
+          <button
+            onClick={() => setExpanded((s) => !s)}
+            className="ml-auto text-xs px-2 py-1 rounded bg-bg-primary text-text-primary hover:bg-bg-primary/60"
+            title={expanded ? 'Collapse' : 'Expand'}
+          >
+            {expanded ? '▾' : '▸'}
+          </button>
+        )}
       </div>
 
-      {/* Message line */}
-      {(!compact || expanded) && (
+      {/* Message line - shown in default/expanded, hidden in compact */}
+      {!isCompact && (
         <>
           <div className="pl-2 break-words text-sm leading-relaxed font-mono text-text-primary/90">
             <div dangerouslySetInnerHTML={{ __html: messageHtml }} />
@@ -420,6 +445,64 @@ function LogLine({ log, compact }: { log: LogEntry; compact?: boolean }) {
             </div>
           )}
         </>
+      )}
+    </div>
+  );
+}
+
+// Terminal-style log line - plain text, selectable
+function TerminalLogLine({ log }: { log: LogEntry }) {
+  const levelColors: Record<string, string> = {
+    debug: 'text-gray-500',
+    info: 'text-blue-400',
+    success: 'text-green-400',
+    warning: 'text-yellow-400',
+    error: 'text-red-400',
+  };
+
+  const timestamp = new Date(log.timestamp).toLocaleTimeString('en-US', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    fractionalSecondDigits: 3,
+  });
+
+  const plainMessage = stripColorTags(log.message);
+
+  // Build metadata lines with pretty-printed JSON
+  const metaEntries = log.metadata
+    ? Object.entries(log.metadata).filter(([k]) => !['runId', 'userId', 'graphId', 'graphName'].includes(k))
+    : [];
+
+  const formatValue = (v: unknown): string => {
+    if (typeof v === 'object' && v !== null) return JSON.stringify(v, null, 2);
+    return String(v);
+  };
+
+  return (
+    <div className={`py-0.5 ${log.level === 'error' ? 'text-red-400' : log.level === 'warning' ? 'text-yellow-400' : 'text-gray-300'}`}>
+      <span className="text-gray-600">{timestamp}</span>
+      {' '}
+      <span className={levelColors[log.level]}>[{log.level.toUpperCase().padEnd(7)}]</span>
+      {' '}
+      {log.category && <span className="text-gray-500">[{log.category.toUpperCase()}]</span>}
+      {log.category && ' '}
+      <span>{plainMessage}</span>
+      {metaEntries.length > 0 && (
+        <div className="text-gray-500 ml-[2ch] mt-0.5 border-l border-gray-800 pl-2">
+          {metaEntries.map(([k, v]) => {
+            const formatted = formatValue(v);
+            const isMultiline = formatted.includes('\n');
+            return (
+              <div key={k} className="py-px">
+                <span className="text-cyan-700">{k}</span>
+                <span className="text-gray-700">{isMultiline ? ':\n' : ': '}</span>
+                <span className="text-gray-500">{formatted}</span>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

@@ -6,50 +6,61 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getRed, getDatabase } from '@/lib/red';
+import { getDatabase, getRunState } from '@redbtn/redbtn';
+import { getLogStream } from '@/lib/redlog';
 import { verifyAuth } from '@/lib/auth/auth';
+import Redis from 'ioredis';
 
 export const runtime = 'nodejs';
+
+function getRedis(): Redis {
+  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+  return new Redis(redisUrl, { maxRetriesPerRequest: 3 });
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ generationId: string }> }
 ) {
-  // Verify authentication
   const user = await verifyAuth(request);
   if (!user) {
     return new Response('Unauthorized', { status: 401 });
   }
 
   const { generationId } = await params;
-  
+
   if (!generationId) {
     return new Response('generationId is required', { status: 400 });
   }
 
-  const red = await getRed();
-
-  // Verify ownership via generation's conversation
-  const generation = await red.logger.getGeneration(generationId);
-  if (generation) {
-    const db = getDatabase();
-    const conversation = await db.getConversation(generation.conversationId);
-    if (conversation?.userId && conversation.userId !== user.userId) {
-      return new Response('Forbidden', { status: 403 });
+  // Verify ownership via RunState's conversation
+  const redis = getRedis();
+  try {
+    const runState = await getRunState(redis, generationId);
+    if (runState?.conversationId) {
+      const db = getDatabase();
+      const conversation = await db.getConversation(runState.conversationId);
+      if (conversation?.userId && conversation.userId !== user.userId) {
+        return new Response('Forbidden', { status: 403 });
+      }
     }
+  } finally {
+    redis.disconnect();
   }
-  
+
+  const logStream = getLogStream();
+
   // Create SSE stream
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        // Stream logs from logger
-        for await (const log of red.logger.subscribeToGeneration(generationId)) {
+        // Stream logs via RedLog
+        for await (const log of logStream.subscribe('generationId', generationId, { catchUp: true })) {
           const data = `data: ${JSON.stringify(log)}\n\n`;
           controller.enqueue(encoder.encode(data));
         }
-        
+
         // Send completion event
         controller.enqueue(encoder.encode('event: complete\ndata: {}\n\n'));
         controller.close();
@@ -61,7 +72,7 @@ export async function GET(
       }
     },
   });
-  
+
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream',

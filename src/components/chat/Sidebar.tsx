@@ -70,7 +70,7 @@ export function Sidebar({
               className={`
                 relative rounded-xl transition-all group
                 ${conv.id === activeConversationId 
-                  ? 'bg-red-500/10 dark:bg-red-500/15 border border-red-500/30 shadow-sm' 
+                  ? 'bg-red-500/10 border border-red-500/30 shadow-sm' 
                   : 'hover:bg-bg-hover border border-transparent hover:border-border/50'
                 }
               `}

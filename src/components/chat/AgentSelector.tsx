@@ -81,7 +81,7 @@ export function AgentSelector({
   // Show loading state or hide completely if no agents after loading
   if (loading) {
     return (
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-sm border border-border bg-white dark:bg-bg-secondary opacity-50">
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-sm border border-border bg-bg-secondary opacity-50">
         <Bot className="w-4 h-4 text-purple-500 flex-shrink-0 animate-pulse" />
         <span className="text-text-muted hidden sm:inline text-xs">Loading...</span>
       </div>
@@ -106,7 +106,7 @@ export function AgentSelector({
         disabled={disabled || loading}
         className={`
           flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl text-sm
-          border border-border bg-white dark:bg-bg-secondary 
+          border border-border bg-bg-secondary 
           hover:bg-bg-hover hover:border-border-hover
           transition-all shadow-sm
           ${disabled || loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
@@ -135,7 +135,7 @@ export function AgentSelector({
                 exit={{ opacity: 0, y: -5, scale: 0.95 }}
                 transition={{ duration: 0.15 }}
                 style={{ top: dropdownPosition.top, left: dropdownPosition.left }}
-                className="fixed z-[9999] min-w-[180px] max-w-[240px] bg-white dark:bg-bg-secondary border border-border rounded-xl shadow-lg dark:shadow-xl overflow-hidden"
+                className="fixed z-[9999] min-w-[180px] max-w-[240px] bg-bg-secondary border border-border rounded-xl shadow-xl overflow-hidden"
               >
                 <div className="max-h-[200px] overflow-y-auto py-1">
                   {agents.map((agent) => (

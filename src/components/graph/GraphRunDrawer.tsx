@@ -202,13 +202,14 @@ export function GraphRunDrawer({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="w-full overflow-y-auto"
-              style={{ maxHeight: maxHeight - 100 }}
+              className="w-full h-full"
+              style={{ height: maxHeight - 100 }}
             >
               <GraphRunViewer
                 graph={graph}
                 runState={runState}
                 onNodeClick={onNodeClick}
+                fillContainer
               />
             </motion.div>
           )}

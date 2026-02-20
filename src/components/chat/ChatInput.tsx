@@ -38,7 +38,7 @@ export function ChatInput({
     >
       <div className="max-w-4xl mx-auto">
         <div 
-          className="flex gap-3 items-end p-2 bg-white dark:bg-bg-elevated rounded-2xl border border-border shadow-lg dark:shadow-none"
+          className="flex gap-3 items-end p-2 bg-bg-elevated rounded-2xl border border-border shadow-lg"
           style={{ boxShadow: 'var(--shadow-md, 0 4px 6px rgba(0,0,0,0.1))' }}
         >
           <div className="flex-1 relative">

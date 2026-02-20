@@ -158,6 +158,7 @@ function ChatPageContent() {
     // Type check and load the graph run
     const run = graphRun as {
       graphId?: string;
+      runId?: string;
       status?: 'running' | 'completed' | 'error';
       executionPath?: string[];
       nodeProgress?: Record<string, {
@@ -176,6 +177,7 @@ function ChatPageContent() {
     if (run && run.executionPath && run.status) {
       loadGraphRunState({
         graphId: run.graphId,
+        runId: run.runId,
         status: run.status,
         executionPath: run.executionPath,
         nodeProgress: run.nodeProgress || {},
@@ -673,6 +675,10 @@ function ChatPageContent() {
       setStreamingMessageId(null);
       setStreamingMessage(null);
       setInput('');
+
+      // Clear graph run state from previous conversation
+      resetGraphRunState();
+      closeGraphDrawer();
     } catch (error) {
       console.error('[Chat] Failed to clear conversation:', error);
     }
@@ -717,6 +723,10 @@ function ChatPageContent() {
     
     // Clean up any active streaming before switching
     cleanupActiveStream();
+
+    // Reset graph state from previous conversation
+    resetGraphRunState();
+    closeGraphDrawer();
     
     try {
       setIsSwitchingConversation(true);

@@ -37,7 +37,7 @@ export default function DataLayout({ children }: DataLayoutProps) {
       
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
-        <header className="flex items-center gap-3 px-4 py-3 border-b border-border/50 bg-white/90 dark:bg-bg-elevated backdrop-blur-md">
+        <header className="flex items-center gap-3 px-4 py-3 border-b border-border/50 bg-bg-elevated/90 backdrop-blur-md">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-2 rounded-xl hover:bg-bg-hover text-text-secondary lg:hidden flex-shrink-0"

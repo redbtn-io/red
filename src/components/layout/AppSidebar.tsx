@@ -9,6 +9,7 @@ import {
     MessageSquare,
     Workflow,
     Terminal,
+    ScrollText,
     Library,
     Zap,
     X,
@@ -31,7 +32,8 @@ const defaultNavItems: NavItem[] = [
   { href: '/automations', label: 'Automations', icon: Zap, match: '/automations' },
   { href: '/connections', label: 'Connections', icon: Plug, match: '/connections' },
   { href: '/data', label: 'Data', icon: Library, match: '/data' },
-  { href: '/logs', label: 'Terminal', icon: Terminal, match: '/logs' },
+  { href: '/terminal', label: 'Terminal', icon: Terminal, match: '/terminal' },
+  { href: '/logs', label: 'Logs', icon: ScrollText, match: '/logs' },
 ];
 
 // Simple nav item for normal (non-drag) mode

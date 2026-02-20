@@ -13,7 +13,7 @@ import connectToDatabase from '@/lib/database/mongodb';
  * {
  *   name: string;
  *   description?: string;
- *   nodes: Array<{ id: string; type: GraphNodeType; config?: any }>;
+ *   nodes: Array<{ id: string; config?: { nodeId: string; parameters?: any } }>;
  *   edges: Array<{ from: string; to: string; condition?: string }>;
  *   tier?: number;
  * }

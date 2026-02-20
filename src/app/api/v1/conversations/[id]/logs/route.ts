@@ -4,7 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getRed, getDatabase } from '@/lib/red';
+import { getDatabase } from '@/lib/red';
+import { getLogReader } from '@/lib/redlog';
 import { verifyAuth } from '@/lib/auth/auth';
 
 export async function GET(
@@ -36,10 +37,14 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const red = await getRed();
+    const reader = getLogReader();
     
     // Get all logs for this conversation
-    const logs = await red.logger.getConversationLogs(conversationId, limit);
+    const logs = await reader.query({
+      scope: { conversationId },
+      limit: limit ?? 200,
+      order: 'asc',
+    });
     
     return NextResponse.json({
       conversationId,

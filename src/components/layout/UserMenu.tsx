@@ -57,7 +57,7 @@ export function UserMenu({ showName = true }: UserMenuProps) {
 
             {/* Menu Dropdown */}
             <motion.div 
-              className="absolute right-0 mt-2 w-56 bg-white dark:bg-bg-secondary border border-border rounded-xl shadow-lg dark:shadow-xl z-50 overflow-hidden"
+              className="absolute right-0 mt-2 w-56 bg-bg-secondary border border-border rounded-xl shadow-xl z-50 overflow-hidden"
               initial={{ opacity: 0, scale: 0.95, y: -5 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -5 }}
@@ -67,7 +67,7 @@ export function UserMenu({ showName = true }: UserMenuProps) {
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-sm font-semibold text-text-primary">{user.name || 'User'}</p>
                   {isAdmin && (
-                    <span className="px-2 py-0.5 bg-red-500/15 border border-red-500/30 rounded-md text-xs text-red-500 dark:text-red-400 font-semibold">
+                    <span className="px-2 py-0.5 bg-red-500/15 border border-red-500/30 rounded-md text-xs text-red-400 font-semibold">
                       ADMIN
                     </span>
                   )}
