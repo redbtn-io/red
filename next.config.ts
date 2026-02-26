@@ -13,6 +13,14 @@ const nextConfig: NextConfig = {
     pagesBufferLength: 5,
   },
   transpilePackages: ['@chroma-core/default-embed'],
+  
+  // red-auth is ESM-only; let Node.js handle it natively instead of bundling
+  serverExternalPackages: ['red-auth'],
+  
+  // Pin Turbopack root to this directory so it resolves node_modules from webapp/
+  turbopack: {
+    root: __dirname,
+  },
 };
 
 export default nextConfig;
