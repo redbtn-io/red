@@ -29,8 +29,8 @@ channels.json
 !README.md
 
 # Test files
-tests/
-*.test.ts
-*.test.tsx
+# tests/
+# *.test.ts
+# *.test.tsx
 *.spec.ts
 *.spec.tsx
