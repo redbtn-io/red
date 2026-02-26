@@ -1,23 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/database/mongodb';
-import AuthCode from '@/lib/database/models/auth/AuthCode';
-import AuthSession from '@/lib/database/models/auth/AuthSession';
-import { generateMagicToken, sendMagicLinkEmail } from '@/lib/email/email';
+import { auth } from '@/lib/auth/auth';
+import { sendMagicLinkEmail } from '@/lib/email/email';
 import { rateLimitAPI } from '@/lib/rate-limit/rate-limit-helpers';
 import { RateLimits } from '@/lib/rate-limit/rate-limit';
+import { createMagicLink as createML } from 'red-auth';
 
 /**
  * POST /api/auth/request-code
- * Request a sign in link for login/signup
+ * Request a sign in link for login/signup (powered by redAuth)
  */
 export async function POST(request: NextRequest) {
-  // Apply strict rate limiting for auth endpoints
   const rateLimitResult = await rateLimitAPI(request, RateLimits.AUTH);
   if (rateLimitResult) return rateLimitResult;
   
   try {
     const body = await request.json();
-    const { email, sessionId } = body;
+    const { email } = body;
 
     if (!email || typeof email !== 'string') {
       return NextResponse.json(
@@ -26,14 +24,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!sessionId || typeof sessionId !== 'string') {
-      return NextResponse.json(
-        { error: 'Session ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Validate email format
+    // sessionId is generated server-side by redAuth
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json(
@@ -42,63 +33,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await connectToDatabase();
-
-    // Delete any existing codes for this email
-    await AuthCode.deleteMany({ email: email.toLowerCase() });
-
-    // Generate new sign in link token
-    const token = generateMagicToken();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-    // Create auth session to track this login attempt
-    await AuthSession.findOneAndUpdate(
-      { sessionId },
-      {
-        sessionId,
-        email: email.toLowerCase(),
-        authenticated: false,
-        expiresAt,
-      },
-      { upsert: true, new: true }
-    );
-
-    // Save token to database
-    await AuthCode.create({
+    // Create magic link via redAuth
+    const conn = await auth.getConnection();
+    const result = await createML({
       email: email.toLowerCase(),
-      token,
-      sessionId,
-      used: false,
-      expiresAt,
+      appName: 'redbtn',
+      expirySeconds: 10 * 60, // 10 minutes
+      conn,
     });
 
-    // Compute base URL using env var, forwarded headers, or request data
+    // Compute base URL
     function computeBaseUrl(req: NextRequest) {
       if (process.env.BASE_URL) return process.env.BASE_URL;
-
       const forwardedProto = req.headers.get('x-forwarded-proto');
       const forwardedHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
-
       if (forwardedHost) {
         const proto = forwardedProto || req.nextUrl.protocol || 'https';
         return `${proto}://${forwardedHost}`;
       }
-
       return `${req.nextUrl.protocol}//${req.nextUrl.host}`;
     }
 
     const baseUrl = computeBaseUrl(request);
     console.log('[Auth] using baseUrl for magic link:', baseUrl);
 
-    // Send email with sign in link
-    await sendMagicLinkEmail(email, token, baseUrl);
+    // Send email with sign in link (using app's existing email template)
+    await sendMagicLinkEmail(email, result.token, baseUrl);
 
-    console.log('[Auth] Sign in link sent to:', email, 'sessionId:', sessionId);
+    console.log('[Auth] Sign in link sent to:', email, 'sessionId:', result.sessionId);
 
     return NextResponse.json({
       success: true,
       message: 'Sign in link sent to your email',
-      sessionId, // Return sessionId so frontend can poll for authentication
+      sessionId: result.sessionId,
     });
   } catch (error) {
     console.error('[Auth] Request code error:', error);

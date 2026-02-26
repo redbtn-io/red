@@ -38,6 +38,7 @@
     "react-hook-form": "^7.68.0",
     "react-markdown": "^10.1.0",
     "reactflow": "^11.11.4",
+    "red-auth": "file:../../redAuth",
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",

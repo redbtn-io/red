@@ -18,10 +18,9 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
   const [sessionId, setSessionId] = useState('');
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
-  // Generate session ID on mount
+  // Generate session ID on mount (fallback — redAuth generates the actual one)
   useEffect(() => {
     if (!sessionId) {
-      // Generate a unique session ID for this browser tab
       const id = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       setSessionId(id);
     }
@@ -85,12 +84,18 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
       const response = await fetch('/api/auth/request-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, sessionId }),
+        body: JSON.stringify({ email }),
       });
 
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Failed to send sign in link');
+      }
+
+      // Use server-returned sessionId from redAuth for polling
+      const data = await response.json();
+      if (data.sessionId) {
+        setSessionId(data.sessionId);
       }
 
       setStep('waiting');
@@ -122,12 +127,18 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
       const response = await fetch('/api/auth/request-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, sessionId }),
+        body: JSON.stringify({ email }),
       });
 
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Failed to send sign in link');
+      }
+
+      // Update polling sessionId to match new magic link
+      const data = await response.json();
+      if (data.sessionId) {
+        setSessionId(data.sessionId);
       }
 
       setError('');
