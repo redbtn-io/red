@@ -18,6 +18,7 @@ dist/
 # Packed files (keep redbtn packages)
 *.tgz
 !redbtn*.tgz
+!red-auth*.tgz
 
 # User data
 context/

@@ -8,7 +8,7 @@ import { createRedAuth } from 'red-auth';
 
 // Shared redAuth instance for this app
 export const auth = createRedAuth({
-  mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/redbtn',
+  mongoUri: process.env.AUTH_MONGODB_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/redbtn',
   jwtSecret: process.env.JWT_SECRET || '',
   appName: 'redbtn',
   baseUrl: process.env.BASE_URL || 'http://localhost:3000',
