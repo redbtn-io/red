@@ -9,6 +9,7 @@ import { NextRequest } from 'next/server';
 import { getDatabase } from '@/lib/red';
 import { getLogStream } from '@/lib/redlog';
 import { verifyAuth } from '@/lib/auth/auth';
+import { createSSEResponse } from '@red/stream/sse';
 
 export const runtime = 'nodejs';
 
@@ -16,14 +17,12 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  // Verify authentication
   const user = await verifyAuth(request);
   if (!user) {
     return new Response('Unauthorized', { status: 401 });
   }
 
   const { id: conversationId } = await params;
-  
   if (!conversationId) {
     return new Response('conversationId is required', { status: 400 });
   }
@@ -36,33 +35,5 @@ export async function GET(
   }
 
   const logStream = getLogStream();
-  
-  // Create SSE stream
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        // Stream logs via RedLog
-        for await (const log of logStream.subscribe('conversationId', conversationId, { catchUp: true })) {
-          const data = `data: ${JSON.stringify(log)}\n\n`;
-          controller.enqueue(encoder.encode(data));
-        }
-        
-        controller.close();
-      } catch (error) {
-        console.error('[API] Error streaming conversation logs:', error);
-        const errorData = `event: error\ndata: ${JSON.stringify({ error: 'Stream error' })}\n\n`;
-        controller.enqueue(encoder.encode(errorData));
-        controller.close();
-      }
-    },
-  });
-  
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    },
-  });
+  return createSSEResponse(logStream.subscribe('conversationId', conversationId, { catchUp: true }));
 }

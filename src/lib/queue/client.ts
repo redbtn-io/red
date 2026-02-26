@@ -19,6 +19,7 @@
 
 import { Queue } from 'bullmq';
 import IORedis, { type Redis } from 'ioredis';
+import { parseBullMQConnection } from '@red/stream/queue';
 
 // ============================================
 // Configuration
@@ -44,10 +45,12 @@ let backgroundQueue: Queue | null = null;
 
 function getConnection(): Redis {
   if (!connection) {
-    connection = new IORedis(REDIS_URL, {
-      maxRetriesPerRequest: null, // Required for BullMQ
+    const opts = parseBullMQConnection(REDIS_URL);
+    connection = new IORedis({
+      ...opts,
+      maxRetriesPerRequest: null,
       enableReadyCheck: false,
-    });
+    } as any);
   }
   return connection;
 }
