@@ -11,7 +11,12 @@ export async function POST() {
   });
 
   // Clear auth cookie
-  response.cookies.delete('auth_token');
+  response.cookies.set('red_session', '', {
+    httpOnly: true,
+    maxAge: 0,
+    path: '/',
+    domain: process.env.COOKIE_DOMAIN || '.redbtn.io',
+  });
 
   return response;
 }

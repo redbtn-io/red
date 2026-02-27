@@ -1,7 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { conversationState } from '@/lib/conversation/conversation-state';
 
 export interface Message {
   id: string;
@@ -80,7 +81,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      const response = await fetch('/api/v1/conversations', {
+      const response = await fetch('/api/v1/conversations?source=chat', {
         credentials: 'include',
       });
 
@@ -275,15 +276,23 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     setError(null);
   }, []);
 
-  // Fetch conversations when user logs in
+  // Fetch conversations when user logs in or changes
   useEffect(() => {
-    if (user) {
-      fetchConversations();
-    } else {
+    if (user?.id) {
+      // Clear existing state before fetching new user's conversations
+      console.log('[ConversationContext] User logged in or changed, clearing state and fetching conversations');
       setConversations([]);
       setCurrentConversation(null);
+      conversationState.clearConversation(); // Clear global conversation state (messages/thoughts/toolExecutions)
+      fetchConversations();
+    } else {
+      // User logged out
+      console.log('[ConversationContext] User logged out, clearing all state');
+      setConversations([]);
+      setCurrentConversation(null);
+      conversationState.clearConversation(); // Clear global conversation state
     }
-  }, [user, fetchConversations]);
+  }, [user?.id]); // Only depend on user.id, not the whole user object or fetchConversations
 
   return (
     <ConversationContext.Provider

@@ -71,14 +71,16 @@ export function LogsSidebar({
       {/* Sidebar */}
       <div
         className={`
-          fixed inset-y-0 left-0 z-50 w-64 bg-[#0f0f0f] border-r border-[#2a2a2a] text-white transform transition-transform duration-200 ease-in-out
+          fixed left-0 z-50 w-64 bg-bg-elevated border-r border-border text-text-primary transform transition-transform duration-200 ease-in-out
           lg:relative lg:translate-x-0
+          top-[env(safe-area-inset-top,0px)] bottom-0
+          lg:top-0 lg:h-full
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
         <div className="flex flex-col h-full">
           {/* Logo Header */}
-          <div className="p-4 border-b border-[#2a2a2a]">
+          <div className="p-4 border-b border-border">
             <Link href="/" className="flex items-center gap-2 mb-4 no-underline hover:opacity-90">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
                 <Image 
@@ -94,7 +96,7 @@ export function LogsSidebar({
             <button
               onClick={handleRefresh}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
               <span>{loading ? 'Loading...' : 'Refresh Logs'}</span>
@@ -111,7 +113,7 @@ export function LogsSidebar({
             )}
 
             {!loading && !error && conversations.length === 0 && (
-              <div className="text-center text-gray-500 py-8 px-4">
+              <div className="text-center text-text-muted py-8 px-4">
                 <p className="mb-2">No logged conversations yet</p>
                 <p className="text-xs">
                   Create a chat and run some queries to see logs here
@@ -126,8 +128,8 @@ export function LogsSidebar({
                   className={`
                     relative rounded-lg transition-all group
                     ${activeConversationId === conv.conversationId
-                      ? 'bg-[#1a1a1a] border border-[#2a2a2a]' 
-                      : 'hover:bg-[#1a1a1a] border border-transparent'
+                      ? 'bg-bg-secondary border border-border' 
+                      : 'hover:bg-bg-secondary border border-transparent'
                     }
                   `}
                 >
@@ -136,12 +138,12 @@ export function LogsSidebar({
                     className="w-full text-left px-3 py-2.5"
                   >
                     <div className="flex items-start gap-2">
-                      <MessageSquare size={16} className="mt-0.5 flex-shrink-0 text-gray-400" />
+                      <MessageSquare size={16} className="mt-0.5 flex-shrink-0 text-text-secondary" />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate text-gray-200">
+                        <div className="text-sm font-medium truncate text-text-primary">
                           {conv.title || (conv.conversationId ? conv.conversationId.slice(0, 8) : 'Unknown')}
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                        <div className="flex items-center gap-2 text-xs text-text-muted mt-0.5">
                           <span>{conv.logCount} logs</span>
                           <span>•</span>
                           <span>{conv.generationCount} gens</span>
@@ -157,20 +159,20 @@ export function LogsSidebar({
           </div>
 
           {/* Footer */}
-          <div className="p-4 border-t border-[#2a2a2a] space-y-3">
+          <div className="p-4 pb-safe border-t border-border space-y-3">
             {/* Chat Link */}
             <Link
               href="/"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#1a1a1a] transition-colors group"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-bg-secondary transition-colors group"
             >
-              <MessageSquare size={16} className="text-gray-400 group-hover:text-[var(--red-primary)]" />
-              <span className="text-sm text-gray-400 group-hover:text-[var(--foreground)]">
+              <MessageSquare size={16} className="text-text-secondary group-hover:text-accent" />
+              <span className="text-sm text-text-secondary group-hover:text-text-primary">
                 Back to Chat
               </span>
             </Link>
             
             {/* Status */}
-            <div className="flex items-center gap-2 text-xs text-gray-500 px-3">
+            <div className="flex items-center gap-2 text-xs text-text-muted px-3">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               <span>Showing {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}</span>
             </div>
@@ -181,7 +183,7 @@ export function LogsSidebar({
       {/* Overlay for mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-backdrop z-40 lg:hidden"
           onClick={onClose}
         />
       )}

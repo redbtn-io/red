@@ -1,27 +1,37 @@
-# Ignore node_modules directory
+# Dependencies
 node_modules/
 
-# Ignore npm debug log
+# Logs
 npm-debug.log
-
-# Ignore yarn debug log
 yarn-debug.log
 yarn-error.log
 
-# Ignore .env file (if you have sensitive information)
+# Environment
 .env
 .env.local
-# Ignore dist
+.env.connections
+
+# Build outputs
 dist/
+.next/
 
-# Ignore packed files
+# Packed files (keep redbtn packages)
 *.tgz
+!redbtn*.tgz
+!red-auth*.tgz
 
-# User Context
+# User data
 context/
-
-# Channels
 channels.json
 
-#next build output
-.next/
+# Documentation (non-README)
+*.md
+!README.md
+
+# Test files
+# tests/
+# *.test.ts
+# *.test.tsx
+*.spec.ts
+*.spec.tsx
+package-lock.json

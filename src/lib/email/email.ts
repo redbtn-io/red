@@ -31,10 +31,11 @@ export async function sendMagicLinkEmail(
 ): Promise<void> {
   const magicLink = `${baseUrl}/api/auth/verify-link?token=${token}`;
   const fromAddress = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  console.log('[Email] Generated sign in link:', magicLink);
   const mailOptions = {
-    from: `"Red AI" <${fromAddress}>`,
+    from: `"redbtn" <${fromAddress}>`,
     to: email,
-    subject: 'Sign in to Red AI',
+    subject: 'Sign in to redbtn',
     html: `
       <!DOCTYPE html>
       <html>
@@ -109,15 +110,15 @@ export async function sendMagicLinkEmail(
         <body>
           <div class="container">
             <div class="logo">
-              <h1>🔴 Red AI</h1>
+              <h1>🔴 redbtn</h1>
             </div>
             
             <p class="message">
-              Click the button below to sign in to Red AI:
+              Click the button below to sign in to redbtn:
             </p>
             
             <div class="button-container">
-              <a href="${magicLink}" class="button">Sign In to Red AI</a>
+              <a href="${magicLink}" class="button">Sign In to redbtn</a>
             </div>
             
             <p class="message">
@@ -143,7 +144,7 @@ export async function sendMagicLinkEmail(
       </html>
     `,
     text: `
-Sign In to Red AI
+Sign In to redbtn
 
 Click this link to sign in:
 ${magicLink}

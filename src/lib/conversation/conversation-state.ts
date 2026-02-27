@@ -5,6 +5,9 @@
 
 import type { ToolExecution } from '../tools/tool-types';
 
+// Debug logging - set to true to enable verbose logs
+const DEBUG = false;
+
 export interface ConversationMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -86,7 +89,7 @@ class ConversationStateManager {
     hasMore?: boolean;
     totalMessages?: number;
   }): void {
-    console.log(`[ConversationState] Loading conversation ${conversationData.id}`);
+    if (DEBUG) console.log(`[ConversationState] Loading conversation ${conversationData.id}`);
     
     // Convert messages to our format
     const messages: ConversationMessage[] = conversationData.messages.map(msg => ({
@@ -117,14 +120,12 @@ class ConversationStateManager {
     // First, use explicitly provided tool executions (if any)
     if (conversationData.toolExecutions) {
       Object.assign(toolExecutions, conversationData.toolExecutions);
-      console.log(`[ConversationState] Loaded ${Object.keys(conversationData.toolExecutions).length} explicit tool execution sets`);
     }
     
     // Then, extract tool executions from messages (this is the primary source)
     messages.forEach(message => {
       if (message.toolExecutions && message.toolExecutions.length > 0) {
         toolExecutions[message.id] = message.toolExecutions;
-        console.log(`[ConversationState] Restored ${message.toolExecutions.length} tool executions for message ${message.id}`);
       }
     });
 
@@ -145,9 +146,7 @@ class ConversationStateManager {
       }
     };
 
-    console.log(`[ConversationState] Loaded ${messages.length} messages, ${Object.keys(thoughts).length} thoughts, and ${Object.keys(toolExecutions).length} messages with tool executions`);
-    console.log(`[ConversationState] Pagination: hasMore=${conversationData.hasMore}, total=${conversationData.totalMessages}`);
-    console.log(`[ConversationState] Tool execution details:`, Object.entries(toolExecutions).map(([msgId, executions]) => `${msgId}: ${executions.length} tools`));
+    if (DEBUG) console.log(`[ConversationState] Loaded ${messages.length} messages`);
     this.notify();
   }
 
@@ -155,7 +154,7 @@ class ConversationStateManager {
    * Clear current conversation
    */
   clearConversation(): void {
-    console.log('[ConversationState] Clearing conversation');
+    if (DEBUG) console.log('[ConversationState] Clearing conversation');
     this.currentConversation = null;
     this.notify();
   }
@@ -164,7 +163,7 @@ class ConversationStateManager {
    * Create new empty conversation
    */
   createConversation(id: string, title?: string): void {
-    console.log(`[ConversationState] Creating new conversation ${id}`);
+    if (DEBUG) console.log(`[ConversationState] Creating new conversation ${id}`);
     this.currentConversation = {
       id,
       title,
@@ -183,29 +182,16 @@ class ConversationStateManager {
    * Add a message to the current conversation
    */
   addMessage(message: ConversationMessage): void {
-    console.log(`[ConversationState] addMessage called:`, {
-      messageId: message.id,
-      role: message.role,
-      hasCurrentConversation: !!this.currentConversation,
-      currentConversationId: this.currentConversation?.id,
-      currentMessageCount: this.currentConversation?.messages.length || 0
-    });
-    
     if (!this.currentConversation) {
       console.error(`[ConversationState] Cannot add message - no current conversation!`);
       return;
     }
 
-    console.log(`[ConversationState] Adding message ${message.id} (${message.role})`);
+    if (DEBUG) console.log(`[ConversationState] Adding message ${message.id}`);
     this.currentConversation.messages.push(message);
     this.currentConversation.metadata!.messageCount = this.currentConversation.messages.length;
     this.currentConversation.metadata!.lastActivity = new Date();
-    
-    console.log(`[ConversationState] After adding message:`, {
-      totalMessages: this.currentConversation.messages.length,
-      lastMessageId: this.currentConversation.messages[this.currentConversation.messages.length - 1]?.id
-    });
-    
+
     this.notify();
   }
 
@@ -218,15 +204,11 @@ class ConversationStateManager {
       return;
     }
 
-    console.log(`[ConversationState] Prepending ${olderMessages.length} older messages`);
+    if (DEBUG) console.log(`[ConversationState] Prepending ${olderMessages.length} older messages`);
 
     // Avoid duplicates
     const existingIds = new Set(this.currentConversation.messages.map(m => m.id));
     const uniqueOlderMessages = olderMessages.filter(msg => !existingIds.has(msg.id));
-
-    if (uniqueOlderMessages.length !== olderMessages.length) {
-      console.log(`[ConversationState] Filtered out ${olderMessages.length - uniqueOlderMessages.length} duplicate messages`);
-    }
 
     // Convert timestamps if needed
     const formattedMessages = uniqueOlderMessages.map(msg => ({
@@ -254,7 +236,6 @@ class ConversationStateManager {
     this.currentConversation.metadata!.messageCount = this.currentConversation.messages.length;
     this.currentConversation.metadata!.lastActivity = new Date();
 
-    console.log(`[ConversationState] After prepend: ${this.currentConversation.messages.length} total messages, hasMore: ${hasMore}`);
     this.notify();
   }
 
@@ -267,15 +248,11 @@ class ConversationStateManager {
       return;
     }
 
-    console.log(`[ConversationState] Appending ${newMessages.length} new messages`);
+    if (DEBUG) console.log(`[ConversationState] Appending ${newMessages.length} new messages`);
 
     // Add new messages, avoiding duplicates
     const existingIds = new Set(this.currentConversation.messages.map(m => m.id));
     const uniqueNewMessages = newMessages.filter(msg => !existingIds.has(msg.id));
-
-    if (uniqueNewMessages.length !== newMessages.length) {
-      console.log(`[ConversationState] Filtered out ${newMessages.length - uniqueNewMessages.length} duplicate messages`);
-    }
 
     // Convert timestamps if needed
     const formattedMessages = uniqueNewMessages.map(msg => ({
@@ -289,7 +266,6 @@ class ConversationStateManager {
     formattedMessages.forEach(message => {
       if (message.toolExecutions && message.toolExecutions.length > 0) {
         this.currentConversation!.toolExecutions[message.id] = message.toolExecutions;
-        console.log(`[ConversationState] Stored ${message.toolExecutions.length} tool executions for message ${message.id}`);
       }
     });
 
@@ -311,7 +287,6 @@ class ConversationStateManager {
     this.currentConversation.metadata!.messageCount = this.currentConversation.messages.length;
     this.currentConversation.metadata!.lastActivity = new Date();
 
-    console.log(`[ConversationState] After append: ${this.currentConversation.messages.length} total messages`);
     this.notify();
   }
 
@@ -422,7 +397,7 @@ class ConversationStateManager {
   addToolExecution(messageId: string, toolExecution: ToolExecution): void {
     if (!this.currentConversation) return;
 
-    console.log(`[ConversationState] Adding tool execution: ${toolExecution.toolName} (${toolExecution.toolId})`);
+    if (DEBUG) console.log(`[ConversationState] Adding tool execution: ${toolExecution.toolName}`);
 
     if (!this.currentConversation.toolExecutions[messageId]) {
       this.currentConversation.toolExecutions[messageId] = [];
@@ -544,11 +519,14 @@ class ConversationStateManager {
    */
   getToolExecutions(messageId: string): ToolExecution[] {
     if (!this.currentConversation) {
-      console.log(`[ConversationState] getToolExecutions(${messageId}): No conversation loaded`);
+      // Silently return empty - this is normal when no conversation is loaded
       return [];
     }
     const executions = this.currentConversation.toolExecutions[messageId] || [];
-    console.log(`[ConversationState] getToolExecutions(${messageId}): Found ${executions.length} tool executions`);
+    // Only log when there are actual executions to avoid console spam
+    // if (executions.length > 0) {
+    //   console.log(`[ConversationState] getToolExecutions(${messageId}): Found ${executions.length} tool executions`);
+    // }
     return executions;
   }
 

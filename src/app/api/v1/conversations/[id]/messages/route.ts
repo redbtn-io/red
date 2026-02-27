@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase } from '@redbtn/ai';
+import { getDatabase } from '@/lib/red';
+import { verifyAuth } from '@/lib/auth/auth';
 
 interface DbMessage {
   messageId?: string;
@@ -9,6 +10,18 @@ interface DbMessage {
   timestamp: Date;
   metadata?: Record<string, unknown>;
   toolExecutions?: unknown[];
+  graphRun?: {
+    graphId: string;
+    graphName?: string;
+    runId?: string;
+    status: 'running' | 'completed' | 'error';
+    executionPath: string[];
+    nodeProgress: Record<string, unknown>;
+    startTime?: number;
+    endTime?: number;
+    duration?: number;
+    error?: string;
+  };
 }
 
 /**
@@ -22,6 +35,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Verify authentication
+    const user = await verifyAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id: conversationId } = await params;
     
     if (!conversationId) {
@@ -29,6 +48,16 @@ export async function GET(
         { error: 'Conversation ID is required' },
         { status: 400 }
       );
+    }
+
+    // Verify conversation ownership
+    const db = getDatabase();
+    const conversation = await db.getConversation(conversationId);
+    if (!conversation) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+    }
+    if (conversation.userId && conversation.userId !== user.userId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Parse query parameters
@@ -43,7 +72,6 @@ export async function GET(
 
     // Get messages from MongoDB (if available)
     try {
-      const db = getDatabase();
       const allMessages = await db.getMessages(conversationId);
 
       // Apply filters
@@ -96,7 +124,8 @@ export async function GET(
         content: msg.content,
         timestamp: msg.timestamp.getTime(),
         metadata: msg.metadata,
-        toolExecutions: msg.toolExecutions || [] // Include tool executions
+        toolExecutions: msg.toolExecutions || [], // Include tool executions
+        graphRun: msg.graphRun || undefined // Include graph run data
       }));
 
       return NextResponse.json({

@@ -6,7 +6,11 @@
  */
 
 import { NextRequest } from 'next/server';
-import { red } from '@/lib/red';
+import { getDatabase, getRunState } from '@redbtn/redbtn';
+import { getLogStream } from '@/lib/redlog';
+import { verifyAuth } from '@/lib/auth/auth';
+import { getRedis } from '@/lib/redis/client';
+import { createSSEResponse } from '@red/stream/sse';
 
 export const runtime = 'nodejs';
 
@@ -14,40 +18,31 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ generationId: string }> }
 ) {
+  const user = await verifyAuth(request);
+  if (!user) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   const { generationId } = await params;
-  
   if (!generationId) {
     return new Response('generationId is required', { status: 400 });
   }
-  
-  // Create SSE stream
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        // Stream logs from logger
-        for await (const log of red.logger.subscribeToGeneration(generationId)) {
-          const data = `data: ${JSON.stringify(log)}\n\n`;
-          controller.enqueue(encoder.encode(data));
-        }
-        
-        // Send completion event
-        controller.enqueue(encoder.encode('event: complete\ndata: {}\n\n'));
-        controller.close();
-      } catch (error) {
-        console.error('[API] Error streaming generation logs:', error);
-        const errorData = `event: error\ndata: ${JSON.stringify({ error: 'Stream error' })}\n\n`;
-        controller.enqueue(encoder.encode(errorData));
-        controller.close();
+
+  // Verify ownership
+  const redis = getRedis();
+  try {
+    const runState = await getRunState(redis, generationId);
+    if (runState?.conversationId) {
+      const db = getDatabase();
+      const conversation = await db.getConversation(runState.conversationId);
+      if (conversation?.userId && conversation.userId !== user.userId) {
+        return new Response('Forbidden', { status: 403 });
       }
-    },
-  });
-  
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    },
-  });
+    }
+  } finally {
+    redis.disconnect();
+  }
+
+  const logStream = getLogStream();
+  return createSSEResponse(logStream.subscribe('generationId', generationId, { catchUp: true }));
 }

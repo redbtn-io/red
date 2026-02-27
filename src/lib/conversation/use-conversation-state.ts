@@ -20,7 +20,7 @@ function sanitizeToolExecutions(executions?: Record<string, ToolExecution[]>): R
         } else if (typeof tool.currentStep === 'object' && 'step' in tool.currentStep) {
           // currentStep was accidentally set to step object
           console.warn('[Sanitize] currentStep was an object, extracting step property:', tool.currentStep);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           sanitizedCurrentStep = String((tool.currentStep as any).step);
         } else {
           // Fallback: try to convert to string

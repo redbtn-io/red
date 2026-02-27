@@ -1,0 +1,79 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth/auth';
+import { connectToDatabase } from '@/lib/database/mongodb';
+import mongoose from 'mongoose';
+
+// UI Preferences schema - stored in user_ui_preferences collection
+const UIPreferencesSchema = new mongoose.Schema({
+  userId: { type: String, required: true, unique: true, index: true },
+  navOrder: { type: [String], default: null }, // Array of nav item hrefs in order
+  favoriteTools: { type: [String], default: [] }, // Array of tool names (server:toolName format)
+  terminalTabs: { type: mongoose.Schema.Types.Mixed, default: null }, // Array of {id, name, conversationId, selectedGraphId}
+  terminalActiveTab: { type: String, default: null }, // Active tab ID
+  updatedAt: { type: Date, default: Date.now }
+}, { timestamps: true });
+
+const UIPreferences = mongoose.models.UIPreferences || 
+  mongoose.model('UIPreferences', UIPreferencesSchema, 'user_ui_preferences');
+
+/**
+ * GET /api/v1/user/preferences/ui
+ * Get user's UI preferences (nav order, favorite tools, etc.)
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const user = await verifyAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await connectToDatabase();
+    
+    const prefs = await UIPreferences.findOne({ userId: user.userId }).lean();
+    
+    return NextResponse.json({
+      navOrder: prefs?.navOrder || null,
+      favoriteTools: prefs?.favoriteTools || [],
+      terminalTabs: prefs?.terminalTabs || null,
+      terminalActiveTab: prefs?.terminalActiveTab || null,
+    });
+  } catch (error) {
+    console.error('[API] Error getting UI preferences:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+/**
+ * POST /api/v1/user/preferences/ui
+ * Update user's UI preferences
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const user = await verifyAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { navOrder, favoriteTools, terminalTabs, terminalActiveTab } = body;
+
+    await connectToDatabase();
+    
+    const updateFields: Record<string, unknown> = { updatedAt: new Date() };
+    if (navOrder !== undefined) updateFields.navOrder = navOrder || null;
+    if (favoriteTools !== undefined) updateFields.favoriteTools = favoriteTools || [];
+    if (terminalTabs !== undefined) updateFields.terminalTabs = terminalTabs;
+    if (terminalActiveTab !== undefined) updateFields.terminalActiveTab = terminalActiveTab;
+    
+    await UIPreferences.findOneAndUpdate(
+      { userId: user.userId },
+      { $set: updateFields },
+      { upsert: true, new: true }
+    );
+    
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('[API] Error updating UI preferences:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

@@ -73,29 +73,30 @@ export function LoadingStateContainer({
 
   return (
     <>
-      <div className="flex justify-start mb-6">
-        <div className="max-w-[85%]">
+      <div className="flex justify-start mb-4">
+        <div className="max-w-[85%] md:max-w-[75%]">
           {/* Single loading box with dynamic status */}
           <div
-            className={`bg-[#1a1a1a] border border-red-500/50 rounded-xl px-4 py-3 shadow-lg space-y-2 animate-pulse overflow-hidden origin-left cursor-pointer hover:bg-[#1f1f1f] transition-colors ${
+            className={`bg-bg-secondary border border-red-500/40 rounded-2xl px-4 py-3 space-y-2 animate-pulse overflow-hidden origin-left cursor-pointer hover:border-red-500/60 transition-all ${
               skeletonShrinking 
                 ? 'transition-all duration-[800ms] ease-out opacity-0 scale-x-0 -translate-x-4' 
                 : 'transition-all duration-[800ms] ease-out opacity-100 scale-x-100 translate-x-0'
             }`}
+            style={{ boxShadow: 'var(--shadow-bubble, 0 1px 3px rgba(0,0,0,0.1))' }}
             title="Click to view details"
             onClick={onOpenModal}
           >
           {/* Line 1: Current status with icon and confidence */}
           <div className="flex items-center gap-2 text-sm text-red-400">
             {getIcon()}
-            <span>{getStatusText()}</span>
+            <span className="font-medium">{getStatusText()}</span>
             {currentStatus?.confidence !== undefined && (
               <span 
-                className={`text-xs px-1.5 py-0.5 rounded ${
-                  currentStatus.confidence >= 0.9 ? 'bg-green-500/20 text-green-400' :
-                  currentStatus.confidence >= 0.7 ? 'bg-yellow-500/20 text-yellow-400' :
-                  currentStatus.confidence >= 0.5 ? 'bg-orange-500/20 text-orange-400' :
-                  'bg-red-500/20 text-red-400'
+                className={`text-xs px-1.5 py-0.5 rounded-md font-medium ${
+                  currentStatus.confidence >= 0.9 ? 'bg-green-500/15 text-green-400' :
+                  currentStatus.confidence >= 0.7 ? 'bg-yellow-500/15 text-yellow-400' :
+                  currentStatus.confidence >= 0.5 ? 'bg-orange-500/15 text-orange-400' :
+                  'bg-red-500/15 text-red-400'
                 }`}
                 title={`Confidence: ${(currentStatus.confidence * 100).toFixed(0)}%`}
               >
@@ -106,7 +107,7 @@ export function LoadingStateContainer({
 
           {/* Line 2: Router reasoning (if available) */}
           {currentStatus?.reasoning && (
-            <div className="text-xs text-gray-400 italic pl-6">
+            <div className="text-xs text-text-secondary italic pl-6">
               💭 {currentStatus.reasoning}
             </div>
           )}
@@ -118,10 +119,10 @@ export function LoadingStateContainer({
                 e.stopPropagation(); // Prevent modal from opening when clicking thinking button
                 setShowThinking(!showThinking);
               }}
-              className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors w-full text-left"
+              className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors w-full text-left font-medium"
             >
               <span>{showThinking ? 'Hide' : 'Show'} thinking</span>
-              <span className="ml-auto text-xs opacity-60">
+              <span className="ml-auto text-xs opacity-60 font-normal">
                 {thinking.length} chars
               </span>
             </button>
@@ -130,16 +131,18 @@ export function LoadingStateContainer({
 
         {/* Expanded thinking content (separate box below) */}
         {showThinking && hasThinking && (
-          <div className="bg-[#1a1a1a] border border-purple-500/30 rounded-xl px-4 py-3 shadow-lg mt-3">
+          <div className="bg-bg-secondary border border-purple-500/30 rounded-2xl px-4 py-3 mt-3"
+            style={{ boxShadow: 'var(--shadow-bubble, 0 1px 3px rgba(0,0,0,0.1))' }}
+          >
             <div className="font-semibold mb-2 text-purple-300 flex items-center justify-between">
               <span>Reasoning:</span>
-              <span className="text-xs opacity-60 animate-pulse">streaming...</span>
+              <span className="text-xs opacity-60 animate-pulse font-normal">streaming...</span>
             </div>
-            <div className="prose prose-invert prose-sm max-w-none 
-              prose-p:my-1 prose-p:leading-relaxed prose-p:text-gray-300
-              prose-pre:bg-black/30 prose-pre:my-2
-              prose-code:text-white prose-code:bg-black/20 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
-              [&_.katex]:text-white [&_.katex]:text-sm">
+            <div className="prose prose-sm max-w-none prose-invert
+              prose-p:my-1 prose-p:leading-relaxed prose-p:text-text-secondary
+              prose-pre:bg-black/30 prose-pre:my-2 prose-pre:rounded-lg
+              prose-code:text-text-primary prose-code:bg-black/20 prose-code:px-1 prose-code:py-0.5 prose-code:rounded-md prose-code:text-xs
+              [&_.katex]:text-text-primary [&_.katex]:text-sm">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeKatex]}

@@ -4,13 +4,21 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { red } from '@/lib/red';
+import { getDatabase } from '@/lib/red';
+import { getLogReader } from '@/lib/redlog';
+import { verifyAuth } from '@/lib/auth/auth';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Verify authentication
+    const user = await verifyAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id: conversationId } = await params;
     const { searchParams } = new URL(request.url);
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined;
@@ -21,9 +29,22 @@ export async function GET(
         { status: 400 }
       );
     }
+
+    // Verify ownership
+    const db = getDatabase();
+    const conversation = await db.getConversation(conversationId);
+    if (conversation?.userId && conversation.userId !== user.userId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const reader = getLogReader();
     
     // Get all logs for this conversation
-    const logs = await red.logger.getConversationLogs(conversationId, limit);
+    const logs = await reader.query({
+      scope: { conversationId },
+      limit: limit ?? 200,
+      order: 'asc',
+    });
     
     return NextResponse.json({
       conversationId,

@@ -38,10 +38,10 @@ export interface ToolExecution {
   streamingContent?: string;
   
   // Results and metadata
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   result?: any;
   error?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   metadata?: Record<string, any>;
 }
 
@@ -49,7 +49,7 @@ export interface ToolStep {
   step: string;
   timestamp: number;
   progress?: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   data?: any;
 }
 

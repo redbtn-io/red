@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getRateLimitIdentifier, RateLimitConfig } from './rate-limit';
 
+// Test bypass token - allows tests to skip rate limiting
+const RATE_LIMIT_BYPASS_TOKEN = process.env.RATE_LIMIT_BYPASS_TOKEN || 'test-bypass-rate-limit-2026';
+
 /**
  * API Route helper to check rate limit and return response
  * Use this inside API routes for custom rate limiting
@@ -20,6 +23,12 @@ export async function rateLimitAPI(
   config: RateLimitConfig,
   userId?: string
 ): Promise<NextResponse | null> {
+  // Check for rate limit bypass header (for testing)
+  const bypassHeader = request.headers.get('X-RateLimit-Bypass');
+  if (bypassHeader === RATE_LIMIT_BYPASS_TOKEN) {
+    return null; // Skip rate limiting
+  }
+
   const identifier = getRateLimitIdentifier(request, userId);
   const result = await checkRateLimit(identifier, config);
   

@@ -9,6 +9,8 @@ export interface User {
   dateOfBirth?: string;
   profileComplete: boolean;
   accountLevel: number;
+  defaultGraphId?: string;
+  defaultNeuronId?: string;
   createdAt?: string;
 }
 
@@ -75,6 +77,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
+      
+      // Clear all user-specific data from localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('red_conversations');
+        localStorage.removeItem('red_active_conversation');
+        localStorage.removeItem('red_last_conversation');
+        sessionStorage.clear();
+      }
+      
       setUser(null);
     } catch (error) {
       console.error('[Auth] Logout error:', error);

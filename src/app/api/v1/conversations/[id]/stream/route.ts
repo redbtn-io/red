@@ -6,7 +6,10 @@
  */
 
 import { NextRequest } from 'next/server';
-import { red } from '@/lib/red';
+import { getDatabase } from '@/lib/red';
+import { getLogStream } from '@/lib/redlog';
+import { verifyAuth } from '@/lib/auth/auth';
+import { createSSEResponse } from '@red/stream/sse';
 
 export const runtime = 'nodejs';
 
@@ -14,38 +17,23 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await verifyAuth(request);
+  if (!user) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   const { id: conversationId } = await params;
-  
   if (!conversationId) {
     return new Response('conversationId is required', { status: 400 });
   }
-  
-  // Create SSE stream
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        // Stream logs from logger
-        for await (const log of red.logger.subscribeToConversation(conversationId)) {
-          const data = `data: ${JSON.stringify(log)}\n\n`;
-          controller.enqueue(encoder.encode(data));
-        }
-        
-        controller.close();
-      } catch (error) {
-        console.error('[API] Error streaming conversation logs:', error);
-        const errorData = `event: error\ndata: ${JSON.stringify({ error: 'Stream error' })}\n\n`;
-        controller.enqueue(encoder.encode(errorData));
-        controller.close();
-      }
-    },
-  });
-  
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    },
-  });
+
+  // Verify ownership
+  const db = getDatabase();
+  const conversation = await db.getConversation(conversationId);
+  if (conversation?.userId && conversation.userId !== user.userId) {
+    return new Response('Forbidden', { status: 403 });
+  }
+
+  const logStream = getLogStream();
+  return createSSEResponse(logStream.subscribe('conversationId', conversationId, { catchUp: true }));
 }

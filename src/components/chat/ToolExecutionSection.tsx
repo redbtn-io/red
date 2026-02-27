@@ -71,7 +71,7 @@ export function ToolExecutionSection({
       default:
         return {
           icon: <Loader2 className="w-4 h-4" />,
-          color: 'text-gray-400',
+          color: 'text-text-secondary',
           bgColor: 'bg-gray-500/10',
           label: 'Unknown'
         };
@@ -100,7 +100,7 @@ export function ToolExecutionSection({
                 {execution.toolName}
               </h4>
               {execution.duration !== undefined && execution.status !== 'running' && (
-                <span className="text-xs text-gray-500 whitespace-nowrap">
+                <span className="text-xs text-text-muted whitespace-nowrap">
                   ({formatDuration(execution.duration)})
                 </span>
               )}
@@ -108,11 +108,11 @@ export function ToolExecutionSection({
             
             {/* Current Step or Status */}
             {execution.currentStep && execution.status === 'running' ? (
-              <p className="text-xs md:text-sm text-gray-400 truncate">
+              <p className="text-xs md:text-sm text-text-secondary truncate">
                 {typeof execution.currentStep === 'string' 
                   ? execution.currentStep 
                   : typeof execution.currentStep === 'object' && 'step' in execution.currentStep
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                     
                     ? String((execution.currentStep as any).step)
                     : String(execution.currentStep)}
               </p>
@@ -121,7 +121,7 @@ export function ToolExecutionSection({
                 {execution.error}
               </p>
             ) : execution.steps.length > 0 && execution.status === 'completed' ? (
-              <p className="text-xs md:text-sm text-gray-400 truncate">
+              <p className="text-xs md:text-sm text-text-secondary truncate">
                 {execution.steps[execution.steps.length - 1]?.step ? String(execution.steps[execution.steps.length - 1].step) : ''}
               </p>
             ) : null}
@@ -137,7 +137,7 @@ export function ToolExecutionSection({
         </div>
 
         {/* Expand/Collapse Icon */}
-        <div className="text-gray-400 flex-shrink-0">
+        <div className="text-text-secondary flex-shrink-0">
           {isExpanded ? (
             <ChevronDown className="w-4 h-4" />
           ) : (
@@ -152,7 +152,7 @@ export function ToolExecutionSection({
           {/* Progress Bar */}
           {execution.progress !== undefined && execution.status === 'running' && (
             <div className="space-y-1">
-              <div className="flex justify-between text-xs text-gray-400">
+              <div className="flex justify-between text-xs text-text-secondary">
                 <span>Progress</span>
                 <span>{Math.round(execution.progress)}%</span>
               </div>
@@ -168,7 +168,7 @@ export function ToolExecutionSection({
           {/* Steps Timeline */}
           {execution.steps && Array.isArray(execution.steps) && execution.steps.length > 0 ? (
             <div className="space-y-2">
-              <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <h5 className="text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Execution Steps
               </h5>
               <div className="space-y-2">
@@ -197,20 +197,20 @@ export function ToolExecutionSection({
                     >
                       <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
                       <div className="flex-1 min-w-0 overflow-hidden">
-                        <p className="text-gray-300 break-words">{String(step.step)}</p>
+                        <p className="text-text-secondary break-words">{String(step.step)}</p>
                         {step.data && typeof step.data === 'object' && (
-                          <pre className="text-xs text-gray-500 mt-1 overflow-x-auto whitespace-pre-wrap break-words">
+                          <pre className="text-xs text-text-muted mt-1 overflow-x-auto whitespace-pre-wrap break-words">
                             {JSON.stringify(step.data, null, 2)}
                           </pre>
                         )}
                         {step.data && typeof step.data !== 'object' && (
-                          <p className="text-xs text-gray-500 mt-1 break-words">
+                          <p className="text-xs text-text-muted mt-1 break-words">
                             {String(step.data)}
                           </p>
                         )}
                       </div>
                       {step.progress !== undefined && typeof step.progress === 'number' ? (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-text-muted">
                           {Math.round(step.progress)}%
                         </span>
                       ) : null}
@@ -224,16 +224,16 @@ export function ToolExecutionSection({
           {/* Streaming Content (for thinking, code output, etc.) */}
           {execution.streamingContent && (
             <div className="space-y-2">
-              <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <h5 className="text-xs font-medium text-text-secondary uppercase tracking-wider">
                 {execution.toolType === 'thinking' ? 'Reasoning' : 'Output'}
               </h5>
               <div className="prose prose-invert max-w-none prose-sm
-                prose-p:my-2 prose-p:leading-relaxed prose-p:text-gray-300
+                prose-p:my-2 prose-p:leading-relaxed prose-p:text-text-secondary
                 prose-pre:bg-black/40 prose-pre:border prose-pre:border-white/10 prose-pre:overflow-x-auto
                 prose-code:text-blue-400 prose-code:bg-black/30 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:break-words
                 prose-a:text-blue-400 prose-a:underline prose-a:break-words
-                prose-strong:text-white prose-strong:font-semibold
-                prose-headings:text-white prose-headings:font-bold prose-headings:break-words
+                prose-strong:text-text-primary prose-strong:font-semibold
+                prose-headings:text-text-primary prose-headings:font-bold prose-headings:break-words
                 prose-ul:my-2 prose-ol:my-2 prose-li:my-1
                 prose-blockquote:border-l-4 prose-blockquote:border-blue-500/50 prose-blockquote:pl-4
                 break-words overflow-hidden">
@@ -250,11 +250,11 @@ export function ToolExecutionSection({
           {/* Result Data */}
           {execution.result && execution.status === 'completed' && (
             <div className="space-y-2">
-              <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <h5 className="text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Result
               </h5>
               <div className="bg-black/20 border border-white/10 rounded-lg p-3 overflow-hidden">
-                <pre className="text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap break-words">
+                <pre className="text-xs text-text-secondary overflow-x-auto whitespace-pre-wrap break-words">
                   {typeof execution.result === 'string' 
                     ? execution.result 
                     : JSON.stringify(execution.result, null, 2)}
@@ -266,7 +266,7 @@ export function ToolExecutionSection({
           {/* Metadata */}
           {execution.metadata && Object.keys(execution.metadata).length > 0 && (
             <div className="space-y-2">
-              <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <h5 className="text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Metadata
               </h5>
               <div className="flex flex-wrap gap-2">
@@ -286,8 +286,8 @@ export function ToolExecutionSection({
                       key={key}
                       className="px-2 py-1 bg-white/5 rounded text-xs break-words"
                     >
-                      <span className="text-gray-400">{key}:</span>{' '}
-                      <span className="text-gray-300 break-all">
+                      <span className="text-text-secondary">{key}:</span>{' '}
+                      <span className="text-text-secondary break-all">
                         {displayValue}
                       </span>
                     </div>

@@ -1,27 +1,46 @@
 /**
- * Red AI instance initialization for Next.js API routes
+ * redbtn instance initialization for Next.js API routes
+ * 
+ * Note: MCP is disabled for webapp - tools are fetched from database
+ * where workers register them on startup. This avoids spawning child
+ * processes in the webapp container.
  */
-import { Red, RedConfig } from '@redbtn/ai';
+import { Red, RedConfig, getDatabase } from '@redbtn/redbtn';
+
+// Initialize database singleton immediately with correct URL
+// This prevents race conditions where API routes call getDatabase() before getRed()
+const mongoUrl = process.env.MONGODB_URI || "mongodb://localhost:27017/redbtn";
+getDatabase(mongoUrl);
+
+// Re-export getDatabase for convenience
+export { getDatabase };
 
 const config: RedConfig = {
   redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
   vectorDbUrl: process.env.VECTOR_DB_URL || "http://localhost:8200",
-  databaseUrl: process.env.DATABASE_URL || "http://localhost:5432",
+  databaseUrl: mongoUrl,
   chatLlmUrl: process.env.CHAT_LLM_URL || "http://localhost:11434",
   workLlmUrl: process.env.WORK_LLM_URL || "http://localhost:11434",
+  disableMcp: true, // Webapp doesn't run tools, workers do. Tools come from DB.
 };
 
 let redInstance: Red | null = null;
 
+// Check if we're in a build environment (no database needed)
+const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
+
 /**
- * Get or initialize the Red AI instance
+ * Get or initialize the redbtn instance
  * Singleton pattern to avoid multiple initializations
  */
 export async function getRed(): Promise<Red> {
+  if (isBuildTime) {
+    throw new Error('redbtn not available during build time');
+  }
   if (!redInstance) {
     redInstance = new Red(config);
     await redInstance.load('webapp-api');
-    console.log('✅ Red AI initialized successfully');
+    console.log('✅ redbtn initialized successfully');
   }
   return redInstance;
 }
@@ -31,24 +50,37 @@ export async function getRed(): Promise<Red> {
  * Use getRed() for guaranteed initialization
  */
 export function getRedSync(): Red {
+  if (isBuildTime) {
+    throw new Error('redbtn not available during build time');
+  }
   if (!redInstance) {
     throw new Error('Red instance not initialized. Call getRed() first.');
   }
   return redInstance;
 }
 
-// Initialize immediately for synchronous access in API routes
-// This allows `import { red }` to work
-let initPromise: Promise<Red> | null = null;
-
-if (!initPromise) {
-  initPromise = getRed();
-}
-
-// Export as named export for convenience
-export const red = await initPromise;
+// Note: Lazy initialization - red instance is created on first getRed() call
+// No top-level await to avoid initialization during build time
 
 /**
- * Bearer token for API authentication
+ * Graceful shutdown handler
+ * Kills MCP stdio server child processes when Next.js process terminates
  */
-export const BEARER_TOKEN = process.env.BEARER_TOKEN || `red_ai_sk_${Date.now()}`;
+async function shutdown(signal: string) {
+  console.log(`\n[Red] Received ${signal}, shutting down gracefully...`);
+  if (redInstance) {
+    try {
+      await redInstance.shutdown();
+      console.log('[Red] Shutdown complete');
+    } catch (error) {
+      console.error('[Red] Error during shutdown:', error);
+    }
+  }
+  process.exit(0);
+}
+
+// Register signal handlers for graceful shutdown (only at runtime, not during build)
+if (!isBuildTime) {
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+}

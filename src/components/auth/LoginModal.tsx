@@ -18,10 +18,9 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
   const [sessionId, setSessionId] = useState('');
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
-  // Generate session ID on mount
+  // Generate session ID on mount (fallback — redAuth generates the actual one)
   useEffect(() => {
     if (!sessionId) {
-      // Generate a unique session ID for this browser tab
       const id = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       setSessionId(id);
     }
@@ -76,7 +75,7 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
 
   if (!isOpen) return null;
 
-  const handleRequestMagicLink = async (e: React.FormEvent) => {
+  const handleRequestSignInLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -85,12 +84,18 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
       const response = await fetch('/api/auth/request-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, sessionId }),
+        body: JSON.stringify({ email }),
       });
 
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Failed to send sign in link');
+      }
+
+      // Use server-returned sessionId from redAuth for polling
+      const data = await response.json();
+      if (data.sessionId) {
+        setSessionId(data.sessionId);
       }
 
       setStep('waiting');
@@ -122,12 +127,18 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
       const response = await fetch('/api/auth/request-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, sessionId }),
+        body: JSON.stringify({ email }),
       });
 
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Failed to send sign in link');
+      }
+
+      // Update polling sessionId to match new sign in link
+      const data = await response.json();
+      if (data.sessionId) {
+        setSessionId(data.sessionId);
       }
 
       setError('');
@@ -140,12 +151,12 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#1a1a1a] border border-red-500/30 rounded-2xl shadow-2xl max-w-md w-full p-8 relative">
+      <div className="bg-bg-secondary border border-red-500/30 rounded-2xl shadow-2xl max-w-md w-full p-8 relative">
         {/* Close button - only show if modal can be dismissed */}
         {canDismiss && (
           <button
             onClick={handleClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+            className="absolute top-4 right-4 text-text-secondary hover:text-text-primary transition-colors"
           >
             <X size={24} />
           </button>
@@ -154,8 +165,8 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
         {/* Logo/Title */}
         <div className="text-center mb-8">
           <div className="text-4xl mb-2">🔴</div>
-          <h2 className="text-2xl font-bold text-white mb-2">Welcome to Red AI</h2>
-          <p className="text-gray-400 text-sm">
+          <h2 className="text-2xl font-bold text-text-primary mb-2">Welcome to redbtn</h2>
+          <p className="text-text-secondary text-sm">
             {step === 'email'
               ? 'Enter your email to get started'
               : 'Check your email for the sign in link'}
@@ -164,20 +175,20 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
 
         {/* Email Step */}
         {step === 'email' && (
-          <form onSubmit={handleRequestMagicLink} className="space-y-6">
+          <form onSubmit={handleRequestSignInLink} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-text-secondary mb-2">
                 Email Address
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={20} />
                 <input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full bg-black/30 border border-gray-700 rounded-lg px-10 py-3 text-white placeholder-gray-500 focus:border-red-500 focus:outline-none transition-colors"
+                  className="w-full bg-bg-primary border border-border rounded-lg px-10 py-3 text-text-primary placeholder-text-muted focus:border-red-500 focus:outline-none transition-colors"
                   required
                   disabled={loading}
                   autoFocus
@@ -194,7 +205,7 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-red-500 hover:bg-red-600 disabled:bg-red-500/50 text-white font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-red-500 hover:bg-red-600 text-white disabled:bg-red-500/50 text-white font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -223,11 +234,11 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
 
             {/* Instructions */}
             <div className="text-center space-y-4">
-              <p className="text-white font-medium">Sign in link sent!</p>
-              <p className="text-gray-400 text-sm">
-                We&apos;ve sent a sign in link to <strong className="text-white">{email}</strong>
+              <p className="text-text-primary font-medium">Sign in link sent!</p>
+              <p className="text-text-secondary text-sm">
+                We&apos;ve sent a sign in link to <strong className="text-text-primary">{email}</strong>
               </p>
-              <p className="text-gray-400 text-sm">
+              <p className="text-text-secondary text-sm">
                 Click the link in your email to sign in. You can open it on any device.
               </p>
             </div>
@@ -237,7 +248,7 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
               <Loader2 size={32} className="animate-spin text-red-500" />
             </div>
 
-            <p className="text-center text-gray-500 text-xs">
+            <p className="text-center text-text-muted text-xs">
               Waiting for you to click the link...
             </p>
 
@@ -252,7 +263,7 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
               <button
                 onClick={handleResend}
                 disabled={loading}
-                className="w-full text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-50"
+                className="w-full text-text-secondary hover:text-text-primary text-sm transition-colors disabled:opacity-50"
               >
                 {loading ? 'Sending...' : "Didn't receive the email? Resend link"}
               </button>
@@ -261,7 +272,7 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
             {/* Change Email */}
             <button
               onClick={() => setStep('email')}
-              className="w-full text-gray-500 hover:text-gray-400 text-xs transition-colors"
+              className="w-full text-text-muted hover:text-text-secondary text-xs transition-colors"
             >
               Use a different email address
             </button>

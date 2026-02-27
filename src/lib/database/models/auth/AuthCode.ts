@@ -3,7 +3,7 @@ import mongoose, { Schema, Model } from 'mongoose';
 export interface IAuthCode {
   _id: string;
   email: string;
-  token: string; // Secure random token for magic link
+  token: string; // Secure random token for sign in link
   sessionId: string; // Browser session that initiated the request
   used: boolean; // Whether the link has been used
   expiresAt: Date;

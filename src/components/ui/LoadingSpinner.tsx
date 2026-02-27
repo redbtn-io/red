@@ -34,10 +34,10 @@ export function LoadingSpinner({
   if (mode === 'fullscreen') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div className="flex flex-col items-center gap-3 bg-[#1a1a1a] border border-red-500/50 rounded-xl px-8 py-6 shadow-2xl">
+        <div className="flex flex-col items-center gap-3 bg-bg-secondary border border-red-500/50 rounded-xl px-8 py-6 shadow-2xl">
           <Loader2 size={size} className="text-red-400 animate-spin" />
           {message && (
-            <p className="text-sm text-gray-300">{message}</p>
+            <p className="text-sm text-text-secondary">{message}</p>
           )}
         </div>
       </div>
@@ -49,7 +49,7 @@ export function LoadingSpinner({
     <div className={`flex items-center gap-2 ${className}`}>
       <Loader2 size={size} className="text-red-400 animate-spin" />
       {message && (
-        <span className="text-sm text-gray-300">{message}</span>
+        <span className="text-sm text-text-secondary">{message}</span>
       )}
     </div>
   );

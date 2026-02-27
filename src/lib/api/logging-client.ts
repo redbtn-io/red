@@ -8,7 +8,26 @@
  * const generation = await client.getGeneration(generationId);
  */
 
-import { LogEntry, Generation, ConversationGenerationState } from '@redbtn/ai';
+import type { LogEntry } from '@redbtn/redlog';
+
+/** Generation metadata returned by /api/v1/generations/:id */
+export interface GenerationInfo {
+  id: string;
+  conversationId?: string;
+  status: 'generating' | 'completed' | 'error';
+  startedAt: number;
+  completedAt?: number;
+  error?: string;
+  graphId?: string;
+  graphName?: string;
+}
+
+/** Generation state returned by /api/v1/conversations/:id/generation-state */
+export interface GenerationState {
+  conversationId: string;
+  isGenerating: boolean;
+  currentGenerationId?: string;
+}
 
 export class LoggingClient {
   private baseUrl: string;
@@ -20,7 +39,7 @@ export class LoggingClient {
   /**
    * Get generation metadata
    */
-  async getGeneration(generationId: string): Promise<Generation> {
+  async getGeneration(generationId: string): Promise<GenerationInfo> {
     const response = await fetch(`${this.baseUrl}/api/v1/generations/${generationId}`);
     if (!response.ok) {
       throw new Error(`Failed to fetch generation: ${response.statusText}`);
@@ -146,7 +165,7 @@ export class LoggingClient {
   /**
    * Get generation state for a conversation
    */
-  async getGenerationState(conversationId: string): Promise<ConversationGenerationState & { isGenerating: boolean }> {
+  async getGenerationState(conversationId: string): Promise<GenerationState> {
     const response = await fetch(`${this.baseUrl}/api/v1/conversations/${conversationId}/generation-state`);
     if (!response.ok) {
       throw new Error(`Failed to fetch generation state: ${response.statusText}`);
