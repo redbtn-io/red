@@ -16,7 +16,7 @@ export function getAuth() {
       appName: 'redbtn',
       baseUrl: process.env.BASE_URL || 'http://localhost:3000',
       cookieName: 'red_session',
-      cookieDomain: process.env.NODE_ENV === 'production' ? '.redbtn.io' : undefined,
+      cookieDomain: process.env.COOKIE_DOMAIN || '.redbtn.io',
       verifyPath: '/api/auth/verify-link',
       internalServiceKey: process.env.INTERNAL_SERVICE_KEY,
       audit: { enabled: true },

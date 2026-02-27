@@ -15,7 +15,7 @@ export async function POST() {
     httpOnly: true,
     maxAge: 0,
     path: '/',
-    domain: process.env.NODE_ENV === 'production' ? '.redbtn.io' : undefined,
+    domain: process.env.COOKIE_DOMAIN || '.redbtn.io',
   });
 
   return response;

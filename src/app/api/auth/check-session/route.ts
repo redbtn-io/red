@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
         sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60,
         path: '/',
-        domain: process.env.NODE_ENV === 'production' ? '.redbtn.io' : undefined,
+        domain: process.env.COOKIE_DOMAIN || '.redbtn.io',
       });
 
       return response;
