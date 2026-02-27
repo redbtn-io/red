@@ -48,16 +48,22 @@ export async function POST(request: NextRequest) {
       }
 
       await connectToDatabase();
-      const user = await User.findById(payload.userId);
+      const authUser = await auth.getUserById(payload.userId);
 
-      if (!user) {
+      if (!authUser) {
         return NextResponse.json(
           { error: 'User not found' },
           { status: 404 }
         );
       }
 
-      console.log('[Auth] Session authenticated via sign in link:', sessionId, user.email);
+      // Sync to local DB
+      let user = await User.findOne({ email: authUser.email });
+      if (!user) {
+        user = await User.create({ email: authUser.email, accountLevel: (authUser as unknown as { accountLevel?: number }).accountLevel ?? 3 });
+      }
+
+      console.log('[Auth] Session authenticated via sign in link:', sessionId, authUser.email);
 
       const response = NextResponse.json({
         authenticated: true,

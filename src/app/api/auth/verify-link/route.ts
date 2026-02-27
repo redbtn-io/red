@@ -27,24 +27,26 @@ export async function GET(request: NextRequest) {
         { status: 401, headers: { 'Content-Type': 'text/html' } });
     }
 
-    // Find or create user in app's User model
-    await connectToDatabase();
-    let user = await User.findOne({ email: peekResult.email });
+    // Find or create user in shared redauth DB
+    const { user: authUser } = await auth.findOrCreateUser(peekResult.email);
 
-    if (!user) {
-      user = await User.create({
+    // Sync to local DB for app-specific fields
+    await connectToDatabase();
+    let localUser = await User.findOne({ email: peekResult.email });
+    if (!localUser) {
+      localUser = await User.create({
         email: peekResult.email,
         profileComplete: false,
         agreedToTerms: false,
-        accountLevel: AccountLevel.FREE,
+        accountLevel: (authUser as unknown as { accountLevel?: number }).accountLevel ?? AccountLevel.FREE,
       });
     }
 
-    // Create JWT and verify+consume the sign in link (stores JWT for polling)
+    // Create JWT with shared redauth user ID
     const jwt = generateToken({
-      userId: user._id.toString(),
-      email: user.email,
-      accountLevel: user.accountLevel,
+      userId: authUser._id.toString(),
+      email: authUser.email,
+      accountLevel: (authUser as unknown as { accountLevel?: number }).accountLevel ?? localUser.accountLevel,
     });
     await auth.verifyMagicLinkToken(token, jwt);
 
