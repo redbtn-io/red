@@ -34,3 +34,4 @@ channels.json
 # *.test.tsx
 *.spec.ts
 *.spec.tsx
+package-lock.json
