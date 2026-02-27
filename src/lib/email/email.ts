@@ -31,7 +31,7 @@ export async function sendMagicLinkEmail(
 ): Promise<void> {
   const magicLink = `${baseUrl}/api/auth/verify-link?token=${token}`;
   const fromAddress = process.env.EMAIL_FROM || process.env.EMAIL_USER;
-  console.log('[Email] Generated magic link:', magicLink);
+  console.log('[Email] Generated sign in link:', magicLink);
   const mailOptions = {
     from: `"redbtn" <${fromAddress}>`,
     to: email,

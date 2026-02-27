@@ -221,7 +221,7 @@ export const RateLimits = {
   /** Relaxed - for public read-only endpoints */
   RELAXED: { name: 'relaxed', limit: 999999, windowSeconds: 60 } as RateLimitConfig,
   
-  /** Auth - for authentication endpoints (magic links, login) */
+  /** Auth - for authentication endpoints (sign in links, login) */
   AUTH: { name: 'auth', limit: 999999, windowSeconds: 180 } as RateLimitConfig,
   
   /** Chat - for chat completion endpoints */

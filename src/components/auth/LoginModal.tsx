@@ -75,7 +75,7 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
 
   if (!isOpen) return null;
 
-  const handleRequestMagicLink = async (e: React.FormEvent) => {
+  const handleRequestSignInLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -135,7 +135,7 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
         throw new Error(data.error || 'Failed to send sign in link');
       }
 
-      // Update polling sessionId to match new magic link
+      // Update polling sessionId to match new sign in link
       const data = await response.json();
       if (data.sessionId) {
         setSessionId(data.sessionId);
@@ -175,7 +175,7 @@ export function LoginModal({ isOpen, onClose, onSuccess, canDismiss = true }: Lo
 
         {/* Email Step */}
         {step === 'email' && (
-          <form onSubmit={handleRequestMagicLink} className="space-y-6">
+          <form onSubmit={handleRequestSignInLink} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-text-secondary mb-2">
                 Email Address

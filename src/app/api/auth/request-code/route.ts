@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create magic link via redAuth
+    // Create sign in link via redAuth
     const conn = await auth.getConnection();
     const result = await createML({
       email: email.toLowerCase(),
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     const baseUrl = computeBaseUrl(request);
-    console.log('[Auth] using baseUrl for magic link:', baseUrl);
+    console.log('[Auth] using baseUrl for sign in link:', baseUrl);
 
     // Send email with sign in link (using app's existing email template)
     await sendMagicLinkEmail(email, result.token, baseUrl);

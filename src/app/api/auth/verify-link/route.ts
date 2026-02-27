@@ -6,7 +6,7 @@ import { peekMagicLink } from 'red-auth';
 
 /**
  * GET /api/auth/verify-link?token=xxx
- * Verify magic link and authenticate the session (powered by redAuth)
+ * Verify sign in link and authenticate the session (powered by redAuth)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
         { status: 400, headers: { 'Content-Type': 'text/html' } });
     }
 
-    // Peek at magic link via redAuth (non-destructive)
+    // Peek at sign in link via redAuth (non-destructive)
     const conn = await auth.getConnection();
     const peekResult = await peekMagicLink(token, conn);
 
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Create JWT and verify+consume the magic link (stores JWT for polling)
+    // Create JWT and verify+consume the sign in link (stores JWT for polling)
     const jwt = generateToken({
       userId: user._id.toString(),
       email: user.email,

@@ -5,7 +5,7 @@ import { auth, verifyToken } from '@/lib/auth/auth';
 
 /**
  * POST /api/auth/check-session
- * Poll for magic link verification via redAuth
+ * Poll for sign in link verification via redAuth
  */
 export async function POST(request: NextRequest) {
   try {
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Poll redAuth for magic link verification status
+    // Poll redAuth for sign in link verification status
     const pollResult = await auth.pollSession(sessionId);
 
     if (pollResult.status === 'expired') {
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     if (pollResult.status === 'pending') {
       return NextResponse.json({
         authenticated: false,
-        message: 'Waiting for magic link verification',
+        message: 'Waiting for sign in link verification',
       });
     }
 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      console.log('[Auth] Session authenticated via magic link:', sessionId, user.email);
+      console.log('[Auth] Session authenticated via sign in link:', sessionId, user.email);
 
       const response = NextResponse.json({
         authenticated: true,
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Set httpOnly cookie with the JWT
-      response.cookies.set('auth_token', pollResult.authToken, {
+      response.cookies.set('red_session', pollResult.authToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       authenticated: false,
-      message: 'Waiting for magic link verification',
+      message: 'Waiting for sign in link verification',
     });
   } catch (error) {
     console.error('[Auth] Check session error:', error);

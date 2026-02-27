@@ -11,7 +11,7 @@ export async function POST() {
   });
 
   // Clear auth cookie
-  response.cookies.delete('auth_token');
+  response.cookies.delete('red_session');
 
   return response;
 }
