@@ -14,14 +14,12 @@ WORKDIR /app
 # ==========================================
 FROM base AS deps
 
-# Copy package files
-COPY package.json package-lock.json* ./
-
-# Copy the redbtn tarball (built from redbtn package)
-COPY redbtn-redbtn-*.tgz ./
+# Copy package files and local tarballs
+COPY package.json ./
+COPY *.tgz ./
 
 # Install dependencies
-RUN npm ci
+RUN npm install --ignore-scripts && npm rebuild
 
 # ==========================================
 # Stage 2: Build the application
