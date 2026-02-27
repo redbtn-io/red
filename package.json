@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
-    "@red/stream": "file:../../redstream/red-stream-0.1.2.tgz",
+    "@red/stream": "file:red-stream-0.1.2.tgz",
     "@redbtn/redbtn": "file:redbtn-redbtn-0.0.1-alpha.tgz",
     "@redbtn/redlog": "file:redbtn-redlog-0.1.0.tgz",
     "@tailwindcss/typography": "^0.5.19",
