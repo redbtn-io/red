@@ -17,7 +17,7 @@ import {
     Monitor,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme } from '@redbtn/redstyle';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { Header } from '@/components/layout/Header';
 import { pageVariants, fadeUpVariants } from '@/lib/animations';
