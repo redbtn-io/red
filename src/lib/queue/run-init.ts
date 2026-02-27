@@ -21,6 +21,7 @@
  */
 
 import IORedis, { type Redis } from 'ioredis';
+import { getRedis } from '@/lib/redis/client';
 
 // ============================================
 // Configuration
@@ -102,16 +103,6 @@ export interface InitializeRunOptions {
 // ============================================
 
 let redis: Redis | null = null;
-
-function getRedis(): Redis {
-  if (!redis) {
-    redis = new IORedis(REDIS_URL, {
-      maxRetriesPerRequest: null,
-      enableReadyCheck: false,
-    });
-  }
-  return redis;
-}
 
 // ============================================
 // State Management Functions

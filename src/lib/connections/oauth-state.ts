@@ -7,6 +7,7 @@
 
 import Redis from 'ioredis';
 import { generateOAuthState } from './utils';
+import { getRedis } from '@/lib/redis/client';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const STATE_TTL_SECONDS = 600; // 10 minutes
@@ -25,22 +26,6 @@ export interface IOAuthStateData {
 }
 
 let redisClient: Redis | null = null;
-
-/**
- * Get or create Redis client
- */
-function getRedis(): Redis {
-  if (!redisClient) {
-    redisClient = new Redis(REDIS_URL, {
-      maxRetriesPerRequest: 3,
-      retryStrategy: (times) => {
-        if (times > 3) return null;
-        return Math.min(times * 100, 2000);
-      },
-    });
-  }
-  return redisClient;
-}
 
 /**
  * Create and store a new OAuth state

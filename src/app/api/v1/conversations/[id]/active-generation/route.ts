@@ -2,13 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRed, getDatabase } from '@/lib/red';
 import { getActiveRunForConversation, getRunState } from '@redbtn/redbtn';
 import { verifyAuth } from '@/lib/auth/auth';
-import Redis from 'ioredis';
+import { getRedis } from '@/lib/redis/client';
 
 // Get Redis instance
-function getRedis(): Redis {
-  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-  return new Redis(redisUrl, { maxRetriesPerRequest: 3 });
-}
 
 /**
  * Get active generation for a conversation

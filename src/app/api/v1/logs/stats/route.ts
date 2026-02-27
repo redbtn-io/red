@@ -10,12 +10,7 @@ import { getDatabase, getActiveRunForConversation } from '@redbtn/redbtn';
 import { getLogReader } from '@/lib/redlog';
 import type { LogEntry } from '@redbtn/redlog';
 import { verifyAuth } from '@/lib/auth/auth';
-import Redis from 'ioredis';
-
-function getRedis(): Redis {
-  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-  return new Redis(redisUrl, { maxRetriesPerRequest: 3 });
-}
+import { getRedis } from '@/lib/redis/client';
 
 export async function GET(request: NextRequest) {
   try {
