@@ -6,17 +6,26 @@
 import { NextRequest } from 'next/server';
 import { createRedAuth } from 'red-auth';
 
-// Shared redAuth instance for this app
-export const auth = createRedAuth({
-  mongoUri: process.env.AUTH_MONGODB_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/redbtn',
-  jwtSecret: process.env.JWT_SECRET || '',
-  appName: 'redbtn',
-  baseUrl: process.env.BASE_URL || 'http://localhost:3000',
-  cookieName: 'red_session',
-  cookieDomain: process.env.COOKIE_DOMAIN || undefined,
-  verifyPath: '/api/auth/verify-link',
-  internalServiceKey: process.env.INTERNAL_SERVICE_KEY,
-  audit: { enabled: true },
+// Lazy-initialized redAuth instance (avoids build-time env var requirement)
+let _auth: ReturnType<typeof createRedAuth> | null = null;
+export function getAuth() {
+  if (!_auth) {
+    _auth = createRedAuth({
+      mongoUri: process.env.AUTH_MONGODB_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/redbtn',
+      jwtSecret: process.env.JWT_SECRET || '',
+      appName: 'redbtn',
+      baseUrl: process.env.BASE_URL || 'http://localhost:3000',
+      cookieName: 'red_session',
+      cookieDomain: process.env.COOKIE_DOMAIN || undefined,
+      verifyPath: '/api/auth/verify-link',
+      internalServiceKey: process.env.INTERNAL_SERVICE_KEY,
+      audit: { enabled: true },
+    });
+  }
+  return _auth;
+}
+export const auth = new Proxy({} as ReturnType<typeof createRedAuth>, {
+  get: (_target, prop) => (getAuth() as unknown as Record<string | symbol, unknown>)[prop],
 });
 
 export interface JWTPayload {

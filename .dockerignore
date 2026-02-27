@@ -42,5 +42,4 @@ logs
 *.log
 
 # Build artifacts that shouldn't be in container
-*.tgz
-!redbtn-redbtn-*.tgz
+# Keep all .tgz files (local package dependencies)
