@@ -44,7 +44,8 @@
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
     "zod": "^4.1.13",
-    "zustand": "^5.0.9"
+    "zustand": "^5.0.9",
+    "@redbtn/redstyle": "file:redbtn-redstyle-0.1.0.tgz"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
