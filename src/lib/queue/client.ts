@@ -57,21 +57,21 @@ function getConnection(): Redis {
 
 export function getGraphQueue(): Queue {
   if (!graphQueue) {
-    graphQueue = new Queue(QUEUE_NAMES.GRAPH, { connection: getConnection() });
+    graphQueue = new Queue(QUEUE_NAMES.GRAPH, { connection: getConnection() as any });
   }
   return graphQueue;
 }
 
 export function getAutomationQueue(): Queue {
   if (!automationQueue) {
-    automationQueue = new Queue(QUEUE_NAMES.AUTOMATION, { connection: getConnection() });
+    automationQueue = new Queue(QUEUE_NAMES.AUTOMATION, { connection: getConnection() as any });
   }
   return automationQueue;
 }
 
 export function getBackgroundQueue(): Queue {
   if (!backgroundQueue) {
-    backgroundQueue = new Queue(QUEUE_NAMES.BACKGROUND, { connection: getConnection() });
+    backgroundQueue = new Queue(QUEUE_NAMES.BACKGROUND, { connection: getConnection() as any });
   }
   return backgroundQueue;
 }
