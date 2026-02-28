@@ -17,9 +17,8 @@
  *   });
  */
 
-import { Queue } from 'bullmq';
-import IORedis, { type Redis } from 'ioredis';
-import { parseBullMQConnection } from '@red/stream/queue';
+import type { Queue } from 'bullmq';
+import { parseBullMQConnection, createQueue } from '@red/stream/queue';
 
 // ============================================
 // Configuration
@@ -38,40 +37,29 @@ const QUEUE_NAMES = {
 // Connection Management
 // ============================================
 
-let connection: Redis | null = null;
 let graphQueue: Queue | null = null;
 let automationQueue: Queue | null = null;
 let backgroundQueue: Queue | null = null;
 
-function getConnection(): Redis {
-  if (!connection) {
-    const opts = parseBullMQConnection(REDIS_URL);
-    connection = new IORedis({
-      ...opts,
-      maxRetriesPerRequest: null,
-      enableReadyCheck: false,
-    } as any);
-  }
-  return connection;
-}
+const connection = parseBullMQConnection(REDIS_URL);
 
 export function getGraphQueue(): Queue {
   if (!graphQueue) {
-    graphQueue = new Queue(QUEUE_NAMES.GRAPH, { connection: getConnection() as any });
+    graphQueue = createQueue(QUEUE_NAMES.GRAPH, { connection });
   }
   return graphQueue;
 }
 
 export function getAutomationQueue(): Queue {
   if (!automationQueue) {
-    automationQueue = new Queue(QUEUE_NAMES.AUTOMATION, { connection: getConnection() as any });
+    automationQueue = createQueue(QUEUE_NAMES.AUTOMATION, { connection });
   }
   return automationQueue;
 }
 
 export function getBackgroundQueue(): Queue {
   if (!backgroundQueue) {
-    backgroundQueue = new Queue(QUEUE_NAMES.BACKGROUND, { connection: getConnection() as any });
+    backgroundQueue = createQueue(QUEUE_NAMES.BACKGROUND, { connection });
   }
   return backgroundQueue;
 }
@@ -328,10 +316,6 @@ export async function closeQueues(): Promise<void> {
   if (backgroundQueue) {
     closePromises.push(backgroundQueue.close());
     backgroundQueue = null;
-  }
-  if (connection) {
-    closePromises.push(connection.quit().then(() => {}));
-    connection = null;
   }
 
   await Promise.all(closePromises);
