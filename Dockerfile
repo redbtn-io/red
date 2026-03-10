@@ -14,12 +14,12 @@ WORKDIR /app
 # ==========================================
 FROM base AS deps
 
-# Copy package files and local tarballs
-COPY package.json ./
+# Copy package files, lockfile, and local tarballs
+COPY package.json package-lock.json ./
 COPY *.tgz ./
 
-# Install dependencies
-RUN npm install --ignore-scripts && npm rebuild
+# Install dependencies (ci uses lockfile for fast, deterministic installs)
+RUN npm ci --ignore-scripts && npm rebuild
 
 # ==========================================
 # Stage 2: Build the application

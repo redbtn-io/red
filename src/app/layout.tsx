@@ -4,7 +4,7 @@ import "./globals.css";
 import SetVh from '@/components/layout/SetVh';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ConversationProvider } from '@/contexts/ConversationContext';
-import { ThemeProvider } from '@/contexts/ThemeContext';
+import { ThemeProvider } from '@redbtn/redstyle';
 import PreventZoom from '@/components/layout/PreventZoom';
 import ServiceWorkerRegister from '@/components/layout/ServiceWorkerRegister';
 import InstallPrompt from '@/components/pwa/InstallPrompt';
@@ -74,7 +74,7 @@ export default function RootLayout({
         <PreventZoom />
         <ServiceWorkerRegister />
         <InstallPrompt />
-        <ThemeProvider>
+        <ThemeProvider storageKey="redbtn-theme" defaultTheme="dark">
           <AuthProvider>
             <ConversationProvider>
               {children}

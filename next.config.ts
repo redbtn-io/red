@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
     maxInactiveAge: 60 * 1000,
     pagesBufferLength: 5,
   },
-  transpilePackages: ['@chroma-core/default-embed'],
+  transpilePackages: ['@chroma-core/default-embed', '@redbtn/redstyle'],
   
   // red-auth is ESM-only; let Node.js handle it natively instead of bundling
   serverExternalPackages: ['red-auth'],
