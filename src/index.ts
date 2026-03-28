@@ -13,6 +13,7 @@ export type {
   RedConfig,
   RedProps,
   RedTheme,
+  RedDisplayOptions,
   Message,
   MessageRole,
   MessageMetadata,

@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { RedClient } from "../lib/client.js";
 import type {
   RedConfig,
+  RedDisplayOptions,
   Message,
   RunEvent,
   ChunkEvent,
@@ -16,6 +17,10 @@ import type {
 interface UseRedOptions {
   config: RedConfig;
   systemPrompt?: string;
+  /** Control what's visible in the UI */
+  display?: RedDisplayOptions;
+  /** Pre-populate with existing messages (e.g. from localStorage) */
+  initialMessages?: Message[];
   onMessage?: (message: Message) => void;
   onResponse?: (message: Message) => void;
   onError?: (error: Error) => void;
@@ -26,6 +31,8 @@ interface UseRedReturn {
   isStreaming: boolean;
   isConnected: boolean;
   conversationId: string | undefined;
+  /** Resolved display options (with defaults applied) */
+  display: Required<RedDisplayOptions>;
   send: (content: string) => Promise<void>;
   clear: () => void;
 }
@@ -38,7 +45,14 @@ function genId(prefix: string): string {
 export function useRed(options: UseRedOptions): UseRedReturn {
   const { config, systemPrompt, onMessage, onResponse, onError } = options;
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const resolvedDisplay: Required<RedDisplayOptions> = {
+    showTools: options.display?.showTools ?? true,
+    showThinking: options.display?.showThinking ?? true,
+    showLoading: options.display?.showLoading ?? true,
+    showClear: options.display?.showClear ?? false,
+  };
+
+  const [messages, setMessages] = useState<Message[]>(options.initialMessages ?? []);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>(
@@ -323,5 +337,5 @@ export function useRed(options: UseRedOptions): UseRedReturn {
     toolsRef.current.clear();
   }, []);
 
-  return { messages, isStreaming, isConnected, conversationId, send, clear };
+  return { messages, isStreaming, isConnected, conversationId, display: resolvedDisplay, send, clear };
 }
