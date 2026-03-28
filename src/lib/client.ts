@@ -49,7 +49,8 @@ export class RedClient {
       source: this.config.source,
     };
 
-    const res = await fetch(this.url("/api/v1/chat/completions"), {
+    const endpoint = this.config.chatEndpoint ?? "/api/v1/chat/completions";
+    const res = await fetch(this.url(endpoint), {
       method: "POST",
       headers: this.headers,
       credentials: this.config.token ? "omit" : "include",

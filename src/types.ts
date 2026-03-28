@@ -15,6 +15,8 @@ export interface RedConfig {
   headers?: Record<string, string>;
   /** Source identifier for tracking (e.g. "redbtn.io", "redfleet", "redrun") */
   source?: string;
+  /** Override the chat completions endpoint path (default: "/api/v1/chat/completions") */
+  chatEndpoint?: string;
 }
 
 // ---- Messages ----
@@ -181,6 +183,17 @@ export interface ChatError {
 
 // ---- Component Props ----
 
+export interface RedDisplayOptions {
+  /** Show tool execution indicators (default: true) */
+  showTools?: boolean;
+  /** Show thinking/reasoning indicators (default: true) */
+  showThinking?: boolean;
+  /** Show a loading spinner while waiting for first content (default: true) */
+  showLoading?: boolean;
+  /** Show a clear/reset conversation button (default: false) */
+  showClear?: boolean;
+}
+
 export interface RedProps {
   /** Configuration for the Red instance */
   config: RedConfig;
@@ -196,6 +209,8 @@ export interface RedProps {
   position?: "bottom-right" | "bottom-left" | "top-right" | "top-left";
   /** Custom CSS class for the container */
   className?: string;
+  /** Display options for tools, thinking, loading indicators */
+  display?: RedDisplayOptions;
   /** Callback when a message is sent */
   onMessage?: (message: Message) => void;
   /** Callback when a response completes */
