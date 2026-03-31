@@ -1,7 +1,9 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { useRed } from "../hooks/useRed.js";
+import { useVoice } from "../hooks/useVoice.js";
 import { ChatWindow } from "./ChatWindow.js";
-import type { RedProps, RedTheme } from "../types.js";
+import { VoiceOverlay } from "./VoiceOverlay.js";
+import type { RedProps, RedTheme, VoicePhase, AudioChunkEvent } from "../types.js";
 
 const DEFAULT_THEME: RedTheme = {
   primary: "#dc2626",
@@ -52,8 +54,16 @@ export function Red({
   renderTrigger,
   renderMessage,
   theme: themeOverrides,
+  enableVoice = false,
+  voiceConfig,
 }: RedProps) {
   const [open, setOpen] = useState(defaultOpen);
+  const [voiceOverlayOpen, setVoiceOverlayOpen] = useState(false);
+
+  // Track whether we're in voice mode (overlay open, waiting for response)
+  const voiceModeRef = useRef(false);
+  // Track whether server is providing audio_chunk events
+  const serverTtsActiveRef = useRef(false);
 
   // Detect dark mode via media query
   const prefersDark =
@@ -67,12 +77,93 @@ export function Red({
     return { ...base, ...themeOverrides };
   }, [prefersDark, themeOverrides]);
 
+  // ---- Voice hook ----
+
+  const voice = useVoice({
+    apiUrl: config.apiUrl,
+    token: config.token,
+    transcribeUrl: voiceConfig?.transcribeUrl,
+    synthesizeUrl: voiceConfig?.synthesizeUrl,
+    onTranscription: (text: string) => {
+      // Transition to thinking phase and send the transcribed text
+      voice.setPhase("thinking" as VoicePhase);
+      voiceModeRef.current = true;
+      serverTtsActiveRef.current = false;
+      send(text);
+    },
+    onError: (err: Error) => {
+      onError?.(err);
+    },
+  });
+
   const { messages, isStreaming, send, clear } = useRed({
     config,
     systemPrompt,
     onMessage,
-    onResponse,
-    onError,
+    onResponse: (msg) => {
+      // When response completes, flush TTS if in voice mode
+      if (voiceModeRef.current) {
+        voice.flushTts();
+        // If no TTS audio was played, reset to idle
+        if (!voice.isActive || voice.phase === "thinking") {
+          voice.setPhase("idle" as VoicePhase);
+        }
+        voiceModeRef.current = false;
+        serverTtsActiveRef.current = false;
+      }
+      onResponse?.(msg);
+    },
+    onError: (err) => {
+      if (voiceModeRef.current) {
+        voice.setPhase("idle" as VoicePhase);
+        voiceModeRef.current = false;
+        serverTtsActiveRef.current = false;
+      }
+      onError?.(err);
+    },
+    // Hook into SSE events for voice TTS feeding
+    onStreamEvent: enableVoice
+      ? (event) => {
+          if (!voiceModeRef.current) return;
+
+          // Handle server-side TTS audio chunks
+          if (
+            event.type === "audio_chunk" &&
+            (event as AudioChunkEvent).audio
+          ) {
+            serverTtsActiveRef.current = true;
+            const audioEvent = event as AudioChunkEvent;
+            const mimeType =
+              audioEvent.format === "mp3"
+                ? "audio/mpeg"
+                : audioEvent.format === "wav"
+                  ? "audio/wav"
+                  : audioEvent.format === "ogg"
+                    ? "audio/ogg"
+                    : "audio/mpeg";
+            // Decode base64 audio
+            const byteChars = atob(audioEvent.audio);
+            const byteArray = new Uint8Array(byteChars.length);
+            for (let i = 0; i < byteChars.length; i++) {
+              byteArray[i] = byteChars.charCodeAt(i);
+            }
+            const audioBlob = new Blob([byteArray], { type: mimeType });
+            voice.pushTtsAudio(audioBlob);
+          }
+
+          // Feed text content to client-side TTS (when server TTS isn't active)
+          if (
+            event.type === "chunk" &&
+            (event as unknown as { content?: string }).content &&
+            !(event as unknown as { thinking?: boolean }).thinking &&
+            !serverTtsActiveRef.current
+          ) {
+            voice.pushTtsText(
+              (event as unknown as { content: string }).content
+            );
+          }
+        }
+      : undefined,
   });
 
   const toggle = useCallback(() => {
@@ -87,6 +178,17 @@ export function Red({
     setOpen(false);
     onToggle?.(false);
   }, [onToggle]);
+
+  const handleVoice = useCallback(() => {
+    setVoiceOverlayOpen(true);
+  }, []);
+
+  const handleVoiceClose = useCallback(() => {
+    setVoiceOverlayOpen(false);
+    voice.reset();
+    voiceModeRef.current = false;
+    serverTtsActiveRef.current = false;
+  }, [voice]);
 
   // Allow parent to clear conversation
   void clear;
@@ -119,6 +221,8 @@ export function Red({
             placeholder={placeholder}
             theme={theme}
             renderMessage={renderMessage}
+            enableVoice={enableVoice}
+            onVoice={handleVoice}
           />
         </div>
       )}
@@ -167,6 +271,16 @@ export function Red({
             </svg>
           )}
         </button>
+      )}
+
+      {/* Voice overlay */}
+      {enableVoice && (
+        <VoiceOverlay
+          isOpen={voiceOverlayOpen}
+          onClose={handleVoiceClose}
+          voice={voice}
+          accentColor={theme.primary}
+        />
       )}
 
       {/* Inject keyframe animation */}
