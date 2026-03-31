@@ -86,7 +86,8 @@ export type RunEventType =
   | "tool_complete"
   | "tool_error"
   | "run_complete"
-  | "run_error";
+  | "run_error"
+  | "audio_chunk";
 
 export interface RunEvent {
   type: RunEventType;
@@ -147,6 +148,14 @@ export interface RunCompleteEvent extends RunEvent {
 export interface RunErrorEvent extends RunEvent {
   type: "run_error";
   error: string;
+}
+
+export interface AudioChunkEvent extends RunEvent {
+  type: "audio_chunk";
+  /** Base64-encoded audio data */
+  audio: string;
+  /** Audio format: mp3, wav, ogg */
+  format?: "mp3" | "wav" | "ogg";
 }
 
 // ---- Chat Completions API ----
@@ -225,6 +234,10 @@ export interface RedProps {
   renderMessage?: (message: Message) => React.ReactNode;
   /** Theme overrides */
   theme?: Partial<RedTheme>;
+  /** Enable voice input/output (mic button + voice overlay) */
+  enableVoice?: boolean;
+  /** Voice endpoint configuration */
+  voiceConfig?: VoiceConfig;
 }
 
 export interface RedTheme {
@@ -244,4 +257,74 @@ export interface RedTheme {
   radius: string;
   /** Font family */
   fontFamily: string;
+}
+
+// ---- Voice ----
+
+export type VoicePhase = "idle" | "recording" | "transcribing" | "thinking" | "speaking";
+
+export type VoicePermission = "prompt" | "granted" | "denied" | "unavailable";
+
+export interface VoiceConfig {
+  /** API endpoint for speech-to-text (default: "/api/v1/voice/transcribe") */
+  transcribeUrl?: string;
+  /** API endpoint for text-to-speech (default: "/api/v1/voice/synthesize") */
+  synthesizeUrl?: string;
+}
+
+export interface UseVoiceOptions {
+  /** Base URL for API calls (from RedConfig.apiUrl) */
+  apiUrl?: string;
+  /** Auth token for API calls */
+  token?: string;
+  /** API endpoint for STT (default: "/api/v1/voice/transcribe") */
+  transcribeUrl?: string;
+  /** API endpoint for TTS (default: "/api/v1/voice/synthesize") */
+  synthesizeUrl?: string;
+  /** Called when transcription completes */
+  onTranscription?: (text: string) => void;
+  /** Called when voice phase changes */
+  onPhaseChange?: (phase: VoicePhase) => void;
+  /** Called on errors */
+  onError?: (error: Error) => void;
+}
+
+export interface UseVoiceReturn {
+  /** Current voice phase */
+  phase: VoicePhase;
+  /** True when phase is not idle */
+  isActive: boolean;
+  /** Call on pointerdown to start recording (also unlocks AudioContext for iOS) */
+  startRecording: () => void;
+  /** Call on pointerup to stop recording and begin transcription */
+  stopRecording: () => void;
+  /** Feed streaming text content for progressive TTS chunking + synthesis */
+  pushTtsText: (text: string) => void;
+  /** Feed a pre-synthesized audio blob for direct playback (server-side TTS) */
+  pushTtsAudio: (blob: Blob) => void;
+  /** Flush remaining TTS text buffer (call when stream completes) */
+  flushTts: () => void;
+  /** Set phase externally (e.g. "thinking" after sending a message) */
+  setPhase: (phase: VoicePhase) => void;
+  /** Stop everything and reset to idle */
+  reset: () => void;
+  /** Current recording amplitude (0-1) for visualizations */
+  amplitude: number;
+  /** Microphone permission state */
+  permission: VoicePermission;
+  /** Any error message */
+  error: string | null;
+}
+
+export interface VoiceOverlayProps {
+  /** Whether the overlay is open */
+  isOpen: boolean;
+  /** Close the overlay */
+  onClose: () => void;
+  /** Voice hook return value */
+  voice: UseVoiceReturn;
+  /** Logo image URL (defaults to a red circle) */
+  logoUrl?: string;
+  /** Accent color for pulses (defaults to theme primary / #dc2626) */
+  accentColor?: string;
 }

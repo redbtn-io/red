@@ -24,6 +24,9 @@ interface UseRedOptions {
   onMessage?: (message: Message) => void;
   onResponse?: (message: Message) => void;
   onError?: (error: Error) => void;
+  /** Raw SSE event callback -- fired for every event before internal handling.
+   *  Used by voice integration to feed audio_chunk and content events to TTS. */
+  onStreamEvent?: (event: RunEvent) => void;
 }
 
 interface UseRedReturn {
@@ -43,7 +46,7 @@ function genId(prefix: string): string {
 }
 
 export function useRed(options: UseRedOptions): UseRedReturn {
-  const { config, systemPrompt, onMessage, onResponse, onError } = options;
+  const { config, systemPrompt, onMessage, onResponse, onError, onStreamEvent } = options;
 
   const resolvedDisplay: Required<RedDisplayOptions> = {
     showTools: options.display?.showTools ?? true,
@@ -292,6 +295,7 @@ export function useRed(options: UseRedOptions): UseRedReturn {
           }
           try {
             const runEvent = JSON.parse(evt.data) as RunEvent;
+            onStreamEvent?.(runEvent);
             handleEvent(runEvent);
           } catch {
             // Ignore unparseable events
@@ -323,6 +327,7 @@ export function useRed(options: UseRedOptions): UseRedReturn {
       updateAssistantMessage,
       onMessage,
       onError,
+      onStreamEvent,
     ]
   );
 
