@@ -1,10 +1,18 @@
 import 'dotenv/config';
 import { AI } from '@redbtn/ai';
-import { Client, GatewayIntentBits, Partials, REST, Routes } from 'discord.js';
+import {
+  ApplicationCommandOptionType,
+  Client,
+  GatewayIntentBits,
+  Partials,
+  REST,
+  Routes,
+} from 'discord.js';
 import ffmpeg from 'fluent-ffmpeg';
 import fs from 'fs';
 import { formatMessages, sendMessage, streamThread } from './ai/threads';
 import { checkVector } from './ai/vectors';
+import { chunkForDiscord, getPerformance, Timeframe } from './lib/performance';
 
 //! Horrible idea to hardcode the path to ffmpeg
 ffmpeg.setFfmpegPath("E:/Downloads/ffmpeg-2024-09-02-git-3f9ca51015-full_build/bin/ffmpeg.exe");
@@ -18,6 +26,28 @@ const commands = [
   }, {
     name: 'reset',
     description: 'Resets the conversation',
+  }, {
+    name: 'performance',
+    description: 'Show fund or per-symbol performance for a timeframe',
+    options: [
+      {
+        name: 'timeframe',
+        description: 'Window to report on (default: ytd)',
+        type: ApplicationCommandOptionType.String,
+        required: false,
+        choices: [
+          { name: 'Weekly',  value: 'weekly'  },
+          { name: 'Monthly', value: 'monthly' },
+          { name: 'YTD',     value: 'ytd'     },
+        ],
+      },
+      {
+        name: 'symbols',
+        description: 'Optional space-separated tickers (e.g. "META MSFT"). Omit for fund-level.',
+        type: ApplicationCommandOptionType.String,
+        required: false,
+      },
+    ],
   }
 ];
 
@@ -64,6 +94,33 @@ const main = async () => {
           delete channels[channel];
           fs.writeFileSync('channels.json', JSON.stringify(channels), 'utf8');
           await interaction.reply('Conversation reset.');
+          break;
+        }
+        case 'performance': {
+          // Defer up front — Alpaca calls easily exceed the 3s interaction window.
+          await interaction.deferReply();
+          try {
+            const timeframe = (interaction.options.getString('timeframe') ?? 'ytd') as Timeframe;
+            const rawSymbols = interaction.options.getString('symbols');
+            const symbols = rawSymbols
+              ? rawSymbols.split(/[\s,]+/).map(s => s.trim()).filter(Boolean)
+              : undefined;
+
+            const report = await getPerformance(timeframe, symbols);
+            const chunks = chunkForDiscord(report);
+            await interaction.editReply(chunks[0]);
+            for (let i = 1; i < chunks.length; i++) {
+              await interaction.followUp(chunks[i]);
+            }
+          } catch (e: any) {
+            console.error('performance command failed:', e);
+            const msg = `❌ Performance lookup failed: ${e?.message ?? String(e)}`;
+            try {
+              await interaction.editReply(msg.slice(0, 1900));
+            } catch {
+              await interaction.followUp(msg.slice(0, 1900));
+            }
+          }
           break;
         }
       }
