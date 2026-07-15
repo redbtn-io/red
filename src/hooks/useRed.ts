@@ -24,6 +24,9 @@ interface UseRedOptions {
   onMessage?: (message: Message) => void;
   onResponse?: (message: Message) => void;
   onError?: (error: Error) => void;
+  /** Raw SSE event callback -- fired for every event before internal handling.
+   *  Used by voice integration to feed audio_chunk and content events to TTS. */
+  onStreamEvent?: (event: RunEvent) => void;
 }
 
 interface UseRedReturn {
@@ -43,7 +46,7 @@ function genId(prefix: string): string {
 }
 
 export function useRed(options: UseRedOptions): UseRedReturn {
-  const { config, systemPrompt, onMessage, onResponse, onError } = options;
+  const { config, systemPrompt, onMessage, onResponse, onError, onStreamEvent } = options;
 
   const resolvedDisplay: Required<RedDisplayOptions> = {
     showTools: options.display?.showTools ?? true,
@@ -288,10 +291,15 @@ export function useRed(options: UseRedOptions): UseRedReturn {
             es.close();
             setIsStreaming(false);
             setIsConnected(false);
+            // Clear the message-level streaming flag too — otherwise a stream
+            // that terminates via [DONE] without a preceding run_complete leaves
+            // the bubble stuck showing the pulsing indicator.
+            updateAssistantMessage({ isStreaming: false });
             return;
           }
           try {
             const runEvent = JSON.parse(evt.data) as RunEvent;
+            onStreamEvent?.(runEvent);
             handleEvent(runEvent);
           } catch {
             // Ignore unparseable events
@@ -303,6 +311,9 @@ export function useRed(options: UseRedOptions): UseRedReturn {
           if (es.readyState === EventSource.CLOSED) {
             setIsStreaming(false);
             setIsConnected(false);
+            // Stop the message-level streaming indicator so a dropped stream
+            // doesn't leave the assistant bubble pulsing forever.
+            updateAssistantMessage({ isStreaming: false });
           }
         };
       } catch (err) {
@@ -323,6 +334,7 @@ export function useRed(options: UseRedOptions): UseRedReturn {
       updateAssistantMessage,
       onMessage,
       onError,
+      onStreamEvent,
     ]
   );
 
