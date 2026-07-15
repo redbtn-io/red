@@ -294,6 +294,9 @@ export interface UseVoiceReturn {
   phase: VoicePhase;
   /** True when phase is not idle */
   isActive: boolean;
+  /** Request microphone permission without starting a recording (e.g. when the
+   *  voice overlay opens). Resolves true once access is granted. */
+  requestPermission: () => Promise<boolean>;
   /** Call on pointerdown to start recording (also unlocks AudioContext for iOS) */
   startRecording: () => void;
   /** Call on pointerup to stop recording and begin transcription */

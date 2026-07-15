@@ -291,6 +291,10 @@ export function useRed(options: UseRedOptions): UseRedReturn {
             es.close();
             setIsStreaming(false);
             setIsConnected(false);
+            // Clear the message-level streaming flag too — otherwise a stream
+            // that terminates via [DONE] without a preceding run_complete leaves
+            // the bubble stuck showing the pulsing indicator.
+            updateAssistantMessage({ isStreaming: false });
             return;
           }
           try {
@@ -307,6 +311,9 @@ export function useRed(options: UseRedOptions): UseRedReturn {
           if (es.readyState === EventSource.CLOSED) {
             setIsStreaming(false);
             setIsConnected(false);
+            // Stop the message-level streaming indicator so a dropped stream
+            // doesn't leave the assistant bubble pulsing forever.
+            updateAssistantMessage({ isStreaming: false });
           }
         };
       } catch (err) {

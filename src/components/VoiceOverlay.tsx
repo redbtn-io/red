@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { VoiceOverlayProps } from "../types.js";
 
 /**
@@ -17,7 +17,19 @@ export function VoiceOverlay({
   logoUrl,
   accentColor = "#dc2626",
 }: VoiceOverlayProps) {
-  const { phase, amplitude, permission, error: voiceError, startRecording, stopRecording } = voice;
+  const { phase, amplitude, permission, error: voiceError, requestPermission, startRecording, stopRecording } = voice;
+
+  // Request microphone access as soon as the overlay opens. Without this the
+  // record button stays disabled (canRecord requires permission === "granted"),
+  // and permission is only ever granted inside startRecording — which the
+  // disabled button can never call. Result: voice would be stuck at "prompt"
+  // forever. Requesting here breaks that deadlock and matches the
+  // "Requesting microphone..." status shown while permission === "prompt".
+  useEffect(() => {
+    if (isOpen && permission === "prompt") {
+      requestPermission();
+    }
+  }, [isOpen, permission, requestPermission]);
 
   const canRecord =
     permission === "granted" && phase === "idle" && !voiceError;
@@ -471,8 +483,17 @@ function VoiceKeyframes({ accentColor }: { accentColor: string }) {
 
 // ---- Utility ----
 
-function hexToRgba(hex: string, alpha: number): string {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+export function hexToRgba(hex: string, alpha: number): string {
+  let h = hex.trim().replace(/^#/, "");
+  // Expand 3- and 4-digit shorthand (#f00 → ff0000, #f00a → ff0000aa)
+  if (h.length === 3 || h.length === 4) {
+    h = h
+      .split("")
+      .map((c) => c + c)
+      .join("");
+  }
+  // Accept 6-digit (#rrggbb) and 8-digit (#rrggbbaa — alpha channel ignored)
+  const result = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})(?:[a-f\d]{2})?$/i.exec(h);
   if (!result) return `rgba(220, 38, 38, ${alpha})`;
   const r = parseInt(result[1], 16);
   const g = parseInt(result[2], 16);
