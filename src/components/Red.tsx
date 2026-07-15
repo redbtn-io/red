@@ -141,14 +141,19 @@ export function Red({
                   : audioEvent.format === "ogg"
                     ? "audio/ogg"
                     : "audio/mpeg";
-            // Decode base64 audio
-            const byteChars = atob(audioEvent.audio);
-            const byteArray = new Uint8Array(byteChars.length);
-            for (let i = 0; i < byteChars.length; i++) {
-              byteArray[i] = byteChars.charCodeAt(i);
+            // Decode base64 audio (guard against malformed payloads — atob
+            // throws on invalid base64, which would abort the stream handler)
+            try {
+              const byteChars = atob(audioEvent.audio);
+              const byteArray = new Uint8Array(byteChars.length);
+              for (let i = 0; i < byteChars.length; i++) {
+                byteArray[i] = byteChars.charCodeAt(i);
+              }
+              const audioBlob = new Blob([byteArray], { type: mimeType });
+              voice.pushTtsAudio(audioBlob);
+            } catch {
+              // Ignore malformed audio chunk
             }
-            const audioBlob = new Blob([byteArray], { type: mimeType });
-            voice.pushTtsAudio(audioBlob);
           }
 
           // Feed text content to client-side TTS (when server TTS isn't active)

@@ -24,7 +24,7 @@ const FORCE_SPLIT_MULTIPLIER = 2.5;
  * 4. Line break (\n)
  * 5. Any space (last resort at 2.5x minimum)
  */
-function findBreakPoint(buffer: string, minChars: number): number {
+export function findBreakPoint(buffer: string, minChars: number): number {
   if (buffer.length < minChars) return -1;
 
   const searchRegion = buffer.slice(minChars);
@@ -480,6 +480,11 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       setPermission("granted");
       return true;
     } catch (err) {
+      // Release any partially-acquired resources so a retry starts clean.
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
       const domErr = err as DOMException;
       if (
         domErr.name === "NotAllowedError" ||
@@ -492,6 +497,22 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       return false;
     }
   }, []);
+
+  // ---- Recording: request permission (without starting a recording) ----
+
+  const permissionPromiseRef = useRef<Promise<boolean> | null>(null);
+  const requestPermission = useCallback(async (): Promise<boolean> => {
+    // Already have an active stream → permission is granted.
+    if (streamRef.current) return true;
+    // Dedupe concurrent/duplicate calls (e.g. React StrictMode double-invoke)
+    // so we never fire getUserMedia twice and leak a MediaStream.
+    if (permissionPromiseRef.current) return permissionPromiseRef.current;
+    const p = initAudio().finally(() => {
+      permissionPromiseRef.current = null;
+    });
+    permissionPromiseRef.current = p;
+    return p;
+  }, [initAudio]);
 
   // ---- Recording: transcribe ----
 
@@ -551,6 +572,13 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     }
 
     if (!streamRef.current) return;
+
+    // If the recording AudioContext was created outside a user gesture (e.g.
+    // when permission was requested on overlay open), it may be suspended —
+    // resume it so the amplitude analyser produces data.
+    if (audioContextRef.current?.state === "suspended") {
+      audioContextRef.current.resume().catch(() => {});
+    }
 
     const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
       ? "audio/webm;codecs=opus"
@@ -629,6 +657,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   return {
     phase,
     isActive: phase !== "idle",
+    requestPermission,
     startRecording,
     stopRecording,
     pushTtsText,
