@@ -68,6 +68,18 @@ export function useRed(options: UseRedOptions): UseRedReturn {
   const thinkingRef = useRef("");
   const toolsRef = useRef<Map<string, ToolExecution>>(new Map());
   const assistantIdRef = useRef("");
+  // Synchronous mirror of the isStreaming state. `send`'s re-entrancy guard must
+  // read this (not the React state) because setState is async: two calls fired
+  // in the same tick (double-Enter, double-click, or a voice-transcription send
+  // racing a manual one) both see the stale state and would otherwise fire two
+  // requests and append duplicate messages.
+  const isStreamingRef = useRef(false);
+
+  // Keep the ref in lock-step with the state on every transition.
+  const setStreaming = useCallback((value: boolean) => {
+    isStreamingRef.current = value;
+    setIsStreaming(value);
+  }, []);
 
   // Update client when config changes
   useEffect(() => {
@@ -205,7 +217,7 @@ export function useRed(options: UseRedOptions): UseRedReturn {
             toolExecutions: Array.from(toolsRef.current.values()),
           };
           updateAssistantMessage({ isStreaming: false });
-          setIsStreaming(false);
+          setStreaming(false);
           setIsConnected(false);
           eventSourceRef.current?.close();
           onResponse?.(finalMessage);
@@ -214,7 +226,7 @@ export function useRed(options: UseRedOptions): UseRedReturn {
 
         case "run_error": {
           const e = event as { error: string } & RunEvent;
-          setIsStreaming(false);
+          setStreaming(false);
           setIsConnected(false);
           eventSourceRef.current?.close();
           updateAssistantMessage({ isStreaming: false });
@@ -223,12 +235,14 @@ export function useRed(options: UseRedOptions): UseRedReturn {
         }
       }
     },
-    [updateAssistantMessage, onResponse, onError]
+    [updateAssistantMessage, onResponse, onError, setStreaming]
   );
 
   const send = useCallback(
     async (content: string) => {
-      if (isStreaming || !content.trim()) return;
+      // Read the synchronous ref, not the isStreaming state, so a second call in
+      // the same tick is reliably dropped instead of racing the first.
+      if (isStreamingRef.current || !content.trim()) return;
 
       // Create user message
       const userMsg: Message = {
@@ -267,7 +281,7 @@ export function useRed(options: UseRedOptions): UseRedReturn {
       toolsRef.current.clear();
 
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
-      setIsStreaming(true);
+      setStreaming(true);
       onMessage?.(userMsg);
 
       try {
@@ -289,7 +303,7 @@ export function useRed(options: UseRedOptions): UseRedReturn {
         es.onmessage = (evt) => {
           if (evt.data === "[DONE]") {
             es.close();
-            setIsStreaming(false);
+            setStreaming(false);
             setIsConnected(false);
             // Clear the message-level streaming flag too — otherwise a stream
             // that terminates via [DONE] without a preceding run_complete leaves
@@ -309,7 +323,7 @@ export function useRed(options: UseRedOptions): UseRedReturn {
         es.onerror = () => {
           // EventSource auto-reconnects; only handle if closed
           if (es.readyState === EventSource.CLOSED) {
-            setIsStreaming(false);
+            setStreaming(false);
             setIsConnected(false);
             // Stop the message-level streaming indicator so a dropped stream
             // doesn't leave the assistant bubble pulsing forever.
@@ -317,7 +331,7 @@ export function useRed(options: UseRedOptions): UseRedReturn {
           }
         };
       } catch (err) {
-        setIsStreaming(false);
+        setStreaming(false);
         updateAssistantMessage({
           content: "Sorry, something went wrong. Please try again.",
           isStreaming: false,
@@ -326,12 +340,12 @@ export function useRed(options: UseRedOptions): UseRedReturn {
       }
     },
     [
-      isStreaming,
       messages,
       conversationId,
       systemPrompt,
       handleEvent,
       updateAssistantMessage,
+      setStreaming,
       onMessage,
       onError,
       onStreamEvent,
@@ -341,13 +355,13 @@ export function useRed(options: UseRedOptions): UseRedReturn {
   const clear = useCallback(() => {
     eventSourceRef.current?.close();
     setMessages([]);
-    setIsStreaming(false);
+    setStreaming(false);
     setIsConnected(false);
     setConversationId(undefined);
     contentRef.current = "";
     thinkingRef.current = "";
     toolsRef.current.clear();
-  }, []);
+  }, [setStreaming]);
 
   return { messages, isStreaming, isConnected, conversationId, display: resolvedDisplay, send, clear };
 }
