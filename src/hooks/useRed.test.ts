@@ -144,6 +144,53 @@ describe("useRed streaming lifecycle", () => {
     expect(result.current.isStreaming).toBe(true);
   });
 
+  it("ignores a concurrent second send while the first is still in flight", async () => {
+    const onMessage = vi.fn();
+    const { result } = renderHook(() => useRed({ config, onMessage }));
+
+    // Fire two sends in the same tick — simulates a double-Enter / double-click
+    // (or a voice-transcription send racing a manual one) before React has
+    // re-rendered with isStreaming === true.
+    await act(async () => {
+      const p1 = result.current.send("first");
+      const p2 = result.current.send("second");
+      await Promise.all([p1, p2]);
+    });
+
+    // Only the first send should have taken effect: one user message, one
+    // assistant placeholder, exactly one POST, and one open stream.
+    const userMsgs = result.current.messages.filter((m) => m.role === "user");
+    const assistantMsgs = result.current.messages.filter(
+      (m) => m.role === "assistant"
+    );
+    expect(userMsgs).toHaveLength(1);
+    expect(userMsgs[0].content).toBe("first");
+    expect(assistantMsgs).toHaveLength(1);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(MockEventSource.instances).toHaveLength(1);
+    expect(onMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows a new send after the previous stream completes", async () => {
+    const { result } = renderHook(() => useRed({ config }));
+
+    await act(async () => {
+      await result.current.send("first");
+    });
+    await act(async () => {
+      lastEs().emit({ type: "run_complete", timestamp: 1 });
+    });
+
+    // The re-entrancy lock must be released on completion so the next send works.
+    await act(async () => {
+      await result.current.send("second");
+    });
+
+    const userMsgs = result.current.messages.filter((m) => m.role === "user");
+    expect(userMsgs.map((m) => m.content)).toEqual(["first", "second"]);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
   it("surfaces an error message and stops streaming when the POST fails", async () => {
     global.fetch = vi.fn(async () => ({
       ok: false,
