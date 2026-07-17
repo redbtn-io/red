@@ -111,3 +111,83 @@ describe("useVoice.requestPermission", () => {
     expect(result.current.permission).toBe("denied");
   });
 });
+
+describe("useVoice TTS AudioContext lifecycle", () => {
+  // Track every AudioContext created during a test so we can assert whether the
+  // TTS playback context is released on unmount.
+  let contexts: MockAudioContext[];
+
+  class MockAudioContext {
+    state = "running";
+    destination = {};
+    close = vi.fn(() => {
+      this.state = "closed";
+      return Promise.resolve();
+    });
+    resume = vi.fn(() => Promise.resolve());
+    createBuffer() {
+      return {};
+    }
+    createBufferSource() {
+      const src: {
+        buffer: unknown;
+        connect: () => void;
+        start: () => void;
+        onended: (() => void) | null;
+      } = {
+        buffer: null,
+        connect() {},
+        start() {
+          // Fire completion synchronously so the playback promise resolves and
+          // the hook returns to idle within the test's act() flush.
+          src.onended?.();
+        },
+        onended: null,
+      };
+      return src;
+    }
+    decodeAudioData() {
+      return Promise.resolve({});
+    }
+    constructor() {
+      contexts.push(this);
+    }
+  }
+
+  beforeEach(() => {
+    contexts = [];
+    (global as { AudioContext?: unknown }).AudioContext = MockAudioContext;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+
+  it("closes the TTS AudioContext on unmount (no leaked hardware audio context)", async () => {
+    const { result, unmount } = renderHook(() => useVoice({ apiUrl: "" }));
+
+    // Feed a pre-synthesized audio chunk through the playback pipeline. This is
+    // what lazily constructs the TTS AudioContext via getTtsAudioContext().
+    const fakeBlob = {
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+    } as unknown as Blob;
+
+    await act(async () => {
+      result.current.pushTtsAudio(fakeBlob);
+      await flush();
+    });
+
+    // The TTS AudioContext must have been created exactly once and still be open.
+    expect(contexts).toHaveLength(1);
+    const ttsCtx = contexts[0];
+    expect(ttsCtx.close).not.toHaveBeenCalled();
+
+    // Unmounting must release the audio context, not just stop playback.
+    unmount();
+
+    expect(ttsCtx.close).toHaveBeenCalledTimes(1);
+    expect(ttsCtx.state).toBe("closed");
+  });
+});

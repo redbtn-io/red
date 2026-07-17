@@ -651,6 +651,23 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     return () => {
       releaseAudioResources();
       stopTts();
+      // stopTts() only halts playback; the TTS AudioContext itself is never
+      // released elsewhere. Close it here or every mount/unmount cycle leaks a
+      // hardware audio context — browsers cap the number of live AudioContexts
+      // and then throw on the next `new AudioContext()`.
+      const ttsCtx = ttsAudioCtxRef.current;
+      if (ttsCtx && ttsCtx.state !== "closed") {
+        try {
+          const closed = ttsCtx.close();
+          // Swallow rejection (e.g. context already closing) — best effort.
+          if (closed && typeof (closed as Promise<void>).catch === "function") {
+            (closed as Promise<void>).catch(() => {});
+          }
+        } catch {
+          // ignore
+        }
+      }
+      ttsAudioCtxRef.current = null;
     };
   }, [releaseAudioResources, stopTts]);
 
