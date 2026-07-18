@@ -3,7 +3,7 @@ import {
   useRef,
   useEffect,
   useCallback,
-  type KeyboardEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import type { Message, RedTheme } from "../types.js";
 
@@ -38,11 +38,37 @@ export function ChatWindow({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isSubmittingRef = useRef(false);
+  const previousFocusedElementRef = useRef<HTMLElement | null>(null);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Capture the element focused before the window mounted (the trigger
+  // button that opened it) and close on Escape while mounted. Cleanup runs
+  // on unmount so the listener can never fire once the window is gone, and
+  // restores focus to the trigger so keyboard users aren't dropped onto
+  // <body>. Declared before the input-autofocus effect below so the capture
+  // happens before that effect moves focus into the textarea.
+  useEffect(() => {
+    previousFocusedElementRef.current = document.activeElement as HTMLElement | null;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onClose();
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+      const previouslyFocused = previousFocusedElementRef.current;
+      if (previouslyFocused && typeof previouslyFocused.focus === "function") {
+        previouslyFocused.focus();
+      }
+    };
+  }, [onClose]);
 
   // Focus input on mount
   useEffect(() => {
@@ -71,7 +97,7 @@ export function ChatWindow({
   }, [input, isStreaming, onSend]);
 
   const handleKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSend();

@@ -15,11 +15,27 @@ const theme = {
   fontFamily: "Inter",
 };
 
+function renderChatWindow(onClose: () => void, onSend: (content: string) => void = () => {}) {
+  // jsdom does not implement scrollIntoView; the auto-scroll effect calls it
+  // on every mount.
+  (HTMLElement.prototype as typeof HTMLElement.prototype & { scrollIntoView?: () => void }).scrollIntoView =
+    vi.fn();
+
+  return render(
+    <ChatWindow
+      messages={[]}
+      isStreaming={false}
+      onSend={onSend}
+      onClose={onClose}
+      title="Red"
+      placeholder="Ask..."
+      theme={theme}
+    />
+  );
+}
+
 describe("ChatWindow message/action submit guard", () => {
   it("does not send duplicate messages when the action is triggered twice in rapid succession", async () => {
-    (HTMLElement.prototype as typeof HTMLElement.prototype & { scrollIntoView?: () => void }).scrollIntoView =
-      vi.fn();
-
     const resolvers: Array<() => void> = [];
     const onSend = vi.fn(
       () =>
@@ -27,18 +43,7 @@ describe("ChatWindow message/action submit guard", () => {
           resolvers.push(resolve);
         }),
     );
-
-    render(
-      <ChatWindow
-        messages={[]}
-        isStreaming={false}
-        onSend={onSend}
-        onClose={() => {}}
-        title="Red"
-        placeholder="Ask..."
-        theme={theme}
-      />
-    );
+    renderChatWindow(() => {}, onSend);
 
     const textarea = screen.getByRole("textbox");
     fireEvent.change(textarea, { target: { value: "hello" } });
@@ -62,5 +67,46 @@ describe("ChatWindow message/action submit guard", () => {
       fireEvent.click(sendButton);
     });
     expect(onSend).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("ChatWindow keyboard close lifecycle", () => {
+  it("closes the chat window on Escape", () => {
+    const onClose = vi.fn();
+    renderChatWindow(onClose);
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores focus to the element that opened the window once it unmounts", () => {
+    const trigger = document.createElement("button");
+    trigger.setAttribute("aria-label", "Open Red");
+    document.body.appendChild(trigger);
+    trigger.focus();
+    expect(document.activeElement).toBe(trigger);
+
+    const result = renderChatWindow(vi.fn());
+
+    // Mounting moves focus into the message textarea (existing autofocus
+    // behavior) — confirm that happened, then unmount as the real app does
+    // when `open` flips to false, and assert focus returns to the trigger.
+    expect(document.activeElement).not.toBe(trigger);
+
+    result.unmount();
+
+    expect(document.activeElement).toBe(trigger);
+    trigger.remove();
+  });
+
+  it("removes the Escape listener once the window unmounts, so Escape no longer closes it", () => {
+    const onClose = vi.fn();
+    const result = renderChatWindow(onClose);
+
+    result.unmount();
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
