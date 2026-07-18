@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, cleanup, screen } from "@testing-library/react";
+import { render, cleanup, screen, fireEvent } from "@testing-library/react";
 import { VoiceOverlay, hexToRgba } from "./VoiceOverlay.js";
 import type { UseVoiceReturn, VoicePermission, VoicePhase } from "../types.js";
 
@@ -41,6 +41,29 @@ describe("VoiceOverlay permission bootstrap", () => {
     const voice = makeVoice({ permission: "granted" });
     render(<VoiceOverlay isOpen onClose={() => {}} voice={voice} />);
     expect(voice.requestPermission).not.toHaveBeenCalled();
+  });
+
+  it("closes the overlay on Escape", () => {
+    const onClose = vi.fn();
+    const voice = makeVoice();
+
+    render(<VoiceOverlay isOpen onClose={onClose} voice={voice} />);
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("removes the Escape listener when the overlay closes", () => {
+    const onClose = vi.fn();
+    const voice = makeVoice();
+
+    const result = render(<VoiceOverlay isOpen onClose={onClose} voice={voice} />);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    result.rerender(<VoiceOverlay isOpen={false} onClose={onClose} voice={voice} />);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("shows the denied fallback and does not request permission when denied", () => {

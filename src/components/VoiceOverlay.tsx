@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { VoiceOverlayProps } from "../types.js";
 
 /**
@@ -17,7 +17,33 @@ export function VoiceOverlay({
   logoUrl,
   accentColor = "#dc2626",
 }: VoiceOverlayProps) {
+  const previousFocusedElementRef = useRef<HTMLElement | null>(null);
+
   const { phase, amplitude, permission, error: voiceError, requestPermission, startRecording, stopRecording } = voice;
+
+  // Close the overlay on Escape and restore focus to the trigger element
+  // that opened the assistant. Remove the listener on close/unmount so the
+  // handler can never fire once the overlay is no longer mounted.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    previousFocusedElementRef.current = document.activeElement as HTMLElement | null;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onClose();
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+      const previouslyFocused = previousFocusedElementRef.current;
+      if (previouslyFocused && typeof previouslyFocused.focus === "function") {
+        previouslyFocused.focus();
+      }
+    };
+  }, [isOpen, onClose]);
 
   // Request microphone access as soon as the overlay opens. Without this the
   // record button stays disabled (canRecord requires permission === "granted"),
