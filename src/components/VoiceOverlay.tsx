@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { VoiceOverlayProps } from "../types.js";
 
 /**
@@ -17,7 +17,31 @@ export function VoiceOverlay({
   logoUrl,
   accentColor = "#dc2626",
 }: VoiceOverlayProps) {
+  const onCloseRef = useRef(onClose);
+
   const { phase, amplitude, permission, error: voiceError, requestPermission, startRecording, stopRecording } = voice;
+
+  // Keep the listener stable while the overlay is open even when callers pass
+  // a new callback on render. This prevents listener churn and lets Escape
+  // always invoke the current close action.
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  // Remove the listener on close/unmount so the handler can never fire once
+  // the overlay is no longer mounted.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onCloseRef.current();
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isOpen]);
 
   // Request microphone access as soon as the overlay opens. Without this the
   // record button stays disabled (canRecord requires permission === "granted"),
