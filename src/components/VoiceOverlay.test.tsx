@@ -66,6 +66,30 @@ describe("VoiceOverlay permission bootstrap", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps its Escape listener and focus stable when onClose changes", () => {
+    const firstOnClose = vi.fn();
+    const nextOnClose = vi.fn();
+    const voice = makeVoice();
+    const trigger = document.createElement("button");
+    document.body.appendChild(trigger);
+    trigger.focus();
+    const addEventListener = vi.spyOn(window, "addEventListener");
+
+    const result = render(<VoiceOverlay isOpen onClose={firstOnClose} voice={voice} />);
+    expect(addEventListener).toHaveBeenCalledTimes(1);
+
+    result.rerender(<VoiceOverlay isOpen onClose={nextOnClose} voice={voice} />);
+
+    expect(addEventListener).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(trigger);
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(firstOnClose).not.toHaveBeenCalled();
+    expect(nextOnClose).toHaveBeenCalledTimes(1);
+
+    trigger.remove();
+  });
+
   it("shows the denied fallback and does not request permission when denied", () => {
     const voice = makeVoice({ permission: "denied" });
     render(<VoiceOverlay isOpen onClose={() => {}} voice={voice} />);
