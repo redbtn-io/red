@@ -37,6 +37,7 @@ export function ChatWindow({
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const isSubmittingRef = useRef(false);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -50,12 +51,22 @@ export function ChatWindow({
 
   const handleSend = useCallback(() => {
     const text = input.trim();
-    if (!text || isStreaming) return;
-    onSend(text);
-    setInput("");
-    // Reset textarea height
-    if (inputRef.current) {
-      inputRef.current.style.height = "auto";
+    if (isSubmittingRef.current || !text || isStreaming) return;
+
+    isSubmittingRef.current = true;
+    try {
+      const result = onSend(text);
+      setInput("");
+      // Reset textarea height
+      if (inputRef.current) {
+        inputRef.current.style.height = "auto";
+      }
+      Promise.resolve(result).finally(() => {
+        isSubmittingRef.current = false;
+      });
+    } catch (err) {
+      isSubmittingRef.current = false;
+      throw err;
     }
   }, [input, isStreaming, onSend]);
 
