@@ -3,7 +3,7 @@ import {
   useRef,
   useEffect,
   useCallback,
-  type KeyboardEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import type { Message, RedTheme } from "../types.js";
 
@@ -37,11 +37,44 @@ export function ChatWindow({
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const isSubmittingRef = useRef(false);
+  const previousFocusedElementRef = useRef<HTMLElement | null>(null);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Capture the element focused before the window mounted (the trigger
+  // button that opened it). This is intentionally separate from the Escape
+  // listener so focus is restored only on unmount, never when onClose changes.
+  // Declared before the input-autofocus effect below so the capture happens
+  // before that effect moves focus into the textarea.
+  useEffect(() => {
+    previousFocusedElementRef.current = document.activeElement as HTMLElement | null;
+
+    return () => {
+      const previouslyFocused = previousFocusedElementRef.current;
+      if (previouslyFocused && typeof previouslyFocused.focus === "function") {
+        previouslyFocused.focus();
+      }
+    };
+  }, []);
+
+  // Keep the Escape listener current when onClose changes. Its cleanup has no
+  // focus side effects, so re-subscribing is safe.
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onClose();
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [onClose]);
 
   // Focus input on mount
   useEffect(() => {
@@ -50,17 +83,27 @@ export function ChatWindow({
 
   const handleSend = useCallback(() => {
     const text = input.trim();
-    if (!text || isStreaming) return;
-    onSend(text);
-    setInput("");
-    // Reset textarea height
-    if (inputRef.current) {
-      inputRef.current.style.height = "auto";
+    if (isSubmittingRef.current || !text || isStreaming) return;
+
+    isSubmittingRef.current = true;
+    try {
+      const result = onSend(text);
+      setInput("");
+      // Reset textarea height
+      if (inputRef.current) {
+        inputRef.current.style.height = "auto";
+      }
+      Promise.resolve(result).finally(() => {
+        isSubmittingRef.current = false;
+      });
+    } catch (err) {
+      isSubmittingRef.current = false;
+      throw err;
     }
   }, [input, isStreaming, onSend]);
 
   const handleKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSend();
