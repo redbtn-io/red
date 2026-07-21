@@ -100,6 +100,31 @@ describe("ChatWindow keyboard close lifecycle", () => {
     trigger.remove();
   });
 
+  it("keeps focus in the message textarea when onClose changes", () => {
+    const trigger = document.createElement("button");
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const result = renderChatWindow(() => {});
+    const textarea = screen.getByRole("textbox");
+    expect(document.activeElement).toBe(textarea);
+
+    result.rerender(
+      <ChatWindow
+        messages={[]}
+        isStreaming={false}
+        onSend={() => {}}
+        onClose={() => {}}
+        title="Red"
+        placeholder="Ask..."
+        theme={theme}
+      />
+    );
+
+    expect(document.activeElement).toBe(textarea);
+    trigger.remove();
+  });
+
   it("removes the Escape listener once the window unmounts, so Escape no longer closes it", () => {
     const onClose = vi.fn();
     const result = renderChatWindow(onClose);

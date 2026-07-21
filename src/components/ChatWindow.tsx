@@ -46,14 +46,24 @@ export function ChatWindow({
   }, [messages]);
 
   // Capture the element focused before the window mounted (the trigger
-  // button that opened it) and close on Escape while mounted. Cleanup runs
-  // on unmount so the listener can never fire once the window is gone, and
-  // restores focus to the trigger so keyboard users aren't dropped onto
-  // <body>. Declared before the input-autofocus effect below so the capture
-  // happens before that effect moves focus into the textarea.
+  // button that opened it). This is intentionally separate from the Escape
+  // listener so focus is restored only on unmount, never when onClose changes.
+  // Declared before the input-autofocus effect below so the capture happens
+  // before that effect moves focus into the textarea.
   useEffect(() => {
     previousFocusedElementRef.current = document.activeElement as HTMLElement | null;
 
+    return () => {
+      const previouslyFocused = previousFocusedElementRef.current;
+      if (previouslyFocused && typeof previouslyFocused.focus === "function") {
+        previouslyFocused.focus();
+      }
+    };
+  }, []);
+
+  // Keep the Escape listener current when onClose changes. Its cleanup has no
+  // focus side effects, so re-subscribing is safe.
+  useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
@@ -63,10 +73,6 @@ export function ChatWindow({
     window.addEventListener("keydown", handleEscape);
     return () => {
       window.removeEventListener("keydown", handleEscape);
-      const previouslyFocused = previousFocusedElementRef.current;
-      if (previouslyFocused && typeof previouslyFocused.focus === "function") {
-        previouslyFocused.focus();
-      }
     };
   }, [onClose]);
 
