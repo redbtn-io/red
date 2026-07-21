@@ -52,11 +52,11 @@ describe("useVoice.requestPermission", () => {
     getUserMedia = vi.fn(async () => ({
       getTracks: () => [{ stop: trackStop, kind: "audio" }],
     }));
-    Object.defineProperty(global.navigator, "mediaDevices", {
+    Object.defineProperty(globalThis.navigator, "mediaDevices", {
       value: { getUserMedia },
       configurable: true,
     });
-    (global as { AudioContext?: unknown }).AudioContext = class {
+    (globalThis as { AudioContext?: unknown }).AudioContext = class {
       state = "running";
       destination = {};
       createMediaStreamSource() {
@@ -156,7 +156,7 @@ describe("useVoice TTS AudioContext lifecycle", () => {
 
   beforeEach(() => {
     contexts = [];
-    (global as { AudioContext?: unknown }).AudioContext = MockAudioContext;
+    (globalThis as { AudioContext?: unknown }).AudioContext = MockAudioContext;
   });
 
   afterEach(() => {
