@@ -40,8 +40,8 @@ function lastEs() {
 describe("useRed streaming lifecycle", () => {
   beforeEach(() => {
     MockEventSource.instances = [];
-    (global as { EventSource?: unknown }).EventSource = MockEventSource;
-    global.fetch = vi.fn(async () => ({
+    (globalThis as { EventSource?: unknown }).EventSource = MockEventSource;
+    globalThis.fetch = vi.fn(async () => ({
       ok: true,
       status: 200,
       json: async () => ({
@@ -166,7 +166,7 @@ describe("useRed streaming lifecycle", () => {
     expect(userMsgs).toHaveLength(1);
     expect(userMsgs[0].content).toBe("first");
     expect(assistantMsgs).toHaveLength(1);
-    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     expect(MockEventSource.instances).toHaveLength(1);
     expect(onMessage).toHaveBeenCalledTimes(1);
   });
@@ -188,11 +188,11 @@ describe("useRed streaming lifecycle", () => {
 
     const userMsgs = result.current.messages.filter((m) => m.role === "user");
     expect(userMsgs.map((m) => m.content)).toEqual(["first", "second"]);
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
   });
 
   it("surfaces an error message and stops streaming when the POST fails", async () => {
-    global.fetch = vi.fn(async () => ({
+    globalThis.fetch = vi.fn(async () => ({
       ok: false,
       status: 500,
       json: async () => ({

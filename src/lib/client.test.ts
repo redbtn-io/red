@@ -2,16 +2,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { RedClient } from "./client.js";
 
 describe("RedClient", () => {
-  const origFetch = global.fetch;
-  const origEventSource = (global as { EventSource?: unknown }).EventSource;
+  const origFetch = globalThis.fetch;
+  const origEventSource = (globalThis as { EventSource?: unknown }).EventSource;
 
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
   afterEach(() => {
-    global.fetch = origFetch;
-    (global as { EventSource?: unknown }).EventSource = origEventSource;
+    globalThis.fetch = origFetch;
+    (globalThis as { EventSource?: unknown }).EventSource = origEventSource;
   });
 
   function mockFetchOk(json: unknown) {
@@ -20,7 +20,7 @@ describe("RedClient", () => {
       status: 200,
       json: async () => json,
     })) as unknown as typeof fetch;
-    global.fetch = fn;
+    globalThis.fetch = fn;
     return fn as unknown as ReturnType<typeof vi.fn>;
   }
 
@@ -86,7 +86,7 @@ describe("RedClient", () => {
   });
 
   it("throws with the server error message on non-ok responses", async () => {
-    global.fetch = vi.fn(async () => ({
+    globalThis.fetch = vi.fn(async () => ({
       ok: false,
       status: 403,
       json: async () => ({
@@ -101,7 +101,7 @@ describe("RedClient", () => {
 
   it("appends a URL-encoded token query param for SSE and disables credentials", () => {
     const ctor = vi.fn();
-    (global as { EventSource?: unknown }).EventSource = class {
+    (globalThis as { EventSource?: unknown }).EventSource = class {
       url: string;
       opts: unknown;
       constructor(url: string, opts: unknown) {
@@ -124,7 +124,7 @@ describe("RedClient", () => {
 
   it("uses & when the stream URL already has a query string", () => {
     const ctor = vi.fn();
-    (global as { EventSource?: unknown }).EventSource = class {
+    (globalThis as { EventSource?: unknown }).EventSource = class {
       constructor(url: string, opts: unknown) {
         ctor(url, opts);
       }
@@ -141,7 +141,7 @@ describe("RedClient", () => {
 
   it("uses cookie credentials for SSE when no token is present", () => {
     const ctor = vi.fn();
-    (global as { EventSource?: unknown }).EventSource = class {
+    (globalThis as { EventSource?: unknown }).EventSource = class {
       constructor(url: string, opts: unknown) {
         ctor(url, opts);
       }
